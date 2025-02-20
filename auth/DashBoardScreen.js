@@ -9,8 +9,8 @@ export default function DashboardScreen({ route, navigation }) {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-      // IP ADDRESS REQUIRED
-        const response = await axios.get("http://198.168.X.X:5000/login", {
+      // IP ADDRESS REQUIREd
+        const response = await axios.get("http://35.50.x.x:5000/login", {
           headers: { Authorization: token },
         });
         setUser(response.data.user);

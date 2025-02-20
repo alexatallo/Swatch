@@ -8,7 +8,7 @@ app.use(express.json());
 app.use(cors());
 
 // URI REQUIRED
-const uri = "mongodb+srv://<UserName>:<Password>@swatch.rcvjo.mongodb.net/?retryWrites=true&w=majority&appName=Swatch";
+const uri = "mongodb+srv://<username>:<password>@swatch.rcvjo.mongodb.net/?retryWrites=true&w=majority&appName=Swatch";
 const client = new MongoClient(uri);
 
 // Connect to Database 
