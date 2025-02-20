@@ -53,7 +53,7 @@ export default function SignUpScreen({ navigation }) {
         };
 
         // IP ADDRESS REQUIRED
-        let response = await axios.post("http://35.50.90.208:5000/signup", userPayload);
+        let response = await axios.post("http://198.x.x.x.x:5000/signup", userPayload);
         let userId = response.data.userId;
 
         if (isBusinessAccount) {
@@ -64,7 +64,7 @@ export default function SignUpScreen({ navigation }) {
                 website
             };
             // IP ADDRESS REQUIRED 
-            await axios.post("http://35.50.90.208:5000/business/signup", businessPayload);
+            await axios.post("http://http://198.x.x.x.x:5000/business/signup", businessPayload);
         }
 
         Alert.alert("Success", "Account created!");
