@@ -1,13 +1,51 @@
 import React from "react";
-import { View, Text, Button } from "react-native";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { View, Text } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 
-export default function HomeScreen({ navigation }) {
+// Dummy Screens
+function ExploreScreen() {
   return (
-    <View style={{ padding: 20, alignItems: "center", justifyContent: "center", flex: 1 }}>
-      <Text style={{ fontSize: 24, fontWeight: "bold" }}>🏠 Home Page</Text>
-      <Button title="Logout" onPress={() => navigation.navigate("Login")} />
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+      <Text>Explore Screen</Text>
     </View>
-    
   );
-  console.log("Rendering HomeScreen");
+}
+
+function SearchScreen() {
+  return (
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+      <Text>Search Screen</Text>
+    </View>
+  );
+}
+
+function AccountScreen() {
+  return (
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+      <Text>Account Screen</Text>
+    </View>
+  );
+}
+
+const Tab = createBottomTabNavigator();
+
+export default function HomeScreen() {
+  return (
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          tabBarIcon: ({ color, size }) => {
+            let iconName;
+            if (route.name === "Explore") iconName = "explore";
+            else if (route.name === "Search") iconName = "search";
+            else if (route.name === "Account") iconName = "person";
+            return <MaterialIcons name={iconName} size={size} color={color} />;
+          },
+        })}
+      >
+        <Tab.Screen name="Explore" component={ExploreScreen} />
+        <Tab.Screen name="Search" component={SearchScreen} />
+        <Tab.Screen name="Account" component={AccountScreen} />
+      </Tab.Navigator>
+  );
 }

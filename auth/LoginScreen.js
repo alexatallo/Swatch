@@ -8,7 +8,7 @@ export default function LoginScreen({ navigation }) {
 
   const handleLogin = async () => {
     try {
-        const response = await axios.post("http://198.168.X.X:5000/login", { 
+        const response = await axios.post("http://35.50.90.208:5000/login", { 
             emailOrUsername: emailOrUsername.toLowerCase(), 
             password 
         });
@@ -16,8 +16,9 @@ export default function LoginScreen({ navigation }) {
         console.log("Server Response:", response.data);
 
         if (response.data.token) {
-            Alert.alert("Success", "Logged in successfully!");
-            navigation.navigate("Home");
+          Alert.alert("Success", "Logged in successfully!");
+          navigation.replace("Home", { token: response.data.token });
+  
         } else {
             Alert.alert("Error", "No token received from server.");
         }
