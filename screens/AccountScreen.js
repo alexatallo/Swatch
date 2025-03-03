@@ -1,78 +1,118 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, Button, ActivityIndicator } from "react-native";
+import React, { useEffect, useState } from 'react';
+import { View, Text, ActivityIndicator, Platform, Alert, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 
-export default function AccountScreen({ route }) {
-  const [user, setUser] = useState(null);
+// Use localStorage for web if needed
+const Storage = Platform.OS === 'web' ? localStorage : AsyncStorage;
+
+export default function AccountScreen({ navigation }) {
+  const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const token = route.params?.token; // Ensure token is passed correctly
 
   useEffect(() => {
-    // Log token to ensure it's being passed
-    console.log("Token received:", token);
-
-    if (!token) {
-      console.log("No token found!");
-      setLoading(false);
-      return;
-    }
-
     const fetchUserData = async () => {
       try {
-        console.log("Fetching user data...");
-        const response = await fetch("http://35.50.71.204:5000/account", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
+        const storedToken = await Storage.getItem("token"); // Use Storage instead of AsyncStorage
+        console.log("Stored Token:", storedToken);  // Check if token is present
+
+        if (!storedToken) {
+          console.error("Token is not available.");
+          setLoading(false);
+          return;
+        }
+
+        console.log("Token used in request:", storedToken); // Check token in request
+
+        const response = await axios.get("http://35.50.71.204:5000/account", {
+          headers: { Authorization: `Bearer ${storedToken}` },
         });
 
-        const data = await response.json();
-
-        // Log the response data
-        console.log("API Response:", data);
-
-        if (response.ok) {
-          console.log("User data:", data);
-          setUser(data);
-        } else {
-          console.error("Failed to fetch user data:", data.error);
-        }
+        console.log('Response Data:', response.data);
+        
+        // Assuming the backend sends user data in a "user" property
+        setUserData(response.data.user);
       } catch (error) {
         console.error("Error fetching user data:", error);
+
+        // Handle token expiration error (401 Unauthorized)
+        if (error.response?.status === 401) {
+          Alert.alert("Unauthorized", "Session expired or invalid token. Please log in again.");
+          
+          // Remove expired token from storage
+          await Storage.removeItem("token");
+
+          // Redirect to the login screen
+          navigation.replace('Login');
+        } else {
+          Alert.alert("Error", error?.response?.data?.error || "Failed to fetch user data.");
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchUserData();
-  }, [token]);
-
-  if (loading) {
-    return <ActivityIndicator size="large" color="#0000ff" />;
-  }
-
-  if (!user) {
-    return <Text>No user data found.</Text>;
-  }
+  }, []);
 
   return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-      <Text style={{ fontSize: 26, fontWeight: "bold" }}>ACCOUNT SCREEN</Text>
-      <Text>Email: {user.email}</Text>
-      <Text>Username: {user.username}</Text>
-      <Text>Name: {user.firstname} {user.lastname}</Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>User Information</Text>
 
-      {/* Conditionally render business data if the user is linked to a business */}
-      {user.isBusiness && user.business && (
-        <View style={{ marginTop: 20, padding: 10, borderWidth: 1, borderRadius: 5, borderColor: '#ccc' }}>
-          <Text style={{ fontSize: 20, fontWeight: "bold" }}>Business Details:</Text>
-          <Text>Business Name: {user.business.businessName || "N/A"}</Text>
-          <Text>Location: {user.business.businessLocation || "N/A"}</Text>
-          <Text>Website: {user.business.website || "N/A"}</Text>
-          {/* Add any other business-related data you'd like to display */}
+      {loading ? (
+        <ActivityIndicator size="large" color="#6200ea" />
+      ) : userData ? (
+        <View style={styles.userInfoContainer}>
+          <Text style={styles.userInfoText}>Username: <Text style={styles.userInfoValue}>{userData.username}</Text></Text>
+          <Text style={styles.userInfoText}>Email: <Text style={styles.userInfoValue}>{userData.email}</Text></Text>
+          <Text style={styles.userInfoText}>First Name: <Text style={styles.userInfoValue}>{userData.firstname}</Text></Text>
+          <Text style={styles.userInfoText}>Last Name: <Text style={styles.userInfoValue}>{userData.lastname}</Text></Text>
         </View>
+      ) : (
+        <Text style={styles.noDataText}>No user data available.</Text>
       )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f9f9f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 40,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#6200ea',
+    marginBottom: 30,
+  },
+  userInfoContainer: {
+    backgroundColor: '#ffffff',
+    padding: 20,
+    borderRadius: 15,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+    marginBottom: 20,
+  },
+  userInfoText: {
+    fontSize: 16,
+    color: '#333333',
+    marginBottom: 10,
+  },
+  userInfoValue: {
+    fontWeight: '500',
+    color: '#6200ea',
+  },
+  noDataText: {
+    fontSize: 16,
+    color: 'gray',
+    fontStyle: 'italic',
+  },
+});

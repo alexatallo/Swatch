@@ -10,7 +10,7 @@ export default function DashboardScreen({ route, navigation }) {
     const fetchUserData = async () => {
       try {
       // IP ADDRESS REQUIREd
-        const response = await axios.get("http://35.50.x.x:5000/login", {
+        const response = await axios.get("http://35.50.71.xxx:5000/login", {
           headers: { Authorization: token },
         });
         setUser(response.data.user);
