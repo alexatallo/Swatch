@@ -18,5 +18,6 @@ export default function Navigation() {
         <Tab.Screen name="Account" component={AccountScreen} />
       </Tab.Navigator>
     </NavigationContainer>
+    
   );
 }

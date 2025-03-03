@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, Platform, Alert, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, TouchableOpacity, Platform, Image, Alert, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
@@ -24,7 +24,7 @@ export default function AccountScreen({ navigation }) {
 
         console.log("Token used in request:", storedToken); // Check token in request
 
-        const response = await axios.get("http://35.50.71.204:5000/account", {
+        const response = await axios.get("http://35.50.84.107:5000/account", {
           headers: { Authorization: `Bearer ${storedToken}` },
         });
 
@@ -51,9 +51,19 @@ export default function AccountScreen({ navigation }) {
         setLoading(false);
       }
     };
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity onPress={() => navigation.navigate("Settings")}>
+          <Image
+            source={require("../assets/settings-icon.png")}
+            style={{ width: 30, height: 30, marginRight: 10 }}
+          />
+        </TouchableOpacity>
+      ),
+    });
 
     fetchUserData();
-  }, []);
+  }, [navigation]);
 
   return (
     <View style={styles.container}>
