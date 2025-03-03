@@ -294,41 +294,55 @@ app.put("/account/business", async (req, res) => {
 
 app.get("/polishes", async (req, res) => {
     try {
-        await client.connect();
-        const db = client.db("Swatch"); 
-
-        const authHeader = req.headers.authorization;
-        const token = authHeader ? authHeader.split(" ")[1] : null;
-
-        if (!token) {
-            return res.status(403).json({ message: "No token provided" });
-        }
-
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-        const polishCollection = db.collection("Polish");
-        const firstPolish = await polishCollection.findOne({});
-
-        if (!firstPolish) {
-            return res.json({ brand: null });
-        }
-
-        res.json({ brand: firstPolish.brand });
+      await client.connect();
+      const db = client.db("Swatch");
+     
+      const authHeader = req.headers.authorization;
+      const token = authHeader ? authHeader.split(" ")[1] : null;
+  
+  
+      if (!token) {
+        return res.status(403).json({ message: "No token provided" });
+      }
+  
+  
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  
+  
+      const polishCollection = db.collection("Polish");
+  
+  
+      // Fetch the first polish item from the collection, only returning the picture field
+      const firstPolish = await polishCollection.findOne({}, { projection: { picture: 1 } });
+  
+  
+      if (!firstPolish) {
+        return res.json({ picture: null });
+      }
+  
+  
+      // Only return the picture field
+      res.json({ picture: firstPolish.picture });
+  
+  
     } catch (error) {
-        console.error(error);
-
-        if (error.name === "JsonWebTokenError") {
-            return res.status(401).json({ message: "Invalid token" });
-        }
-        if (error.name === "TokenExpiredError") {
-            return res.status(401).json({ message: "Token expired" });
-        }
-
-        res.status(500).json({ message: "Server error" });
+      console.error(error);
+  
+  
+      if (error.name === "JsonWebTokenError") {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+      if (error.name === "TokenExpiredError") {
+        return res.status(401).json({ message: "Token expired" });
+      }
+  
+  
+      res.status(500).json({ message: "Server error" });
     } finally {
-        await client.close();
+      await client.close();
     }
-});
+  });
+  
 
 // Start server
 app.listen(5000, () => console.log("🚀 Backend API running on port 5000"));
