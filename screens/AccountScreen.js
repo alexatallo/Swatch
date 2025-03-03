@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, Platform, Alert, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, Platform, Alert, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
@@ -8,13 +8,15 @@ const Storage = Platform.OS === 'web' ? localStorage : AsyncStorage;
 
 export default function AccountScreen({ navigation }) {
   const [userData, setUserData] = useState(null);
+  const [businessData, setBusinessData] = useState(null); // New state for business data
+  const [editableBusinessName, setEditableBusinessName] = useState('');
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false); // Track if updating
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const storedToken = await Storage.getItem("token"); // Use Storage instead of AsyncStorage
-        console.log("Stored Token:", storedToken);  // Check if token is present
+        const storedToken = await Storage.getItem("token");
 
         if (!storedToken) {
           console.error("Token is not available.");
@@ -22,27 +24,31 @@ export default function AccountScreen({ navigation }) {
           return;
         }
 
-        console.log("Token used in request:", storedToken); // Check token in request
-
         const response = await axios.get("http://35.50.71.204:5000/account", {
           headers: { Authorization: `Bearer ${storedToken}` },
         });
 
-        console.log('Response Data:', response.data);
-        
-        // Assuming the backend sends user data in a "user" property
-        setUserData(response.data.user);
+        // Log the API response to help debug
+        console.log('User data:', response.data.user); // Log user data
+        console.log('Business data:', response.data.business); // Log business data
+
+        if (response.data.user) {
+          setUserData(response.data.user);
+        } else {
+          console.error("User data is missing.");
+        }
+
+        if (response.data.business) {
+          setBusinessData(response.data.business);
+          setEditableBusinessName(response.data.business.businessName || ''); // Set the editable business name
+        } else {
+          setBusinessData(null); // Set to null if no business data
+        }
       } catch (error) {
         console.error("Error fetching user data:", error);
-
-        // Handle token expiration error (401 Unauthorized)
         if (error.response?.status === 401) {
           Alert.alert("Unauthorized", "Session expired or invalid token. Please log in again.");
-          
-          // Remove expired token from storage
           await Storage.removeItem("token");
-
-          // Redirect to the login screen
           navigation.replace('Login');
         } else {
           Alert.alert("Error", error?.response?.data?.error || "Failed to fetch user data.");
@@ -55,64 +61,155 @@ export default function AccountScreen({ navigation }) {
     fetchUserData();
   }, []);
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>User Information</Text>
+  const handleUpdateBusinessName = async () => {
+    if (!editableBusinessName.trim()) {
+      Alert.alert("Error", "Business name cannot be empty.");
+      return;
+    }
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#6200ea" />
-      ) : userData ? (
+    setUpdating(true);
+    try {
+      const storedToken = await Storage.getItem("token");
+      const response = await axios.put("http://35.50.71.204:5000/account/business", 
+        { businessName: editableBusinessName },
+        {
+          headers: { Authorization: `Bearer ${storedToken}` },
+        }
+      );
+
+      setBusinessData(response.data.business); // Update the business data in state
+      Alert.alert("Success", "Business name updated successfully.");
+    } catch (error) {
+      console.error("Error updating business name:", error);
+      Alert.alert("Error", "Failed to update business name.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  if (loading) {
+    return <ActivityIndicator size="large" color="#0000ff" />;
+  }
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.headerText}>User Info</Text>
+      {userData ? (
         <View style={styles.userInfoContainer}>
-          <Text style={styles.userInfoText}>Username: <Text style={styles.userInfoValue}>{userData.username}</Text></Text>
-          <Text style={styles.userInfoText}>Email: <Text style={styles.userInfoValue}>{userData.email}</Text></Text>
-          <Text style={styles.userInfoText}>First Name: <Text style={styles.userInfoValue}>{userData.firstname}</Text></Text>
-          <Text style={styles.userInfoText}>Last Name: <Text style={styles.userInfoValue}>{userData.lastname}</Text></Text>
+          <Text style={styles.userInfoText}>Email: {userData.email}</Text>
+          <Text style={styles.userInfoText}>Username: {userData.username}</Text>
+          <Text style={styles.userInfoText}>First Name: {userData.firstname}</Text>
+          <Text style={styles.userInfoText}>Last Name: {userData.lastname}</Text>
         </View>
       ) : (
-        <Text style={styles.noDataText}>No user data available.</Text>
+        <Text style={styles.errorText}>User data not found.</Text>
       )}
-    </View>
+
+      {businessData ? (
+        <View style={styles.businessInfoContainer}>
+          <Text style={styles.businessTitle}>Business Info</Text>
+          <Text style={styles.businessText}>Business Name: {businessData.businessName}</Text>
+          <Text style={styles.businessText}>Location: {businessData.businessLocation}</Text>
+          <Text style={styles.businessText}>Website: {businessData.website}</Text>
+
+          <TextInput
+            style={styles.input}
+            value={editableBusinessName}
+            onChangeText={setEditableBusinessName}
+            placeholder="Edit Business Name"
+            placeholderTextColor="#999"
+          />
+          <TouchableOpacity onPress={handleUpdateBusinessName} disabled={updating} style={[styles.button, updating && styles.buttonDisabled]}>
+            {updating ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Update Business Name</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <Text style={styles.errorText}>Business data not found.</Text>
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#f9f9f9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 40,
+    flexGrow: 1,
+    padding: 20,
+    backgroundColor: '#f8f9fa',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#6200ea',
-    marginBottom: 30,
+  headerText: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 20,
   },
   userInfoContainer: {
-    backgroundColor: '#ffffff',
-    padding: 20,
-    borderRadius: 15,
-    width: '100%',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 10,
     marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
   },
   userInfoText: {
     fontSize: 16,
-    color: '#333333',
+    color: '#555',
+    marginVertical: 5,
+  },
+  businessInfoContainer: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  businessTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 15,
+  },
+  businessText: {
+    fontSize: 16,
+    color: '#555',
     marginBottom: 10,
   },
-  userInfoValue: {
-    fontWeight: '500',
-    color: '#6200ea',
-  },
-  noDataText: {
+  input: {
+    height: 45,
+    borderColor: '#ddd',
+    borderWidth: 1,
+    borderRadius: 5,
+    marginBottom: 20,
+    paddingLeft: 15,
     fontSize: 16,
-    color: 'gray',
-    fontStyle: 'italic',
+    backgroundColor: '#fff',
+  },
+  button: {
+    backgroundColor: '#007BFF',
+    padding: 12,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  buttonDisabled: {
+    backgroundColor: '#A3D1FF',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 16,
+    marginTop: 10,
   },
 });
