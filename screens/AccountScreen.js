@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, Platform, Alert, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Feather from 'react-native-vector-icons/Feather';
 import axios from 'axios';
 
 // Use localStorage for web if needed
@@ -8,10 +9,13 @@ const Storage = Platform.OS === 'web' ? localStorage : AsyncStorage;
 
 export default function AccountScreen({ navigation }) {
   const [userData, setUserData] = useState(null);
-  const [businessData, setBusinessData] = useState(null); // New state for business data
+  const [businessData, setBusinessData] = useState(null);
   const [editableBusinessName, setEditableBusinessName] = useState('');
+  const [editableBusinessLocation, setEditableBusinessLocation] = useState('');
+  const [editableWebsite, setEditableWebsite] = useState('');
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false); // Track if updating
+  const [updating, setUpdating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false); // New state for edit mode
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -28,9 +32,8 @@ export default function AccountScreen({ navigation }) {
           headers: { Authorization: `Bearer ${storedToken}` },
         });
 
-        // Log the API response to help debug
-        console.log('User data:', response.data.user); // Log user data
-        console.log('Business data:', response.data.business); // Log business data
+        console.log('User data:', response.data.user);
+        console.log('Business data:', response.data.business);
 
         if (response.data.user) {
           setUserData(response.data.user);
@@ -40,9 +43,11 @@ export default function AccountScreen({ navigation }) {
 
         if (response.data.business) {
           setBusinessData(response.data.business);
-          setEditableBusinessName(response.data.business.businessName || ''); // Set the editable business name
+          setEditableBusinessName(response.data.business.businessName || '');
+          setEditableBusinessLocation(response.data.business.businessLocation || '');
+          setEditableWebsite(response.data.business.website || '');
         } else {
-          setBusinessData(null); // Set to null if no business data
+          setBusinessData(null);
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
@@ -61,27 +66,39 @@ export default function AccountScreen({ navigation }) {
     fetchUserData();
   }, []);
 
-  const handleUpdateBusinessName = async () => {
-    if (!editableBusinessName.trim()) {
-      Alert.alert("Error", "Business name cannot be empty.");
+  const handleUpdateBusinessInfo = async () => {
+    if (!editableBusinessName.trim() || !editableBusinessLocation.trim() || !editableWebsite.trim()) {
+      Alert.alert("Error", "All fields are required.");
       return;
     }
 
     setUpdating(true);
     try {
       const storedToken = await Storage.getItem("token");
-      const response = await axios.put("http://35.50.71.204:5000/account/business", 
-        { businessName: editableBusinessName },
+      await axios.put("http://35.50.71.204:5000/account/business", 
+        {
+          businessName: editableBusinessName,
+          businessLocation: editableBusinessLocation,
+          website: editableWebsite
+        },
         {
           headers: { Authorization: `Bearer ${storedToken}` },
         }
       );
 
-      setBusinessData(response.data.business); // Update the business data in state
-      Alert.alert("Success", "Business name updated successfully.");
+      // Update business data locally
+      setBusinessData({
+        ...businessData,
+        businessName: editableBusinessName,
+        businessLocation: editableBusinessLocation,
+        website: editableWebsite,
+      });
+
+      Alert.alert("Success", "Business info updated successfully.");
+      setIsEditing(false); // Exit edit mode
     } catch (error) {
-      console.error("Error updating business name:", error);
-      Alert.alert("Error", "Failed to update business name.");
+      console.error("Error updating business info:", error);
+      Alert.alert("Error", "Failed to update business info.");
     } finally {
       setUpdating(false);
     }
@@ -107,25 +124,61 @@ export default function AccountScreen({ navigation }) {
 
       {businessData ? (
         <View style={styles.businessInfoContainer}>
-          <Text style={styles.businessTitle}>Business Info</Text>
-          <Text style={styles.businessText}>Business Name: {businessData.businessName}</Text>
-          <Text style={styles.businessText}>Location: {businessData.businessLocation}</Text>
-          <Text style={styles.businessText}>Website: {businessData.website}</Text>
-
-          <TextInput
-            style={styles.input}
-            value={editableBusinessName}
-            onChangeText={setEditableBusinessName}
-            placeholder="Edit Business Name"
-            placeholderTextColor="#999"
-          />
-          <TouchableOpacity onPress={handleUpdateBusinessName} disabled={updating} style={[styles.button, updating && styles.buttonDisabled]}>
-            {updating ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Update Business Name</Text>
+          <View style={styles.businessHeaderRow}>
+            <Text style={styles.businessTitle}>Business Info</Text>
+            {!isEditing && (
+              <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.editIcon}>
+                <Feather name="edit" size={24} color="#A020F0" />
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
+          </View>
+
+          {!isEditing ? (
+            <View style={styles.businessInfoRow}>
+              <Text style={styles.businessText}>Business Name: {businessData.businessName}</Text>
+              <Text style={styles.businessText}>Location: {businessData.businessLocation}</Text>
+              <Text style={styles.businessText}>Website: {businessData.website}</Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.businessInfoRow}>
+                <TextInput
+                  style={styles.input}
+                  value={editableBusinessName}
+                  onChangeText={setEditableBusinessName}
+                  placeholder="Edit Business Name"
+                  placeholderTextColor="#999"
+                />
+                <TextInput
+                  style={styles.input}
+                  value={editableBusinessLocation}
+                  onChangeText={setEditableBusinessLocation}
+                  placeholder="Edit Location"
+                  placeholderTextColor="#999"
+                />
+                <TextInput
+                  style={styles.input}
+                  value={editableWebsite}
+                  onChangeText={setEditableWebsite}
+                  placeholder="Edit Website"
+                  placeholderTextColor="#999"
+                />
+              </View>
+
+              <View style={styles.saveButtonContainer}>
+                <TouchableOpacity onPress={handleUpdateBusinessInfo} disabled={updating} style={styles.saveIcon}>
+                  {updating ? (
+                    <ActivityIndicator size="small" color="#007BFF" />
+                  ) : (
+                    <Feather name="check" size={24} color="green" />
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setIsEditing(false)} style={styles.cancelButton}>
+                  <Text style={styles.buttonText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
         </View>
       ) : (
         <Text style={styles.errorText}>Business data not found.</Text>
@@ -138,29 +191,30 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     padding: 20,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f1f1f1',
   },
   headerText: {
-    fontSize: 24,
-    fontWeight: '600',
+    fontSize: 26,
+    fontWeight: '700',
     color: '#333',
-    marginBottom: 20,
+    marginBottom: 30,
+    textAlign: 'center',
   },
   userInfoContainer: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 20,
+    backgroundColor: '#ffffff',
+    padding: 20,
+    borderRadius: 15,
+    marginBottom: 25,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
+    shadowRadius: 6,
+    elevation: 5,
   },
   userInfoText: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#555',
-    marginVertical: 5,
+    marginVertical: 8,
   },
   businessInfoContainer: {
     backgroundColor: '#fff',
@@ -172,44 +226,72 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 3,
+    position: 'relative', // Add relative positioning to allow absolute positioning of the icon
+  },
+  businessHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   businessTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#333',
-    marginBottom: 15,
+    marginBottom: 20,
+  },
+  businessInfoRow: {
+    flexDirection: 'column',
+    marginBottom: 20,
   },
   businessText: {
     fontSize: 16,
     color: '#555',
     marginBottom: 10,
   },
+  editIcon: {
+    padding: 10,
+    borderRadius: 50,
+    elevation: 5,
+  },
+  saveButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  saveIcon: {
+    padding: 10,
+    borderRadius: 50,
+    elevation: 5,
+  },
   input: {
-    height: 45,
+    height: 50,
     borderColor: '#ddd',
     borderWidth: 1,
-    borderRadius: 5,
+    borderRadius: 10,
     marginBottom: 20,
     paddingLeft: 15,
     fontSize: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#f8f9fa', // Softer background for input fields
+    color: '#333',
   },
-  button: {
-    backgroundColor: '#007BFF',
-    padding: 12,
-    borderRadius: 5,
+  cancelButton: {
+    backgroundColor: '#ff4c4c', // Red color for cancel button
+    padding: 15,
+    borderRadius: 8,
     alignItems: 'center',
+    marginTop: 15,
   },
   buttonText: {
     color: '#fff',
-    fontSize: 16,
-  },
-  buttonDisabled: {
-    backgroundColor: '#A3D1FF',
+    fontSize: 18,
+    fontWeight: '600',
   },
   errorText: {
-    color: 'red',
+    color: '#e74c3c', // Bright red for error messages
     fontSize: 16,
     marginTop: 10,
+    textAlign: 'center',
   },
 });
