@@ -247,9 +247,23 @@ app.put("/account/business", async (req, res) => {
             return res.status(403).json({ message: "No token provided" });
         }
 
-        const { businessName } = req.body;
-        if (!businessName) {
-            return res.status(400).json({ message: "Business name is required." });
+        const { businessName, businessLocation, website } = req.body;
+        const updateFields = {};
+
+        // Validate input and add to updateFields only if provided
+        if (businessName) updateFields.businessName = businessName;
+        if (businessLocation) updateFields.businessLocation = businessLocation;
+        if (website) {
+            const websiteRegex = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
+            if (!websiteRegex.test(website)) {
+                return res.status(400).json({ error: "Invalid website format. Must start with http:// or https://." });
+            }
+            updateFields.website = website;
+        }
+
+        // Ensure there is at least one field to update
+        if (Object.keys(updateFields).length === 0) {
+            return res.status(400).json({ message: "At least one field must be provided for update." });
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -274,19 +288,19 @@ app.put("/account/business", async (req, res) => {
             return res.status(404).json({ message: "Business not found" });
         }
 
-        // Update the business name in the business collection
+        // Update business fields
         const result = await businessCollection.updateOne(
             { userId: new ObjectId(userId) },
-            { $set: { businessName } }
+            { $set: updateFields }
         );
 
         if (result.modifiedCount > 0) {
-            res.json({ message: "Business name updated successfully." });
+            res.json({ message: "Business information updated successfully." });
         } else {
-            res.status(400).json({ message: "No changes made to business name." });
+            res.status(400).json({ message: "No changes made." });
         }
     } catch (error) {
-        console.error("Error updating business name:", error);
+        console.error("Error updating business information:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 });
