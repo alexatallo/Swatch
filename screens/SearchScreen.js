@@ -1,21 +1,20 @@
-
-import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, Image, Alert, Platform } from 'react-native';
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useEffect, useState } from "react";
+import { View, ActivityIndicator, StyleSheet, Image, FlatList, Platform } from "react-native";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 
 const getToken = async () => {
-  if (Platform.OS === 'web') {
-    return localStorage.getItem('token'); // No need for `await`
+  if (Platform.OS === "web") {
+    return localStorage.getItem("token");
   }
-  return await AsyncStorage.getItem('token');
+  return await AsyncStorage.getItem("token");
 };
 
 
 export default function SearchScreen() {
-  const [imageURL, setImageURL] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [imageData, setImageData] = useState([]); // State for image data
+  const [loading, setLoading] = useState(true); // State for loading indicator
 
 
   useEffect(() => {
@@ -23,53 +22,59 @@ export default function SearchScreen() {
       try {
         const token = await getToken();
         console.log("Stored Token:", token);
-
-
+ 
         if (!token) {
           console.error("Token is missing.");
           setLoading(false);
           return;
         }
-
-
-        // Fetch the Polish collection
-        const response = await axios.get('http://35.50.71.204:5000/polishes', {
-          headers: { Authorization: `Bearer ${token}` },
+ 
+        console.log("Sending request to /polishes");
+        const response = await axios.get("http://35.50.84.107:5000/polishes", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         });
-
-
-        console.log('API Response:', response.data);
-
-
-        // Assuming response.data.picture contains the URL of the image
-        if (response.data.picture) {
-          setImageURL(response.data.picture); // Set the image URL
+ 
+        console.log(response, "polishdata");
+        console.log("Frontend Response Data:", response.data); // Log the entire response
+ 
+        if (response.data && Array.isArray(response.data.data)) {
+          setImageData(response.data.data); // If it's already an array, use it as is
+        } else if (response.data && typeof response.data === "object") {
+          setImageData([response.data]); // Wrap single object in an array
         } else {
-          setImageURL(null);
+          console.error("Unexpected response format:", response.data);
         }
       } catch (error) {
-        console.error('Error fetching picture:', error);
-        setImageURL(null);
+        console.error("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
     };
-
-
+ 
     fetchPicture();
   }, []);
+ 
+
+
+  if (loading) {
+    return <ActivityIndicator size="large" color="#0000ff" />;
+  }
 
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>SEARCH SCREEN</Text>
-      {loading ? (
-        <ActivityIndicator size="large" color="#6200ea" />
-      ) : imageURL ? (
-        <Image source={{ uri: imageURL }} style={styles.image} /> // Display the image from the URL
-      ) : (
-        <Text>No image available</Text>
-      )}
+      <FlatList
+        data={imageData} // ✅ Fixed: Use correct state
+        keyExtractor={(item, index) => index.toString()}
+        renderItem={({ item }) => (
+          <View style={styles.itemContainer}>
+            <Image source={{ uri: item.picture }} style={styles.image} />
+          </View>
+        )}
+      />
     </View>
   );
 }
@@ -78,19 +83,18 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
+    padding: 10,
+    backgroundColor: "#fff",
   },
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
+  itemContainer: {
+    alignItems: "center",
     marginBottom: 20,
   },
   image: {
-    width: 200,
-    height: 200,
-    resizeMode: 'cover',
-    marginTop: 20,
+    width: 100,
+    height: 100,
+    borderRadius: 10,
   },
 });
+
+
