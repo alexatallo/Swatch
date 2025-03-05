@@ -24,14 +24,20 @@ export default function AccountScreen({ navigation }) {
 
         console.log("Token used in request:", storedToken); // Check token in request
 
-        const response = await axios.get("http://35.50.71.204:5000/account", {
+        const response = await axios.get("http://35.50.90.208:5000/account", {
           headers: { Authorization: `Bearer ${storedToken}` },
         });
 
         console.log('Response Data:', response.data);
         
-        // Assuming the backend sends user data in a "user" property
-        setUserData(response.data.user);
+        // Assuming the backend sends an array of user-related data
+        if (Array.isArray(response.data.user)) {
+          const sortedData = response.data.user.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort by newest first
+          setUserData(sortedData);
+        } else {
+          setUserData(response.data.user); // If not an array, just set the data
+        }
+
       } catch (error) {
         console.error("Error fetching user data:", error);
 
@@ -63,10 +69,18 @@ export default function AccountScreen({ navigation }) {
         <ActivityIndicator size="large" color="#6200ea" />
       ) : userData ? (
         <View style={styles.userInfoContainer}>
-          <Text style={styles.userInfoText}>Username: <Text style={styles.userInfoValue}>{userData.username}</Text></Text>
-          <Text style={styles.userInfoText}>Email: <Text style={styles.userInfoValue}>{userData.email}</Text></Text>
-          <Text style={styles.userInfoText}>First Name: <Text style={styles.userInfoValue}>{userData.firstname}</Text></Text>
-          <Text style={styles.userInfoText}>Last Name: <Text style={styles.userInfoValue}>{userData.lastname}</Text></Text>
+          {Array.isArray(userData) ? (
+            userData.map((item, index) => (
+              <View key={index} style={styles.userInfoItem}>
+                <Text style={styles.userInfoText}>Username: <Text style={styles.userInfoValue}>{item.username}</Text></Text>
+                <Text style={styles.userInfoText}>Email: <Text style={styles.userInfoValue}>{item.email}</Text></Text>
+                <Text style={styles.userInfoText}>First Name: <Text style={styles.userInfoValue}>{item.firstname}</Text></Text>
+                <Text style={styles.userInfoText}>Last Name: <Text style={styles.userInfoValue}>{item.lastname}</Text></Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noDataText}>No user data available.</Text>
+          )}
         </View>
       ) : (
         <Text style={styles.noDataText}>No user data available.</Text>
@@ -101,10 +115,16 @@ const styles = StyleSheet.create({
     elevation: 5,
     marginBottom: 20,
   },
+  userInfoItem: {
+    marginBottom: 15,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
   userInfoText: {
     fontSize: 16,
     color: '#333333',
-    marginBottom: 10,
+    marginBottom: 5,
   },
   userInfoValue: {
     fontWeight: '500',
