@@ -28,7 +28,7 @@ export default function AccountScreen({ navigation }) {
           return;
         }
 
-        const response = await axios.get("http://35.50.71.204:5000/account", {
+        const response = await axios.get("http://35.50.84.107:5000/account", {
           headers: { Authorization: `Bearer ${storedToken}` },
         });
 
@@ -75,7 +75,7 @@ export default function AccountScreen({ navigation }) {
     setUpdating(true);
     try {
       const storedToken = await Storage.getItem("token");
-      await axios.put("http://35.50.71.204:5000/account/business", 
+      await axios.put("http://35.50.84.107:5000/account/business", 
         {
           businessName: editableBusinessName,
           businessLocation: editableBusinessLocation,
