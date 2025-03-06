@@ -11,8 +11,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system";
 import axios from "axios";
-
-const API_URL = "http://35.50.90.208:5000";
+import { API_URL } from "@env"; 
 
 export default function ExploreFeedScreen() {
   const [modalVisible, setModalVisible] = useState(false);

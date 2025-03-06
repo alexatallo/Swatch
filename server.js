@@ -1,4 +1,5 @@
 require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ObjectId } = require("mongodb");
@@ -56,6 +57,67 @@ app.post("/signup", async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 });
+
+// Business Signup Route
+app.post("/business/signup", async (req, res) => {
+    try {
+        console.log("🏢 Business Signup request received:", req.body);
+
+        const { userId, businessName, businessLocation, website } = req.body;
+        if (!userId || !businessName || !businessLocation || !website) {
+            return res.status(400).json({ error: "All business fields are required." });
+        }
+
+        // Log the payload for debugging
+        console.log("Business Signup Payload:", { userId, businessName, businessLocation, website });
+
+        const addressRegex = /^[0-9]+\s[A-Za-z0-9\s,.-]+$/;
+        if (!addressRegex.test(businessLocation)) {
+            return res.status(400).json({ error: "Invalid business address format." });
+        }
+
+        const websiteRegex = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
+        if (!websiteRegex.test(website)) {
+            return res.status(400).json({ error: "Invalid website format. Must start with http:// or https://." });
+        }
+
+        const usersCollection = db.collection("User");
+        const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
+
+        if (!user) {
+            return res.status(400).json({ error: "User not found." });
+        }
+
+        // Check if the user is a business
+        if (!user.isBusiness) {
+            return res.status(403).json({ error: "User is not a business account." });
+        }
+
+        const businessCollection = db.collection("Business");
+
+        console.log("✅ Inserting business into database...");
+        const result = await businessCollection.insertOne({
+            userId: new ObjectId(userId), // Convert userId to ObjectId here
+            businessName,
+            businessLocation,
+            website,
+            createdAt: new Date(),
+        });
+
+        if (result.acknowledged) {
+            console.log(" Business inserted successfully:", result.insertedId);
+            res.json({ message: "Business registered successfully", businessId: result.insertedId });
+        } else {
+            console.error("Failed to insert business:", result);
+            res.status(500).json({ error: "Failed to insert business" });
+        }
+
+    } catch (error) {
+        console.error("Error registering business:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
 
 // ✅ Login Route
 app.post("/login", async (req, res) => {
@@ -168,21 +230,115 @@ app.get("/posts", async (req, res) => {
     }
 });
 
-
-
-// ✅ Account Route
-app.get("/account", async (req, res) => {
+// UPDATE BUSINESS NAME ROUTE
+app.put("/account/business", async (req, res) => {
     try {
         const token = req.headers.authorization?.split(" ")[1];
-        if (!token) return res.status(403).json({ message: "No token provided" });
-        const decoded = jwt.verify(token, jwtSecret);
+        if (!token) {
+            return res.status(403).json({ message: "No token provided" });
+        }
+
+        const { businessName, businessLocation, website } = req.body;
+        const updateFields = {};
+
+        // Validate input and add to updateFields only if provided
+        if (businessName) updateFields.businessName = businessName;
+        if (businessLocation) updateFields.businessLocation = businessLocation;
+        if (website) {
+            const websiteRegex = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
+            if (!websiteRegex.test(website)) {
+                return res.status(400).json({ error: "Invalid website format. Must start with http:// or https://." });
+            }
+            updateFields.website = website;
+        }
+
+        // Ensure there is at least one field to update
+        if (Object.keys(updateFields).length === 0) {
+            return res.status(400).json({ message: "At least one field must be provided for update." });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = decoded.userId;
+
         const usersCollection = db.collection("User");
-        const user = await usersCollection.findOne({ _id: new ObjectId(decoded.userId) });
-        if (!user) return res.status(404).json({ message: "User not found" });
-        const { password, ...userData } = user;
-        res.json({ user: userData });
+        const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Check if the user is a business
+        if (!user.isBusiness) {
+            return res.status(403).json({ error: "User is not a business account." });
+        }
+
+        const businessCollection = db.collection("Business");
+        const business = await businessCollection.findOne({ userId: new ObjectId(userId) });
+
+        if (!business) {
+            return res.status(404).json({ message: "Business not found" });
+        }
+
+        // Update business fields
+        const result = await businessCollection.updateOne(
+            { userId: new ObjectId(userId) },
+            { $set: updateFields }
+        );
+
+        if (result.modifiedCount > 0) {
+            res.json({ message: "Business information updated successfully." });
+        } else {
+            res.status(400).json({ message: "No changes made." });
+        }
     } catch (error) {
-        console.error("Error fetching account details:", error);
+        console.error("Error updating business information:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+app.get("/account", async (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(" ")[1]; // Removes "Bearer"
+        if (!token) {
+            return res.status(403).json({ message: "No token provided" });
+        }
+
+        // Verify token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = decoded.userId;
+
+        const usersCollection = db.collection("User");
+        const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Fetch associated business data, if exists
+        const businessCollection = db.collection("Business");
+        const business = await businessCollection.findOne({ userId: new ObjectId(userId) });
+
+        console.log("User Data:", user); // Log the user data
+        console.log("Business Data:", business); // Log the business data
+
+        // Prepare the response data
+        const { password, ...userData } = user;
+        const responseData = {
+            user: userData,
+            business: business || null // Include business data or null if no business
+        };
+
+        res.json(responseData);
+    } catch (error) {
+        console.error(error);
+
+        if (error.name === "JsonWebTokenError") {
+            return res.status(401).json({ message: "Invalid token" });
+        }
+        if (error.name === "TokenExpiredError") {
+            return res.status(401).json({ message: "Token expired" });
+        }
+
         res.status(500).json({ message: "Server error" });
     }
 });
@@ -235,8 +391,5 @@ app.get("/polishes", async (req, res) => {
     }
   });
 
-
-
- 
 // ✅ Start Server
 app.listen(5000, () => console.log("🚀 Backend API running on port 5000"));

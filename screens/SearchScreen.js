@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
+
 import {
   View,
   ActivityIndicator,
+  TouchableOpacity,
   StyleSheet,
   Image,
   FlatList,
@@ -10,8 +12,7 @@ import {
 } from "react-native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-
+import { API_URL } from "@env"; 
 const getToken = async () => {
   if (Platform.OS === "web") {
     return localStorage.getItem("token");
@@ -20,7 +21,7 @@ const getToken = async () => {
 };
 
 
-export default function SearchScreen() {
+export default function SearchScreen({navigation}) {
   const [polishData, setPolishData] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,7 +38,7 @@ export default function SearchScreen() {
 
 
             console.log("📡 Sending request to /polishes...");
-            const response = await axios.get("http://35.50.90.208:5000/polishes", {
+            const response = await axios.get(`${API_URL}/polishes`, {
                 headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
             });
 
@@ -64,7 +65,7 @@ export default function SearchScreen() {
 
 
     fetchPolishes();
-}, []);
+}, [navigation]);
 
 
 
@@ -80,12 +81,14 @@ export default function SearchScreen() {
         data={polishData}
         keyExtractor={(item, index) => item._id ? item._id.toString() : index.toString()}
         renderItem={({ item }) => (
-          <View style={styles.itemContainer}>
+          <TouchableOpacity
+            style={styles.itemContainer}
+            onPress={() => navigation.navigate("PolishScreen", { item })} // ✅ Navigate on press
+          >
             <Image source={{ uri: item.picture }} style={styles.image} />
-            {/* ✅ Ensure 'name' and 'brand' are wrapped in <Text> */}
             <Text style={styles.nameText}>{item.name || "No name available"}</Text>
             <Text style={styles.brandText}>{item.brand || "Unknown brand"}</Text>
-          </View>
+          </TouchableOpacity>
         )}        
       />
     </View>

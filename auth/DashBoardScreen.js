@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, Button, Alert } from "react-native";
 import axios from "axios";
+import { API_URL } from "@env"; 
 
 export default function DashboardScreen({ route, navigation }) {
   const { token } = route.params;
@@ -10,7 +11,7 @@ export default function DashboardScreen({ route, navigation }) {
     const fetchUserData = async () => {
       try {
       // IP ADDRESS REQUIREd
-        const response = await axios.get("http://35.50.90.208:5000/login", {
+        const response = await axios.get(`${API_URL}/login`, {
           headers: { Authorization: token },
         });
         setUser(response.data.user);
