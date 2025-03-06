@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, StyleSheet, Alert } from "react-native";
 import { Text, TextInput, Button, Switch } from "react-native-paper";
 import axios from "axios";
+import { API_URL } from "@env";
 
 export default function SignUpScreen({ navigation }) {
   const [email, setEmail] = useState("");
@@ -29,12 +30,12 @@ export default function SignUpScreen({ navigation }) {
 
     try {
       const userPayload = { email, password, username, firstname: firstName, lastname: lastName, isBusiness: isBusinessAccount };
-      let response = await axios.post("http://35.50.x.x:5000/signup", userPayload);
+      let response = await axios.post(`${API_URL}/signup`, userPayload);
       let userId = response.data.userId;
 
       if (isBusinessAccount) {
         const businessPayload = { userId, businessName, businessLocation, website };
-        await axios.post("http://35.50.x.x:5000/business/signup", businessPayload);
+        await axios.post(`${API_URL}/business/signup`, businessPayload);
       }
 
       Alert.alert("Success", "Account created!");

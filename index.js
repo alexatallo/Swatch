@@ -1,13 +1,18 @@
 import { registerRootComponent } from "expo";
+import { LogBox, Platform } from "react-native";
 import App from "./App";
-import { LogBox } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
+// Use localStorage for web to avoid dependency issues
+if (Platform.OS === "web") {
+  global.AsyncStorage = {
+    getItem: async (key) => localStorage.getItem(key),
+    setItem: async (key, value) => localStorage.setItem(key, value),
+    removeItem: async (key) => localStorage.removeItem(key),
+  };
+}
 
-// Ignore all logs when need to record or something 
-// LogBox.ignoreAllLogs(true);
+// Ignore all logs if necessary
+// LogBox.ignoreAllLogs();
 
-
-// Register the main application component
 registerRootComponent(App);
-
-

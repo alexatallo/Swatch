@@ -1,39 +1,48 @@
 import React, { useState } from "react";
-import { View, StyleSheet, Alert } from "react-native";
+import { View, StyleSheet, Alert, Platform } from "react-native";
 import { Text, TextInput, Button } from "react-native-paper";
 import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_URL } from "@env";
+// For Web: use localStorage directly
+const Storage = Platform.OS === 'web' ? localStorage : AsyncStorage;
 
 export default function LoginScreen({ navigation }) {
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!emailOrUsername || !password) {
+    if (!emailOrUsername.trim() || !password) {
       Alert.alert("Error", "Please fill in both fields.");
       return;
     }
 
+    setLoading(true); // Disable button during request
+
     try {
-      const response = await axios.post("http://35.50.x.x:5000/login", {
-        emailOrUsername: emailOrUsername.toLowerCase(),
+      const response = await axios.post(`${API_URL}/login`, {
+        emailOrUsername: emailOrUsername.trim().toLowerCase(),
         password,
       });
 
       console.log("Server Response:", response.data);
 
       if (response.data.token) {
+        await Storage.setItem("token", response.data.token); // Store token securely
         Alert.alert("Success", "Logged in successfully!");
-        navigation.replace("Home", { token: response.data.token });
+        navigation.replace("Home");
       } else {
         Alert.alert("Error", "No token received from server.");
       }
     } catch (error) {
       console.error("Login Error:", error.response?.data || error.message);
-      Alert.alert("Error", error.response?.data?.error || "Something went wrong");
+      Alert.alert("Error", error.response?.data?.error || "Network error. Please try again.");
+    } finally {
+      setLoading(false); // Re-enable button
     }
   };
 
-  
   return (
     <View style={styles.container}>
       <Text variant="headlineMedium" style={styles.title}>Login</Text>
@@ -44,6 +53,7 @@ export default function LoginScreen({ navigation }) {
         onChangeText={setEmailOrUsername}
         mode="outlined"
         style={styles.input}
+        autoCapitalize="none"
       />
       
       <TextInput
@@ -55,11 +65,11 @@ export default function LoginScreen({ navigation }) {
         style={styles.input}
       />
 
-      <Button mode="contained" onPress={handleLogin} style={styles.button}>
-        Login
+      <Button mode="contained" onPress={handleLogin} disabled={loading} style={styles.button}>
+        {loading ? "Logging in..." : "Login"}
       </Button>
       
-      <Button mode="text" onPress={() => navigation.navigate("SignUp")}>
+      <Button mode="text" onPress={() => navigation.navigate("SignUp")} disabled={loading}>
         Create an Account
       </Button>
     </View>
