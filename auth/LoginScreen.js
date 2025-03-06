@@ -3,7 +3,7 @@ import { View, StyleSheet, Alert, Platform } from "react-native";
 import { Text, TextInput, Button } from "react-native-paper";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
+import { API_URL } from "@env";
 // For Web: use localStorage directly
 const Storage = Platform.OS === 'web' ? localStorage : AsyncStorage;
 
@@ -21,7 +21,7 @@ export default function LoginScreen({ navigation }) {
     setLoading(true); // Disable button during request
 
     try {
-      const response = await axios.post("http://35.50.90.208:5000/login", {
+      const response = await axios.post(`${API_URL}/login`, {
         emailOrUsername: emailOrUsername.trim().toLowerCase(),
         password,
       });
