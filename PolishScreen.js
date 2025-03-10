@@ -24,7 +24,7 @@ export default function PolishScreen({ route }) {
       <Image source={{ uri: item.picture }} style={styles.image} />
       <Text style={styles.title}>{item.name || "No name available"}</Text>
       <Text style={styles.text}>Brand: {item.brand || "Unknown brand"}</Text>
-      <Text style={styles.text}>Color: {item.color || "Unknown color"}</Text>
+      <Text style={styles.text}>Collection: {item.collection || "Unknown collection"}</Text>
 
       {/* Buy Button */}
       {item.link && (
