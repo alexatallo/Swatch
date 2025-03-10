@@ -11,10 +11,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system";
 import axios from "axios";
-import { API_URL } from "@env"; 
+import { API_URL } from "@env";
+
 
 export default function ExploreFeedScreen() {
   const [modalVisible, setModalVisible] = useState(false);
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [postToDelete, setPostToDelete] = useState(null);
   const [postData, setPostData] = useState({
     caption: "",
     nailColor: "",
@@ -31,6 +34,8 @@ export default function ExploreFeedScreen() {
   useEffect(() => {
     fetchPosts();
   }, []);
+
+  
 
   const fetchPosts = async (pageNum = 1, limit = 10) => {
     if (loading || !hasMorePosts) return; // Prevent multiple calls or fetching when no more posts are available
@@ -116,6 +121,8 @@ export default function ExploreFeedScreen() {
     });
   };
 
+  
+
   const submitPost = async () => {
     try {
       const token = await AsyncStorage.getItem("token");
@@ -169,9 +176,56 @@ export default function ExploreFeedScreen() {
     }
   };  
 
+
+  const deletePost = async (postId) => {
+    setPostToDelete(postId);
+    setIsDeleteModalVisible(true);  // Show delete confirmation modal
+  };
+
+  const handleDeleteConfirmation = async () => {
+    if (!postToDelete) return;
+
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        alert("Authentication token missing.");
+        return;
+      }
+
+      const response = await axios.delete(`${API_URL}/posts/${postToDelete}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      if (response.data) {
+        alert("Post deleted successfully!");
+        setPosts(prevPosts => prevPosts.filter(post => post._id !== postToDelete));
+      } else {
+        throw new Error("Failed to delete post");
+      }
+    } catch (error) {
+      alert("Error deleting post: " + (error.response?.data?.error || error.message));
+    }
+
+    setIsDeleteModalVisible(false);
+    setPostToDelete(null);
+  };
+
+  const handleDeleteCancel = () => {
+    setIsDeleteModalVisible(false);
+    setPostToDelete(null);
+  };
+
+
+
+
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={() => setModalVisible(true)}
+      >
         <Ionicons name="add-circle" size={50} color="#6A5ACD" />
       </TouchableOpacity>
 
@@ -188,48 +242,77 @@ export default function ExploreFeedScreen() {
               <Text>No Image Available</Text>
             )}
             <Text style={styles.postCaption}>{item.caption}</Text>
-            <Text style={styles.postDetails}>💅 {item.nailColor} | 📍 {item.nailLocation}</Text>
+            <Text style={styles.postDetails}>
+              💅 {item.nailColor} | 📍 {item.nailLocation}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={() => deletePost(item._id)}
+            >
+              <Text style={styles.deleteButtonText}>Delete</Text>
+            </TouchableOpacity>
           </View>
         )}
-        onEndReached={() => fetchPosts(page)}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={loading ? <ActivityIndicator size="large" color="#6A5ACD" /> : null}
       />
 
-<Modal visible={modalVisible} transparent animationType="slide">
-  <View style={styles.modalBackground}>
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalContainer}>
-      <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
-        <Text style={styles.modalTitle}>Create a Post</Text>
-        <TouchableOpacity style={styles.imageButton} onPress={openCamera}>
-          <Text style={styles.imageButtonText}>+ Add Image</Text>
-        </TouchableOpacity>
-        {postData.photoUri && <Image source={{ uri: postData.photoUri }} style={styles.imagePreview} />}
-        {['caption', 'nailColor', 'nailLocation'].map(field => (
-          <TextInput
-            key={field}
-            style={styles.input}
-            placeholder={`Enter ${field}...`}
-            placeholderTextColor="#aaa"
-            value={postData[field]}
-            onChangeText={(text) => setPostData(prev => ({ ...prev, [field]: text }))}
-          />
-        ))}
-        <View style={styles.buttonRow}>
-          <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelButton}>
-            <Text style={styles.buttonText}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={submitPost} style={styles.submitButton}>
-            <Text style={styles.buttonText}>Submit</Text>
-          </TouchableOpacity>
+      {/* Create Post Modal */}
+      <Modal visible={modalVisible} transparent animationType="slide">
+        <View style={styles.modalBackground}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalContainer}
+          >
+            <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
+              <Text style={styles.modalTitle}>Create a Post</Text>
+              <TouchableOpacity style={styles.imageButton} onPress={openCamera}>
+                <Text style={styles.imageButtonText}>+ Add Image</Text>
+              </TouchableOpacity>
+              {postData.photoUri && <Image source={{ uri: postData.photoUri }} style={styles.imagePreview} />}
+              {['caption', 'nailColor', 'nailLocation'].map((field) => (
+                <TextInput
+                  key={field}
+                  style={styles.input}
+                  placeholder={`Enter ${field}...`}
+                  placeholderTextColor="#aaa"
+                  value={postData[field]}
+                  onChangeText={(text) => setPostData((prev) => ({ ...prev, [field]: text }))}
+                />
+              ))}
+              <View style={styles.buttonRow}>
+                <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelButton}>
+                  <Text style={styles.buttonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={submitPost} style={styles.submitButton}>
+                  <Text style={styles.buttonText}>Submit</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  </View>
-</Modal>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalVisible && (
+        <Modal transparent visible={isDeleteModalVisible} animationType="slide">
+          <View style={styles.modalBackground}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Are you sure you want to delete this post?</Text>
+              <View style={styles.buttonRow}>
+                <TouchableOpacity onPress={handleDeleteCancel} style={styles.cancelButton}>
+                  <Text style={styles.buttonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleDeleteConfirmation} style={styles.submitButton}>
+                  <Text style={styles.buttonText}>Confirm</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -269,6 +352,17 @@ const styles = StyleSheet.create({
   postDetails: {
     fontSize: 14,
     color: "#666",
+  },
+  deleteButton: {
+    backgroundColor: "#FF6347",
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 10,
+    alignItems: "center",
+  },
+  deleteButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
   modalBackground: {
     flex: 1,

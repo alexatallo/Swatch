@@ -230,6 +230,49 @@ app.get("/posts", async (req, res) => {
     }
 });
 
+//delete a post
+app.delete("/posts/:id", async (req, res) => {
+    console.log("✅ Delete request received for post:", req.params.id);
+
+    try {
+        const authHeader = req.headers.authorization;
+        const token = authHeader ? authHeader.split(" ")[1] : null;
+
+        if (!token) {
+            console.log("❌ No token received");
+            return res.status(403).json({ message: "No token provided" });
+        }
+
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+            console.log("✅ Token Verified:", decoded);
+        } catch (err) {
+            console.error("❌ JWT Verification Failed:", err.message);
+            return res.status(401).json({ message: "Invalid or expired token" });
+        }
+
+        console.log("✅ Connecting to database...");
+        await client.connect();
+        const db = client.db("Swatch");
+        const postsCollection = db.collection("posts");
+
+        const result = await postsCollection.deleteOne({ _id: new ObjectId(req.params.id) });
+
+        if (result.deletedCount === 0) {
+            console.log("❌ Post not found");
+            return res.status(404).json({ message: "Post not found" });
+        }
+
+        console.log("✅ Post deleted successfully");
+        res.json({ status: "okay", message: "Post deleted successfully" });
+
+    } catch (error) {
+        console.error("❌ Server Error:", error);
+        return res.status(500).json({ message: "Server error" });
+    }
+});
+
 // UPDATE BUSINESS NAME ROUTE
 app.put("/account/business", async (req, res) => {
     try {
@@ -390,6 +433,100 @@ app.get("/polishes", async (req, res) => {
       return res.status(500).json({ message: "Server error" });
     }
   });
+
+  // Save a polish to an existing or new collection
+app.post("/collections", async (req, res) => {
+try {
+    // Extract token from headers
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) {
+    return res.status(403).json({ message: "No token provided" });
+    }
+
+    // Decode the user ID from the token
+    let decoded;
+    try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+    return res.status(403).json({ message: "Invalid or expired token" });
+    }
+    const userId = decoded.userId;
+
+    // Get the collection name and polishId from the request body
+    const { collectionName, polishId } = req.body;
+
+    if (!collectionName || !polishId) {
+    return res.status(400).json({ message: "Collection name and polish ID are required" });
+    }
+
+    // Validate polishId
+    if (!ObjectId.isValid(polishId)) {
+    return res.status(400).json({ message: "Invalid polish ID." });
+    }
+
+    // Check if the collection already exists for the user
+    const collectionsCollection = db.collection("Collection");
+    let collection = await collectionsCollection.findOne({ userId: new ObjectId(userId), name: collectionName });
+
+    if (collection) {
+    // If the collection exists, add the polish to the collection
+    if (collection.polishes.includes(new ObjectId(polishId))) {
+        return res.status(400).json({ message: "Polish already exists in this collection" });
+    }
+
+    collection.polishes.push(new ObjectId(polishId));
+    await collectionsCollection.updateOne({ _id: collection._id }, { $set: { polishes: collection.polishes } });
+
+    return res.json({ _id: collection._id, message: "Polish added to existing collection successfully." });
+    } else {
+    // If the collection doesn't exist, create a new collection
+    const result = await collectionsCollection.insertOne({
+        userId: new ObjectId(userId),
+        name: collectionName,
+        polishes: [new ObjectId(polishId)]  // Initialize with the selected polish
+    });
+
+    if (result.insertedCount > 0) {
+        return res.json({ _id: result.insertedId, message: "Collection created and polish added successfully." });
+    } else {
+        return res.status(500).json({ message: "Failed to create the collection." });
+    }
+    }
+} catch (error) {
+    console.error("Error creating collection and adding polish:", error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+}
+});
+
+app.get("/collections", async (req, res) => {
+try {
+    // Extract token from headers
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) {
+    return res.status(403).json({ message: "No token provided" });
+    }
+
+    // Decode the user ID from the token
+    let decoded;
+    try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+    return res.status(403).json({ message: "Invalid or expired token" });
+    }
+    const userId = decoded.userId;
+
+    // Fetch collections for the user
+    const collectionsCollection = db.collection("Collection");
+    const collections = await collectionsCollection.find({ userId: new ObjectId(userId) }).toArray();
+
+    return res.json(collections);
+} catch (error) {
+    console.error("Error fetching collections:", error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+}
+});
+
+
 
 // ✅ Start Server
 app.listen(5000, () => console.log("🚀 Backend API running on port 5000"));

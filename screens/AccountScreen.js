@@ -17,6 +17,7 @@ export default function AccountScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [isEditing, setIsEditing] = useState(false); // New state for edit mode
+  const [collectionData, setCollectionData] = useState(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -35,11 +36,18 @@ export default function AccountScreen({ navigation }) {
 
         console.log('User data:', response.data.user);
         console.log('Business data:', response.data.business);
+        console.log('Collection data', response.data.collection);
 
         if (response.data.user) {
           setUserData(response.data.user);
         } else {
           console.error("User data is missing.");
+        }
+
+        if (response.data.collection) {
+          setCollectionData(response.data.collection);
+        } else {
+          console.error("Collection data is missing.");
         }
 
         if (response.data.business) {
@@ -122,6 +130,16 @@ export default function AccountScreen({ navigation }) {
       ) : (
         <Text style={styles.errorText}>User data not found.</Text>
       )}
+
+    <Text style={styles.headerText}>Collections</Text>
+          {collectionData ? (
+            <View style={styles.collectionInfoContainer}>
+              <Text style={styles.collectionInfoText}>Collections: {collectionData.name}</Text>
+            </View>
+          ) : (
+            <Text style={styles.errorText}>Collection data not found.</Text>
+          )}
+
 
       {businessData ? (
         <View style={styles.businessInfoContainer}>
@@ -213,6 +231,22 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   userInfoText: {
+    fontSize: 18,
+    color: '#555',
+    marginVertical: 8,
+  },
+  collectionInfoContainer: {
+    backgroundColor: '#ffffff',
+    padding: 20,
+    borderRadius: 15,
+    marginBottom: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  collectionInfoText: {
     fontSize: 18,
     color: '#555',
     marginVertical: 8,
