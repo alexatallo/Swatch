@@ -14,8 +14,12 @@ import axios from "axios";
 import { API_URL } from "@env";
 
 
+
+
 export default function ExploreFeedScreen() {
   const [modalVisible, setModalVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [lastTap, setLastTap] = useState(null);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [postToDelete, setPostToDelete] = useState(null);
   const [postData, setPostData] = useState({
@@ -29,16 +33,20 @@ export default function ExploreFeedScreen() {
   const [loading, setLoading] = useState(false);
   const [hasMorePosts, setHasMorePosts] = useState(true);
 
+
   const { width } = Dimensions.get("window");
+
 
   useEffect(() => {
     fetchPosts();
   }, []);
 
-  
+
+
 
   const fetchPosts = async (pageNum = 1, limit = 10) => {
     if (loading || !hasMorePosts) return; // Prevent multiple calls or fetching when no more posts are available
+
 
     setLoading(true);
     try {
@@ -48,12 +56,14 @@ export default function ExploreFeedScreen() {
         return;
       }
 
+
       const response = await axios.get(`${API_URL}/posts`, {
         params: { page: pageNum, limit },
         headers: {
           Authorization: `Bearer ${storedToken}`,
         },
       });
+
 
       if (response.data && response.data.data) {
         if (pageNum === 1) {
@@ -67,10 +77,12 @@ export default function ExploreFeedScreen() {
           });
         }
 
+
         // Stop fetching if fewer posts than limit are returned
         if (response.data.data.length < limit) {
           setHasMorePosts(false);
         }
+
 
         setPage(pageNum + 1);
       } else {
@@ -81,6 +93,7 @@ export default function ExploreFeedScreen() {
     }
     setLoading(false);
   };
+
 
   const resizeImage = async (uri) => {
     const { width: screenWidth } = Dimensions.get("window");
@@ -93,6 +106,7 @@ export default function ExploreFeedScreen() {
     return manipulatedImage.uri;
   };
 
+
   const openCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
@@ -100,11 +114,13 @@ export default function ExploreFeedScreen() {
       return;
     }
 
+
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
     });
+
 
     if (!result.canceled) {
       let selectedImage = result.assets[0].uri;
@@ -112,6 +128,7 @@ export default function ExploreFeedScreen() {
       setPostData(prevData => ({ ...prevData, photoUri: resizedUri }));
     }
   };
+
 
   const blobToBase64 = (blob) => {
     return new Promise((resolve) => {
@@ -121,7 +138,6 @@ export default function ExploreFeedScreen() {
     });
   };
 
-  
 
   const submitPost = async () => {
     try {
@@ -130,7 +146,8 @@ export default function ExploreFeedScreen() {
         alert("Authentication token missing.");
         return;
       }
-  
+
+
       let base64Image = null;
       if (postData.photoUri) {
         if (Platform.OS !== "web") {
@@ -144,12 +161,16 @@ export default function ExploreFeedScreen() {
           base64Image = await blobToBase64(blob);
         }
       }
-  
+
+
+      // ✅ Sending Post Data to API
       const response = await axios.post(
         `${API_URL}/posts`,
         {
-          ...postData,
-          photoUri: base64Image || postData.photoUri,
+          caption: postData.caption,
+          nailColor: postData.nailColor,
+          nailLocation: postData.nailLocation,
+          photoUri: base64Image || postData.photoUri, // 🖼️ Handle images
         },
         {
           headers: {
@@ -158,14 +179,18 @@ export default function ExploreFeedScreen() {
           },
         }
       );
-  
+
+
       if (response.data) {
         alert("Post created successfully!");
         setModalVisible(false);
-        
-        // Prepend new post to the list
+
+
+        // ✅ Add New Post to Feed
         setPosts(prevPosts => [response.data, ...prevPosts]);
-  
+
+
+        // ✅ Reset Post Data After Submission
         setPostData({ caption: "", nailColor: "", nailLocation: "", photoUri: null });
       } else {
         throw new Error("Failed to create post");
@@ -174,7 +199,11 @@ export default function ExploreFeedScreen() {
       console.error("Error creating post:", error.response ? error.response.data : error.message);
       alert(error.response?.data?.error || "Error creating post");
     }
-  };  
+  };
+
+
+
+
 
 
   const deletePost = async (postId) => {
@@ -182,8 +211,10 @@ export default function ExploreFeedScreen() {
     setIsDeleteModalVisible(true);  // Show delete confirmation modal
   };
 
+
   const handleDeleteConfirmation = async () => {
     if (!postToDelete) return;
+
 
     try {
       const token = await AsyncStorage.getItem("token");
@@ -192,11 +223,13 @@ export default function ExploreFeedScreen() {
         return;
       }
 
+
       const response = await axios.delete(`${API_URL}/posts/${postToDelete}`, {
         headers: {
           "Authorization": `Bearer ${token}`,
         },
       });
+
 
       if (response.data) {
         alert("Post deleted successfully!");
@@ -208,14 +241,34 @@ export default function ExploreFeedScreen() {
       alert("Error deleting post: " + (error.response?.data?.error || error.message));
     }
 
+
     setIsDeleteModalVisible(false);
     setPostToDelete(null);
   };
+
 
   const handleDeleteCancel = () => {
     setIsDeleteModalVisible(false);
     setPostToDelete(null);
   };
+
+
+  const handleImagePress = (post) => {
+    const now = Date.now();
+    const DOUBLE_PRESS_DELAY = 300; // milliseconds
+    if (lastTap && now - lastTap < DOUBLE_PRESS_DELAY) {
+      if (post?.photoUri) {
+        setSelectedImage(post);
+      } else {
+        alert("Image not available.");
+      }
+    } else {
+      setLastTap(now);
+    }
+  };
+
+
+
 
 
 
@@ -229,32 +282,48 @@ export default function ExploreFeedScreen() {
         <Ionicons name="add-circle" size={50} color="#6A5ACD" />
       </TouchableOpacity>
 
+
       <Text style={styles.title}>Explore Feed</Text>
+
 
       <FlatList
         data={posts}
         keyExtractor={(item) => item._id || Math.random().toString()}
         renderItem={({ item }) => (
-          <View style={styles.postCard}>
-            {item.photoUri ? (
-              <Image source={{ uri: item.photoUri }} style={styles.postImage} />
-            ) : (
-              <Text>No Image Available</Text>
-            )}
-            <Text style={styles.postCaption}>{item.caption}</Text>
-            <Text style={styles.postDetails}>
-              💅 {item.nailColor} | 📍 {item.nailLocation}
-            </Text>
+          <View style={{ position: "relative", alignItems: "center" }}>
+            {/* Post Card */}
+            <View style={styles.postCard}>
 
+
+              {/* ✅ Username Positioned at the Top-Left */}
+              <Text style={styles.username}>@{item.username}</Text>
+
+
+              <TouchableWithoutFeedback onPress={() => handleImagePress(item)}>
+                {item.photoUri ? (
+                  <Image source={{ uri: item.photoUri }} style={styles.postImage} />
+                ) : (
+                  <Text>No Image Available</Text>
+                )}
+              </TouchableWithoutFeedback>
+
+
+              <Text style={styles.postCaption}>{item.caption}</Text>
+              <Text style={styles.postDetails}>💅 {item.nailColor} | 📍 {item.nailLocation}</Text>
+            </View>
+
+
+            {/* Trash Icon Positioned Outside */}
             <TouchableOpacity
-              style={styles.deleteButton}
+              style={styles.trashButton}
               onPress={() => deletePost(item._id)}
             >
-              <Text style={styles.deleteButtonText}>Delete</Text>
+              <Ionicons name="trash-outline" size={24} color="purple" />
             </TouchableOpacity>
           </View>
         )}
       />
+
 
       {/* Create Post Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
@@ -292,6 +361,7 @@ export default function ExploreFeedScreen() {
         </View>
       </Modal>
 
+
       {/* Delete Confirmation Modal */}
       {isDeleteModalVisible && (
         <Modal transparent visible={isDeleteModalVisible} animationType="slide">
@@ -310,9 +380,39 @@ export default function ExploreFeedScreen() {
           </View>
         </Modal>
       )}
+      {selectedImage && selectedImage.photoUri && (
+        <Modal
+          visible={true}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setSelectedImage(null)}
+        >
+          <TouchableWithoutFeedback onPress={() => setSelectedImage(null)}>
+            <View style={styles.modalImageContainer}>
+              <View style={styles.modalImageContent}>
+                <Image
+                  source={{ uri: selectedImage.photoUri }}
+                  style={styles.fullScreenImage}
+                  resizeMode="contain"
+                />
+                <Text style={styles.fullScreenCaption}>{selectedImage.caption}</Text>
+                <Text style={styles.fullScreenDetails}>
+                  💅 {selectedImage.nailColor} | 📍 {selectedImage.nailLocation}
+                </Text>
+
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+      )}
+
+
+
+
     </SafeAreaView>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -341,7 +441,7 @@ const styles = StyleSheet.create({
   },
   postImage: {
     width: "100%",
-    height: 200,
+    height: 300,
     borderRadius: 10,
     marginBottom: 10,
   },
@@ -431,4 +531,84 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
   },
+  modalImageContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  fullScreenImage: {
+    width: "100%",
+    height: "100%",
+  },
+  modalImageContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalImageContent: {
+    backgroundColor: "#fff",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    width: "90%",
+  },
+  fullScreenImage: {
+    width: "100%",
+    height: 300,
+    borderRadius: 10,
+  },
+  fullScreenCaption: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginTop: 10,
+    textAlign: "center",
+  },
+  fullScreenDetails: {
+    fontSize: 16,
+    color: "#666",
+    marginTop: 5,
+    textAlign: "center",
+  },
+  closeButton: {
+    backgroundColor: "#6A5ACD",
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 10,
+  },
+  closeButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  trashButton: {
+    position: "absolute",
+    bottom: 20,
+    right: 35,
+    zIndex: 10,
+    backgroundColor: "rgba(255, 255, 255, 1)",
+    padding: 8,
+    borderRadius: 20,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  username: {
+    position: "absolute",
+    top: 10,    // Move to top
+    left: 10,   // Move to left
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#6A5ACD",
+    backgroundColor: "rgba(255, 255, 255, 0.7)", // Light background for visibility
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    zIndex: 10,  // Make sure it's above other elements
+  },
+
+
 });

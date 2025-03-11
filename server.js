@@ -183,52 +183,63 @@ app.post("/posts", async (req, res) => {
 
 
 app.get("/posts", async (req, res) => {
-    console.log("✅ Endpoint /posts hit");
-
     try {
-        console.log("✅ Headers:", req.headers);
-        console.log("✅ Checking token...");
-
-        const authHeader = req.headers.authorization;
-        const token = authHeader ? authHeader.split(" ")[1] : null;
-
-        if (!token) {
-            console.log("❌ No token received");
-            return res.status(403).json({ message: "No token provided" });
+        console.log("✅ Incoming GET request to /posts");
+ 
+ 
+        // Ensure the database is connected
+        if (!client.topology || !client.topology.isConnected()) {
+            return res.status(500).json({ error: "Database not connected" });
         }
-
-        console.log("✅ Token received:", token);
-
-        let decoded;
-        try {
-            decoded = jwt.verify(token, process.env.JWT_SECRET);
-            console.log("✅ Token Verified:", decoded);
-        } catch (err) {
-            console.error("❌ JWT Verification Failed:", err.message);
-            return res.status(401).json({ message: "Invalid or expired token" });
-        }
-
-        console.log("✅ Connecting to database...");
-        await client.connect();
-        const db = client.db("Swatch");
+ 
+ 
+        const token = req.headers.authorization?.split(" ")[1];
+        if (!token) return res.status(403).json({ error: "No token provided" });
+ 
+ 
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const postsCollection = db.collection("posts");
-
+        const usersCollection = db.collection("User");
+ 
+ 
         console.log("✅ Fetching all posts...");
-        const allPosts = await postsCollection.find().sort({ createdAt: -1 }).toArray(); // Sort by newest first
-
+        const allPosts = await postsCollection.find().sort({ createdAt: -1 }).toArray();
+ 
+ 
         if (!allPosts.length) {
             console.log("❌ No posts found.");
             return res.status(404).json({ message: "No posts found" });
         }
-
-        console.log("✅ Backend Data:", allPosts.length, "entries found");
-        res.json({ status: "okay", data: allPosts });
-
+ 
+ 
+        // ✅ Fetch user data
+        const userIds = allPosts.map(post => new ObjectId(post.userId));
+        const users = await usersCollection.find({ _id: { $in: userIds } }).toArray();
+ 
+ 
+        const userMap = {};
+        users.forEach(user => {
+            userMap[user._id.toString()] = user.username;
+        });
+ 
+ 
+        // ✅ Attach username to posts
+        const postsWithUsernames = allPosts.map(post => ({
+            ...post,
+            username: userMap[post.userId.toString()] || "Unknown User",
+        }));
+ 
+ 
+        console.log("✅ Sending posts:", postsWithUsernames.length);
+        res.json({ status: "okay", data: postsWithUsernames });
+ 
+ 
     } catch (error) {
         console.error("❌ Server Error:", error);
-        return res.status(500).json({ message: "Server error" });
+        res.status(500).json({ message: "Server error" });
     }
-});
+ });
+ 
 
 //delete a post
 app.delete("/posts/:id", async (req, res) => {
@@ -361,14 +372,20 @@ app.get("/account", async (req, res) => {
         const businessCollection = db.collection("Business");
         const business = await businessCollection.findOne({ userId: new ObjectId(userId) });
 
+        // Fetch associated Swatch data
+        const swatchCollection = db.collection("Collection");
+        const collection = await swatchCollection.find({ userId: new ObjectId(userId) }).toArray();
+
         console.log("User Data:", user); // Log the user data
         console.log("Business Data:", business); // Log the business data
+        console.log("Collection Data:", collection); // Log the swatch data
 
         // Prepare the response data
         const { password, ...userData } = user;
         const responseData = {
             user: userData,
-            business: business || null // Include business data or null if no business
+            business: business || null, // Include business data or null if no business
+            collection: collection // Include swatch data
         };
 
         res.json(responseData);
@@ -388,143 +405,202 @@ app.get("/account", async (req, res) => {
 
 app.get("/polishes", async (req, res) => {
     console.log("✅ Endpoint /polishes hit"); // Check if this logs
- 
+
     try {
-      console.log("✅ Headers:", req.headers); // Log headers to confirm request is received
-      console.log("✅ Checking token...");
- 
-      const authHeader = req.headers.authorization;
-      const token = authHeader ? authHeader.split(" ")[1] : null;
- 
-      if (!token) {
-        console.log("❌ No token received");
-        return res.status(403).json({ message: "No token provided" });
-      }
- 
-      console.log("✅ Token received:", token);
- 
-      let decoded;
-      try {
-        decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log("✅ Token Verified:", decoded);
-      } catch (err) {
-        console.error("❌ JWT Verification Failed:", err.message);
-        return res.status(401).json({ message: "Invalid or expired token" });
-      }
- 
-      console.log("✅ Connecting to database...");
-      await client.connect();
-      const db = client.db("Swatch");
-      const polishCollection = db.collection("Polish");
- 
-      console.log("✅ Fetching all polishes...");
-      const allPolishes = await polishCollection.find().toArray();
- 
-      if (!allPolishes.length) {
-        console.log("❌ No polishes found.");
-        return res.status(404).json({ message: "No polishes found" });
-      }
- 
-      console.log("✅ Backend Data:", allPolishes.length, "entries found");
-      res.json({ status: "okay", data: allPolishes });
- 
+        console.log("✅ Headers:", req.headers); // Log headers to confirm request is received
+        console.log("✅ Checking token...");
+
+        const authHeader = req.headers.authorization;
+        const token = authHeader ? authHeader.split(" ")[1] : null;
+
+        if (!token) {
+            console.log("❌ No token received");
+            return res.status(403).json({ message: "No token provided" });
+        }
+
+        console.log("✅ Token received:", token);
+
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+            console.log("✅ Token Verified:", decoded);
+        } catch (err) {
+            console.error("❌ JWT Verification Failed:", err.message);
+            return res.status(401).json({ message: "Invalid or expired token" });
+        }
+
+        console.log("✅ Connecting to database...");
+        await client.connect();
+        const db = client.db("Swatch");
+        const polishCollection = db.collection("Polish");
+
+        console.log("✅ Fetching all polishes...");
+        const allPolishes = await polishCollection.find().toArray();
+
+        if (!allPolishes.length) {
+            console.log("❌ No polishes found.");
+            return res.status(404).json({ message: "No polishes found" });
+        }
+
+        console.log("✅ Backend Data:", allPolishes.length, "entries found");
+        res.json({ status: "okay", data: allPolishes });
+
     } catch (error) {
-      console.error("❌ Server Error:", error);
-      return res.status(500).json({ message: "Server error" });
+        console.error("❌ Server Error:", error);
+        return res.status(500).json({ message: "Server error" });
     }
-  });
+});
 
-  // Save a polish to an existing or new collection
-app.post("/collections", async (req, res) => {
-try {
-    // Extract token from headers
-    const token = req.headers.authorization?.split(" ")[1];
-    if (!token) {
-    return res.status(403).json({ message: "No token provided" });
-    }
 
-    // Decode the user ID from the token
-    let decoded;
+app.get("/collections/:collectionId/polishes", async (req, res) => {
+    const { collectionId } = req.params;
+    console.log("✅ Collection ID:", collectionId);
+
     try {
-    decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (err) {
-    return res.status(403).json({ message: "Invalid or expired token" });
+        // Extract token from headers
+        const token = req.headers.authorization?.split(" ")[1];
+        if (!token) {
+            return res.status(403).json({ message: "No token provided" });
+        }
+
+        // Decode the token to extract the userId
+        const decoded = jwt.verify(token, jwtSecret);
+        const userId = decoded.userId;
+
+        // Use the collectionDb from the global scope
+        const collection = await db.collection("Collection").findOne({ _id: new ObjectId(collectionId) });
+
+        if (!collection) {
+            return res.status(404).json({ message: "Collection not found" });
+        }
+
+        // Extract polish IDs from the collection document
+        const polishIds = collection.polishes;
+
+        if (polishIds && polishIds.length > 0) {
+            // Ensure polishIds is an array of ObjectId, if not, convert them
+            const polishObjectIds = polishIds.map(id => new ObjectId(id));
+
+            // Look up the actual polishes using the polish IDs
+            const polishesInCollection = await db.collection("Polish").find({ _id: { $in: polishObjectIds } }).toArray();
+
+            if (polishesInCollection.length === 0) {
+                return res.status(404).json({ message: "No polishes found in this collection" });
+            }
+
+            // Make sure to return the data in the right format (e.g., using .map to extract needed fields)
+            const formattedPolishes = polishesInCollection.map(polish => ({
+                _id: polish._id,
+                name: polish.name,
+                color: polish.color,
+                brand: polish.brand,
+                image: polish.image  // Add other fields you need
+                // Include other fields as needed from the polish object
+            }));
+
+            res.json({ status: "okay", data: formattedPolishes });
+        } else {
+            return res.status(404).json({ message: "No polishes in this collection" });
+        }
+
+    } catch (error) {
+        console.error("❌ Server Error:", error);
+        return res.status(500).json({ message: "Server error" });
     }
-    const userId = decoded.userId;
-
-    // Get the collection name and polishId from the request body
-    const { collectionName, polishId } = req.body;
-
-    if (!collectionName || !polishId) {
-    return res.status(400).json({ message: "Collection name and polish ID are required" });
-    }
-
-    // Validate polishId
-    if (!ObjectId.isValid(polishId)) {
-    return res.status(400).json({ message: "Invalid polish ID." });
-    }
-
-    // Check if the collection already exists for the user
-    const collectionsCollection = db.collection("Collection");
-    let collection = await collectionsCollection.findOne({ userId: new ObjectId(userId), name: collectionName });
-
-    if (collection) {
-    // If the collection exists, add the polish to the collection
-    if (collection.polishes.includes(new ObjectId(polishId))) {
-        return res.status(400).json({ message: "Polish already exists in this collection" });
-    }
-
-    collection.polishes.push(new ObjectId(polishId));
-    await collectionsCollection.updateOne({ _id: collection._id }, { $set: { polishes: collection.polishes } });
-
-    return res.json({ _id: collection._id, message: "Polish added to existing collection successfully." });
-    } else {
-    // If the collection doesn't exist, create a new collection
-    const result = await collectionsCollection.insertOne({
-        userId: new ObjectId(userId),
-        name: collectionName,
-        polishes: [new ObjectId(polishId)]  // Initialize with the selected polish
-    });
-
-    if (result.insertedCount > 0) {
-        return res.json({ _id: result.insertedId, message: "Collection created and polish added successfully." });
-    } else {
-        return res.status(500).json({ message: "Failed to create the collection." });
-    }
-    }
-} catch (error) {
-    console.error("Error creating collection and adding polish:", error);
-    return res.status(500).json({ message: "Internal server error", error: error.message });
-}
 });
 
 app.get("/collections", async (req, res) => {
-try {
-    // Extract token from headers
-    const token = req.headers.authorization?.split(" ")[1];
-    if (!token) {
-    return res.status(403).json({ message: "No token provided" });
-    }
-
-    // Decode the user ID from the token
-    let decoded;
     try {
-    decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (err) {
-    return res.status(403).json({ message: "Invalid or expired token" });
+        // Extract token from headers
+        const token = req.headers.authorization?.split(" ")[1];
+        if (!token) {
+            return res.status(403).json({ message: "No token provided" });
+        }
+
+        // Decode the user ID from the token
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+        } catch (err) {
+            return res.status(403).json({ message: "Invalid or expired token" });
+        }
+        const userId = decoded.userId;
+
+        // Fetch collections for the user
+        const collectionsCollection = db.collection("Collection");
+        const collections = await collectionsCollection.find({ userId: new ObjectId(userId) }).toArray();
+
+        return res.json(collections);
+    } catch (error) {
+        console.error("Error fetching collections:", error);
+        return res.status(500).json({ message: "Internal server error", error: error.message });
     }
-    const userId = decoded.userId;
-
-    // Fetch collections for the user
-    const collectionsCollection = db.collection("Collection");
-    const collections = await collectionsCollection.find({ userId: new ObjectId(userId) }).toArray();
-
-    return res.json(collections);
-} catch (error) {
-    console.error("Error fetching collections:", error);
-    return res.status(500).json({ message: "Internal server error", error: error.message });
-}
 });
+
+// Save a polish to an existing or new collection
+app.post("/collections", async (req, res) => {
+    try {
+        // Extract token from headers
+        const token = req.headers.authorization?.split(" ")[1];
+        if (!token) {
+            return res.status(403).json({ message: "No token provided" });
+        }
+
+        // Decode the user ID from the token
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+        } catch (err) {
+            return res.status(403).json({ message: "Invalid or expired token" });
+        }
+        const userId = decoded.userId;
+
+        // Get the collection name and polishId from the request body
+        const { collectionName, polishId } = req.body;
+
+        if (!collectionName || !polishId) {
+            return res.status(400).json({ message: "Collection name and polish ID are required" });
+        }
+
+        // Validate polishId
+        if (!ObjectId.isValid(polishId)) {
+            return res.status(400).json({ message: "Invalid polish ID." });
+        }
+
+        // Check if the collection already exists for the user
+        const collectionsCollection = db.collection("Collection");
+        let collection = await collectionsCollection.findOne({ userId: new ObjectId(userId), name: collectionName });
+
+        if (collection) {
+            // If the collection exists, add the polish to the collection
+            if (collection.polishes.includes(new ObjectId(polishId))) {
+                return res.status(400).json({ message: "Polish already exists in this collection" });
+            }
+
+            collection.polishes.push(new ObjectId(polishId));
+            await collectionsCollection.updateOne({ _id: collection._id }, { $set: { polishes: collection.polishes } });
+
+            return res.json({ _id: collection._id, message: "Polish added to existing collection successfully." });
+        } else {
+            // If the collection doesn't exist, create a new collection
+            const result = await collectionsCollection.insertOne({
+                userId: new ObjectId(userId),
+                name: collectionName,
+                polishes: [new ObjectId(polishId)]  // Initialize with the selected polish
+            });
+
+            if (result.insertedCount > 0) {
+                return res.json({ _id: result.insertedId, message: "Collection created and polish added successfully." });
+            } else {
+                return res.status(500).json({ message: "Failed to create the collection." });
+            }
+        }
+    } catch (error) {
+        console.error("Error creating collection and adding polish:", error);
+        return res.status(500).json({ message: "Internal server error", error: error.message });
+    }
+});
+
 
 
 

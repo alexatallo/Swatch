@@ -6,6 +6,9 @@ import LoginScreen from "./auth/LoginScreen";
 import DashboardScreen from "./auth/DashBoardScreen";
 import HomeScreen from "./HomeScreen"; 
 import PolishScreen from "./PolishScreen";
+import CollectionScreen from "./screens/CollectionScreen"; 
+import ClientAccount from "./screens/ClientAccount";
+import BusinessAccount from "./screens/BusinessAccount";
 
 const Stack = createStackNavigator();
 
@@ -18,6 +21,9 @@ export default function App() {
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="PolishScreen" component={PolishScreen} />
+        <Stack.Screen name="CollectionScreen" component={CollectionScreen} />
+        <Stack.Screen name="ClientAccount" component={ClientAccount} />
+        <Stack.Screen name="BusinessAccount" component={BusinessAccount} />
       </Stack.Navigator>
     </NavigationContainer>
   );
