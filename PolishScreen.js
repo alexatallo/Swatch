@@ -32,6 +32,7 @@ export default function PolishScreen({ route }) {
   const [loading, setLoading] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState(null);
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
+  const [isCollectionsVisible, setIsCollectionsVisible] = useState(false);
 
   const fetchCollections = async (pageNum = 1, limit = 10) => {
     if (loading) return;
@@ -49,8 +50,11 @@ export default function PolishScreen({ route }) {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (response.data && response.data.data) {
-        setUserCollections(response.data.data);
+      console.log(response.data); // Check the structure of the responses
+
+
+      if (Array.isArray(response.data)) {
+        setUserCollections(response.data);
       } else {
         console.error("Unexpected API response:", response.data);
       }
@@ -74,6 +78,8 @@ export default function PolishScreen({ route }) {
       }
 
       let collectionId;
+      let collectionNameToSend;
+
       if (collectionName.trim()) {
         // Create a new collection
         const response = await axios.post(
@@ -81,20 +87,25 @@ export default function PolishScreen({ route }) {
           { collectionName: collectionName.trim(), polishId: item._id },
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        collectionId = response.data._id;
+        collectionId = response.data._id; // Get the ID of the new collection
+        collectionNameToSend = response.data.name; // Collection name of the newly created collection
       } else if (selectedCollectionId) {
         // Use the selected existing collection
-        collectionId = selectedCollectionId;
+        const selectedCollection = userCollections.find(
+          (collection) => collection._id === selectedCollectionId
+        );
+        collectionId = selectedCollection._id;
+        collectionNameToSend = selectedCollection.name; // Get the name of the selected collection
       } else {
         Alert.alert("Error", "Please select or create a collection.");
         setLoading(false);
         return;
       }
 
-      // Save the polish to the collection
+      // Now save the polish to the selected or newly created collection with both the collection name and polish ID
       const polishResponse = await axios.post(
-        `${API_URL}/collections/${collectionId}/polishes`,
-        { polishId: item._id },
+        `${API_URL}/collections`,  // Ensure this is the correct endpoint for saving polish to collection
+        { collectionId, collectionName: collectionNameToSend, polishId: item._id },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -108,14 +119,17 @@ export default function PolishScreen({ route }) {
     }
   };
 
+
   const renderCollectionOption = ({ item }) => (
     <TouchableOpacity
       style={styles.collectionOption}
-      onPress={() => setSelectedCollectionId(item._id)}
+      onPress={() => handleSaveToCollection(item._id)} // Pass collection ID when clicked
     >
       <Text style={styles.collectionName}>{item.name}</Text>
     </TouchableOpacity>
   );
+
+
 
   return (
     <View style={styles.container}>
@@ -137,37 +151,41 @@ export default function PolishScreen({ route }) {
         </TouchableOpacity>
       )}
 
-      {/* Save to Collection Button */}
       <TouchableOpacity
         style={styles.saveButton}
-        onPress={() => setModalVisible(true)}
+        onPress={() => {
+          setModalVisible(true); // Show the modal when clicking "Save to Collection"
+        }}
       >
         <Text style={styles.saveButtonText}>Save to Collection</Text>
       </TouchableOpacity>
 
-      {/* Modal for Collection Creation/Selection */}
       <Modal visible={modalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Save to Collection</Text>
 
-            {/* Option to Create a New Collection */}
+            {/* Option to Create New Collection */}
             <TouchableOpacity
               style={styles.createNewButton}
               onPress={() => {
-                setIsCreatingCollection(true);
-                setSelectedCollectionId(null); // Reset selected collection
+                setIsCreatingCollection(true); // User wants to create a new collection
+                setSelectedCollectionId(null); // Ensure no collection is selected
+                setIsCollectionsVisible(false); // Hide existing collections if creating a new one
+                setCollectionName(''); // Clear the name input field
               }}
             >
               <Text style={styles.createNewButtonText}>Create New Collection</Text>
             </TouchableOpacity>
 
-            {/* Option to Select an Existing Collection */}
+            {/* Option to Select Existing Collection */}
             <TouchableOpacity
               style={styles.selectExistingButton}
               onPress={() => {
-                setIsCreatingCollection(false); // Show existing collections
-                setSelectedCollectionId(null); // Reset selected collection
+                setIsCreatingCollection(false); // User wants to select an existing collection
+                setIsCollectionsVisible(!isCollectionsVisible); // Toggle collection visibility
+                setSelectedCollectionId(null); // Ensure no collection is selected initially
+                setCollectionName(''); // Clear the name input field
               }}
             >
               <Text style={styles.selectExistingButtonText}>Select Existing Collection</Text>
@@ -183,24 +201,46 @@ export default function PolishScreen({ route }) {
               />
             )}
 
-            {/* Display Existing Collections */}
-            {!isCreatingCollection && (
-              <FlatList
-                data={userCollections}
-                keyExtractor={(item) => item._id}
-                renderItem={renderCollectionOption}
-              />
-            )}
+            {/* Collection Info Section */}
+            {isCollectionsVisible && !isCreatingCollection ? (
+              Array.isArray(userCollections) && userCollections.length > 0 ? (
+                userCollections.map((collection) => (
+                  <TouchableOpacity
+                    key={collection._id}
+                    style={[
+                      styles.collectionCard,
+                      collection._id === selectedCollectionId && styles.selectedCollection,
+                    ]}
+                    onPress={() => {
+                      setSelectedCollectionId(collection._id); // Set the collection ID
+                      setCollectionName(''); // Clear the name input field when selecting an existing collection
+                    }}
+                  >
+                    <Text style={styles.collectionName}>{collection.name}</Text>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <Text style={styles.errorText}>No collections available.</Text>
+              )
+            ) : null}
 
             {/* Save Button */}
             <Button
               title={loading ? "Saving..." : "Save"}
-              onPress={handleSaveToCollection}
-              disabled={loading}
+              onPress={() => {
+                handleSaveToCollection();
+                setCollectionName(''); // Clear the name input field after saving
+              }}
+              disabled={loading || (!selectedCollectionId && isCreatingCollection && !collectionName)} // Disable until valid collection or collection name
             />
 
             {/* Cancel Button */}
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
+            <TouchableOpacity
+              onPress={() => {
+                setModalVisible(false);
+                setCollectionName(''); // Clear the name input field when cancelling
+              }}
+            >
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>
@@ -328,5 +368,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#007BFF",
     marginTop: 10,
+  },
+  selectedCollection: {
+    backgroundColor: "#FFD700", // Highlight color for selected collection
   },
 });
