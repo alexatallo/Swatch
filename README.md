@@ -1,3 +1,5 @@
+![image](https://github.com/user-attachments/assets/47a520e4-a164-4690-8955-5b5b261ce29a)
+
 # Swatch
 
 Swatch is a nail polish collection app designed to help users organize, view, and manage their personal nail polish collections. With Swatch, users can create custom collections, add individual nail polishes, and easily search and browse through their collection based on various attributes like color, brand, and hex code.
