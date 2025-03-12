@@ -12,7 +12,7 @@ const jwtSecret = process.env.JWT_SECRET;
 const app = express();
 app.use(express.json({ limit: "10mb" })); // ✅ Increased request size limit
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
-app.use(cors()); // ✅ Enable CORS
+app.use(cors()); 
 
 // MongoDB Connection
 const client = new MongoClient(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true });
@@ -155,15 +155,18 @@ app.post("/posts", async (req, res) => {
             return res.status(400).json({ error: "All fields are required." });
         }
 
-        // ✅ Ensure valid image format (Base64 or URL)
-        if (!photoUri.startsWith("data:image") && !photoUri.startsWith("http")) {
-            return res.status(400).json({ error: "Invalid image format" });
+        // Fetch the user's username
+        const usersCollection = db.collection("User");
+        const user = await usersCollection.findOne({ _id: new ObjectId(decoded.userId) });
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
         }
 
         const postsCollection = db.collection("posts");
 
         const newPost = {
             userId: new ObjectId(decoded.userId),
+            username: user.username, // Include the username
             caption,
             nailColor,
             nailLocation,
@@ -174,7 +177,7 @@ app.post("/posts", async (req, res) => {
         const result = await postsCollection.insertOne(newPost);
         newPost._id = result.insertedId;
 
-        res.json(newPost); // ✅ Send full post back
+        res.json(newPost); // Send full post back with username
     } catch (error) {
         console.error("❌ Error creating post:", error);
         res.status(500).json({ error: "Internal server error" });
