@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, ActivityIndicator, Alert, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native'; // 🔹 Import useFocusEffect
+import { useFocusEffect } from '@react-navigation/native'; 
 import axios from 'axios';
 import { API_URL } from "@env";
 
@@ -12,7 +12,7 @@ export default function ClientAccount({ navigation }) {
   const [collectionData, setCollectionData] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 🔹 useFocusEffect ensures data updates when the screen is revisited
+  //useFocusEffect ensures data updates when the screen is revisited
   useFocusEffect(
     useCallback(() => {
       const fetchUserData = async () => {
@@ -54,7 +54,7 @@ export default function ClientAccount({ navigation }) {
       };
 
       fetchUserData();
-    }, []) // No dependencies → runs every time the screen is focused
+    }, []) // runs every time the screen is focused
   );
 
   if (loading) {

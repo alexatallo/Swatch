@@ -10,7 +10,6 @@ export default function DashboardScreen({ route, navigation }) {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-      // IP ADDRESS REQUIREd
         const response = await axios.get(`${API_URL}/login`, {
           headers: { Authorization: token },
         });

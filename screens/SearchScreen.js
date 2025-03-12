@@ -16,7 +16,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "@env";
 import Slider from "@react-native-community/slider"; 
-const { width, height } = Dimensions.get("window"); // Get screen dimensions
+const { width, height } = Dimensions.get("window");  
 const colorPickerSize = Platform.OS === "web" ? Math.min(width * 0.4, 250) : width * 0.8;
 
 // Convert HEX to RGB
@@ -32,7 +32,6 @@ const hexToRgb = (hex) => {
   ];
 };
 
-// Calculate color distance
 const colorDistance = (rgb1, rgb2) => {
   return Math.sqrt(
     (rgb1[0] - rgb2[0]) ** 2 +
@@ -49,7 +48,6 @@ export default function SearchScreen({ navigation }) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [tempColor, setTempColor] = useState("");
 
-  // FlatList ref for scrolling
   const flatListRef = useRef(null);
 
   useEffect(() => {
@@ -92,9 +90,9 @@ export default function SearchScreen({ navigation }) {
         ...item,
         distance: colorDistance(targetRgb, hexToRgb(item.hex)),
       }))
-      .sort((a, b) => a.distance - b.distance); // Sort from closest to farthest
+      .sort((a, b) => a.distance - b.distance);  
 
-    return distances.slice(0, N); // Return the top N closest matches
+    return distances.slice(0, N);  
   };
 
   const filterByColor = () => {
@@ -164,9 +162,9 @@ export default function SearchScreen({ navigation }) {
     <View style={styles.modalContainer}>
       <Text style={styles.modalTitle}>Select a Color</Text>
 
-      {/* Centered Color Picker */}
+      {/* Color Picker */}
       <View style={[styles.colorPickerWrapper, { width: colorPickerSize, height: colorPickerSize }]}>
-        {/* Web-specific wrapper to fix alignment */}
+       
         <View style={Platform.OS === "web" ? styles.webColorPickerFix : null}>
           <ColorPicker
             onColorChange={(color) => setSelectedColor(fromHsv(color))}
@@ -234,17 +232,17 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     width: Platform.OS === "web" ? "35%" : "90%",
-    maxHeight: height * 0.7, // 🔥 Increased height
+    maxHeight: height * 0.7, 
     minWidth: 300,
     justifyContent: "flex-start",
     paddingBottom: 0
-     // 🔥 Aligns everything properly
+    
   },
   
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 10, // 🔥 Reduced margin to move it up
+    marginBottom: 10,  
   },
   
   colorPickerWrapper: {
@@ -252,20 +250,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     maxWidth: 280,
     maxHeight: 280,
-    marginTop: 40, // 🔥 Added space above the picker
+    marginTop: 40, 
   },
   
   modalButtons: {
     flexDirection: "row",
-    marginTop: 40, // 🔥 Push buttons lower
+    marginTop: 40,  
   },
   
   colorPicker: {
-    alignSelf: "center", // Ensures it's centered inside wrapper
+    alignSelf: "center", 
   },
   webColorPickerFix: {
     position: "relative",
-    left: 5, // Adjust this value to center the hue ring on web
+    left: 5,  
   },
 
   modalButton: {

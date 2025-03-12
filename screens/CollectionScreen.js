@@ -112,18 +112,18 @@ const CollectionScreen = () => {
 // Styles
 const styles = StyleSheet.create({
   container: {
-    flex: 1, // Makes sure View fills the screen
+    flex: 1, 
     backgroundColor: "#F8F8F8",
     paddingTop: 40,
   },
   flatList: {
-    flex: 1, // Makes FlatList take full height
-    overflow: Platform.OS === "web" ? "scroll" : "visible", // Fix for web scrolling
+    flex: 1, 
+    overflow: Platform.OS === "web" ? "scroll" : "visible", 
   },
   listContainer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-    flexGrow: 1, // Ensures FlatList grows properly
+    flexGrow: 1, 
   },
   backButton: {
     marginBottom: 10,
