@@ -45,8 +45,7 @@ export default function ExploreFeedScreen() {
 
 
   const fetchPosts = async (pageNum = 1, limit = 10) => {
-    if (loading || !hasMorePosts) return; // Prevent multiple calls or fetching when no more posts are available
-
+    if (loading || !hasMorePosts) return;
 
     setLoading(true);
     try {
@@ -67,7 +66,7 @@ export default function ExploreFeedScreen() {
 
       if (response.data && response.data.data) {
         if (pageNum === 1) {
-          setPosts(response.data.data); // Replace posts if it's first load
+          setPosts(response.data.data);  
         } else {
           setPosts(prevPosts => {
             const newPosts = response.data.data.filter(
@@ -77,8 +76,6 @@ export default function ExploreFeedScreen() {
           });
         }
 
-
-        // Stop fetching if fewer posts than limit are returned
         if (response.data.data.length < limit) {
           setHasMorePosts(false);
         }
@@ -97,7 +94,7 @@ export default function ExploreFeedScreen() {
 
   const resizeImage = async (uri) => {
     const { width: screenWidth } = Dimensions.get("window");
-    const resizeWidth = screenWidth * 0.8; // Resize to 80% of the screen width
+    const resizeWidth = screenWidth * 0.8;  
     const manipulatedImage = await ImageManipulator.manipulateAsync(
       uri,
       [{ resize: { width: resizeWidth } }],
@@ -200,14 +197,13 @@ export default function ExploreFeedScreen() {
             }
         }
 
-        // ✅ Sending Post Data to API
         const response = await axios.post(
             `${API_URL}/posts`,
             {
                 caption: postData.caption,
                 nailColor: postData.nailColor,
                 nailLocation: postData.nailLocation,
-                photoUri: base64Image || postData.photoUri, // 🖼️ Handle images
+                photoUri: base64Image || postData.photoUri, 
             },
             {
                 headers: {
@@ -221,10 +217,8 @@ export default function ExploreFeedScreen() {
             alert("Post created successfully!");
             setModalVisible(false);
 
-            // ✅ Add New Post to Feed with username
             setPosts(prevPosts => [response.data, ...prevPosts]);
 
-            // ✅ Reset Post Data After Submission
             setPostData({ caption: "", nailColor: "", nailLocation: "", photoUri: null });
         } else {
             throw new Error("Failed to create post");
@@ -289,7 +283,7 @@ export default function ExploreFeedScreen() {
 
   const handleImagePress = (post) => {
     const now = Date.now();
-    const DOUBLE_PRESS_DELAY = 300; // milliseconds
+    const DOUBLE_PRESS_DELAY = 300;  
     if (lastTap && now - lastTap < DOUBLE_PRESS_DELAY) {
       if (post?.photoUri) {
         setSelectedImage(post);
@@ -326,7 +320,7 @@ export default function ExploreFeedScreen() {
         <View style={{ position: "relative", alignItems: "center" }}>
             {/* Post Card */}
             <View style={styles.postCard}>
-                {/* ✅ Username Positioned at the Top-Left */}
+                {/* Username */}
                 <Text style={styles.username}>@{item.username}</Text>
 
                 <TouchableWithoutFeedback onPress={() => handleImagePress(item)}>
@@ -341,7 +335,7 @@ export default function ExploreFeedScreen() {
                 <Text style={styles.postDetails}>💅 {item.nailColor} | 📍 {item.nailLocation}</Text>
             </View>
 
-            {/* Trash Icon Positioned Outside */}
+            {/* Trash Icon */}
             <TouchableOpacity
                 style={styles.trashButton}
                 onPress={() => deletePost(item._id)}
@@ -639,16 +633,16 @@ const styles = StyleSheet.create({
   },
   username: {
     position: "absolute",
-    top: 10,    // Move to top
-    left: 10,   // Move to left
+    top: 10,    
+    left: 10,   
     fontSize: 16,
     fontWeight: "bold",
     color: "#6A5ACD",
-    backgroundColor: "rgba(255, 255, 255, 0.7)", // Light background for visibility
+    backgroundColor: "rgba(255, 255, 255, 0.7)", 
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 10,
-    zIndex: 10,  // Make sure it's above other elements
+    zIndex: 10,   
   },
   imageButtonContainer: {
     flexDirection: "row",

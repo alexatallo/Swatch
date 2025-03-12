@@ -19,23 +19,16 @@ const AccountScreen = () => {
       try {
         const token = await getToken();
         if (!token) {
-          console.error("Token is missing.");
           setLoading(false);
           return;
         }
 
-        console.log("📡 Fetching user data...");
         const response = await axios.get(`${API_URL}/account`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        console.log("📡 API Response:", response.data);
-
-        // Access the user data from the response
-        if (response.data && response.data.user) {
+        if (response.data?.user) {
           setUser(response.data.user);
-        } else {
-          console.error("Unexpected response format:", response.data);
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
@@ -47,25 +40,20 @@ const AccountScreen = () => {
     fetchUserData();
   }, []);
 
-  // Navigate once the user data is fetched and loading is complete
   useEffect(() => {
     if (!loading && user !== null) {
       if (user.isBusiness) {
-        console.log("🚀 Navigating to Business Account Screen...");
         navigation.navigate("BusinessAccount");
       } else {
-        console.log("🚀 Navigating to Client Account Screen...");
         navigation.navigate("ClientAccount");
       }
     }
   }, [user, loading, navigation]);
 
-  // Loading indicator while waiting for data
   if (loading) {
     return <ActivityIndicator size="large" color="#A020F0" />;
   }
 
-  // If no user data, show this text
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
       <Text>Loading user data...</Text>

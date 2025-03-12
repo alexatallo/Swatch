@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react'; 
+import React, { useState, useCallback } from 'react';
 import { View, Text, ActivityIndicator, Alert, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native'; // 🔹 Import useFocusEffect
+import { useFocusEffect } from '@react-navigation/native';
 import Feather from 'react-native-vector-icons/Feather';
 import axios from 'axios';
 import { API_URL } from "@env";
@@ -16,9 +16,8 @@ export default function BusinessAccount({ navigation }) {
   const [editableWebsite, setEditableWebsite] = useState('');
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [isEditing, setIsEditing] = useState(false); // New state for edit mode
+  const [isEditing, setIsEditing] = useState(false);
 
-  // 🔹 Automatically refresh data when screen is focused
   useFocusEffect(
     useCallback(() => {
       const fetchUserData = async () => {
@@ -26,7 +25,6 @@ export default function BusinessAccount({ navigation }) {
         try {
           const storedToken = await Storage.getItem("token");
           if (!storedToken) {
-            console.error("Token is not available.");
             setLoading(false);
             return;
           }
@@ -34,8 +32,6 @@ export default function BusinessAccount({ navigation }) {
           const response = await axios.get(`${API_URL}/account`, {
             headers: { Authorization: `Bearer ${storedToken}` },
           });
-
-          console.log("📡 Full API Response:", response.data);
 
           if (response.data.user) setUserData(response.data.user);
           if (response.data.business) {
@@ -45,7 +41,6 @@ export default function BusinessAccount({ navigation }) {
             setEditableWebsite(response.data.business.website || '');
           }
         } catch (error) {
-          console.error("Error fetching user data:", error);
           if (error.response?.status === 401) {
             Alert.alert("Unauthorized", "Session expired or invalid token. Please log in again.");
             await Storage.removeItem("token");
@@ -59,7 +54,7 @@ export default function BusinessAccount({ navigation }) {
       };
 
       fetchUserData();
-    }, []) // No dependencies → Runs every time the screen is focused
+    }, [])
   );
 
   const handleUpdateBusinessInfo = async () => {
@@ -82,7 +77,6 @@ export default function BusinessAccount({ navigation }) {
         }
       );
 
-      // Update business data locally
       setBusinessData({
         ...businessData,
         businessName: editableBusinessName,
@@ -91,9 +85,8 @@ export default function BusinessAccount({ navigation }) {
       });
 
       Alert.alert("Success", "Business info updated successfully.");
-      setIsEditing(false); // Exit edit mode
+      setIsEditing(false);
     } catch (error) {
-      console.error("Error updating business info:", error);
       Alert.alert("Error", "Failed to update business info.");
     } finally {
       setUpdating(false);
@@ -108,7 +101,6 @@ export default function BusinessAccount({ navigation }) {
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.headerText}>User Profile</Text>
 
-      {/* User Info Section */}
       {userData ? (
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>User Information</Text>
@@ -123,7 +115,6 @@ export default function BusinessAccount({ navigation }) {
         <Text style={styles.errorText}>User data not found.</Text>
       )}
 
-      {/* Business Info Section */}
       {businessData ? (
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Business Information</Text>
@@ -195,4 +186,3 @@ const styles = StyleSheet.create({
   editButton: { position: 'absolute', top: 10, right: 10, backgroundColor: '#3498db', borderRadius: 50, padding: 10, elevation: 5 },
   input: { height: 50, borderColor: '#ddd', borderWidth: 1, borderRadius: 8, marginBottom: 15, paddingLeft: 15 },
 });
-

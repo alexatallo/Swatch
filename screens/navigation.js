@@ -1,8 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
-
-// Import your screens
 import AccountScreen from '../screens/AccountScreen';
 import ExploreFeedScreen from '../screens/ExploreFeedScreen';
 import SearchScreen from '../screens/SearchScreen';
