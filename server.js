@@ -451,63 +451,87 @@ app.get("/polishes", async (req, res) => {
     }
 });
 
-
 app.get("/collections/:collectionId/polishes", async (req, res) => {
     const { collectionId } = req.params;
-    console.log("✅ Collection ID:", collectionId);
 
     try {
-        // Extract token from headers
         const token = req.headers.authorization?.split(" ")[1];
         if (!token) {
             return res.status(403).json({ message: "No token provided" });
         }
 
-        // Decode the token to extract the userId
-        const decoded = jwt.verify(token, jwtSecret);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const userId = decoded.userId;
 
-        // Use the collectionDb from the global scope
+        // Find the collection by ID
         const collection = await db.collection("Collection").findOne({ _id: new ObjectId(collectionId) });
 
         if (!collection) {
             return res.status(404).json({ message: "Collection not found" });
         }
 
-        // Extract polish IDs from the collection document
-        const polishIds = collection.polishes;
+        const polishIds = collection.polishes || [];
 
-        if (polishIds && polishIds.length > 0) {
-            // Ensure polishIds is an array of ObjectId, if not, convert them
-            const polishObjectIds = polishIds.map(id => new ObjectId(id));
-
-            // Look up the actual polishes using the polish IDs
-            const polishesInCollection = await db.collection("Polish").find({ _id: { $in: polishObjectIds } }).toArray();
-
-            if (polishesInCollection.length === 0) {
-                return res.status(404).json({ message: "No polishes found in this collection" });
-            }
-
-            // Make sure to return the data in the right format (e.g., using .map to extract needed fields)
-            const formattedPolishes = polishesInCollection.map(polish => ({
-                _id: polish._id,
-                name: polish.name,
-                color: polish.color,
-                brand: polish.brand,
-                image: polish.image  // Add other fields you need
-                // Include other fields as needed from the polish object
-            }));
-
-            res.json({ status: "okay", data: formattedPolishes });
-        } else {
-            return res.status(404).json({ message: "No polishes in this collection" });
+        if (polishIds.length === 0) {
+            return res.json({ status: "okay", data: [] }); // No polishes in the collection
         }
+
+        // Convert polish IDs to ObjectIds
+        const polishObjectIds = polishIds.map(id => new ObjectId(id));
+
+        // Fetch full polish details from the Polish collection
+        const polishesInCollection = await db.collection("Polish").find({ _id: { $in: polishObjectIds } }).toArray();
+
+        res.json({
+            status: "okay",
+            data: polishesInCollection // Return full polish objects
+        });
 
     } catch (error) {
         console.error("❌ Server Error:", error);
         return res.status(500).json({ message: "Server error" });
     }
 });
+
+app.post("/collections/:collectionId/polishes", async (req, res) => {
+    const { collectionId } = req.params;
+    const { polishId } = req.body;
+
+    try {
+        const token = req.headers.authorization?.split(" ")[1];
+        if (!token) {
+            return res.status(403).json({ message: "No token provided" });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = decoded.userId;
+
+        // Find the collection
+        const collection = await db.collection("Collection").findOne({ _id: new ObjectId(collectionId) });
+
+        if (!collection) {
+            return res.status(404).json({ message: "Collection not found" });
+        }
+
+        // Check if polish is already in the collection
+        if (collection.polishes.includes(polishId)) {
+            return res.status(400).json({ message: "Polish already in collection" });
+        }
+
+        // Add the polish to the collection
+        await db.collection("Collection").updateOne(
+            { _id: new ObjectId(collectionId) },
+            { $push: { polishes: new ObjectId(polishId) } }
+        );
+
+        res.json({ message: "Polish added successfully" });
+
+    } catch (error) {
+        console.error("❌ Error adding polish:", error);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
 
 app.get("/collections", async (req, res) => {
     try {
@@ -536,17 +560,14 @@ app.get("/collections", async (req, res) => {
         return res.status(500).json({ message: "Internal server error", error: error.message });
     }
 });
-
-// Save a polish to an existing or new collection
+// ✅ Create a new collection
 app.post("/collections", async (req, res) => {
     try {
-        // Extract token from headers
         const token = req.headers.authorization?.split(" ")[1];
         if (!token) {
             return res.status(403).json({ message: "No token provided" });
         }
 
-        // Decode the user ID from the token
         let decoded;
         try {
             decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -555,54 +576,37 @@ app.post("/collections", async (req, res) => {
         }
         const userId = decoded.userId;
 
-        // Get the collection name and polishId from the request body
-        const { collectionName, polishId } = req.body;
-
-        if (!collectionName || !polishId) {
-            return res.status(400).json({ message: "Collection name and polish ID are required" });
+        const { collectionName } = req.body;
+        if (!collectionName) {
+            return res.status(400).json({ message: "Collection name is required." });
         }
 
-        // Validate polishId
-        if (!ObjectId.isValid(polishId)) {
-            return res.status(400).json({ message: "Invalid polish ID." });
-        }
+        const collectionsCollection = db.collection("Collection");
 
         // Check if the collection already exists for the user
-        const collectionsCollection = db.collection("Collection");
-        let collection = await collectionsCollection.findOne({ userId: new ObjectId(userId), name: collectionName });
+        let existingCollection = await collectionsCollection.findOne({ userId: new ObjectId(userId), name: collectionName });
 
-        if (collection) {
-            // If the collection exists, add the polish to the collection
-            if (collection.polishes.includes(new ObjectId(polishId))) {
-                return res.status(400).json({ message: "Polish already exists in this collection" });
-            }
+        if (existingCollection) {
+            return res.status(400).json({ message: "Collection already exists." });
+        }
 
-            collection.polishes.push(new ObjectId(polishId));
-            await collectionsCollection.updateOne({ _id: collection._id }, { $set: { polishes: collection.polishes } });
+        // Create a new collection
+        const result = await collectionsCollection.insertOne({
+            userId: new ObjectId(userId),
+            name: collectionName,
+            polishes: []  // Empty polish array initially
+        });
 
-            return res.json({ _id: collection._id, message: "Polish added to existing collection successfully." });
+        if (result.insertedId) {
+            return res.json({ _id: result.insertedId, message: "Collection created successfully." });
         } else {
-            // If the collection doesn't exist, create a new collection
-            const result = await collectionsCollection.insertOne({
-                userId: new ObjectId(userId),
-                name: collectionName,
-                polishes: [new ObjectId(polishId)]  // Initialize with the selected polish
-            });
-
-            if (result.insertedCount > 0) {
-                return res.json({ _id: result.insertedId, message: "Collection created and polish added successfully." });
-            } else {
-                return res.status(500).json({ message: "Failed to create the collection." });
-            }
+            return res.status(500).json({ message: "Failed to create the collection." });
         }
     } catch (error) {
-        console.error("Error creating collection and adding polish:", error);
+        console.error("Error creating collection:", error);
         return res.status(500).json({ message: "Internal server error", error: error.message });
     }
 });
-
-
-
 
 // ✅ Start Server
 app.listen(5000, () => console.log("🚀 Backend API running on port 5000"));
