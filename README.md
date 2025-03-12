@@ -1,4 +1,5 @@
-![image](https://github.com/user-attachments/assets/47a520e4-a164-4690-8955-5b5b261ce29a)
+<img width="241" alt="Screenshot 2025-03-12 at 4 59 12 PM" src="https://github.com/user-attachments/assets/9bb2ad51-5305-4a4c-b9b9-24b8327aba8b" />
+
 
 # Swatch
 
