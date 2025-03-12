@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, Platform, Alert, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useCallback } from 'react'; 
+import { View, Text, ActivityIndicator, Alert, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native'; // 🔹 Import useFocusEffect
 import Feather from 'react-native-vector-icons/Feather';
 import axios from 'axios';
 import { API_URL } from "@env";
 
-// Use localStorage for web if needed
-const Storage = Platform.OS === 'web' ? localStorage : AsyncStorage;
+const Storage = AsyncStorage;
 
 export default function BusinessAccount({ navigation }) {
   const [userData, setUserData] = useState(null);
@@ -18,52 +18,49 @@ export default function BusinessAccount({ navigation }) {
   const [updating, setUpdating] = useState(false);
   const [isEditing, setIsEditing] = useState(false); // New state for edit mode
 
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const storedToken = await Storage.getItem("token");
-        if (!storedToken) {
-          console.error("Token is not available.");
-          setLoading(false);
-          return;
-        }
-
-        const response = await axios.get(`${API_URL}/account`, {
-          headers: { Authorization: `Bearer ${storedToken}` },
-        });
-
-        console.log("Full API Response:", response.data); // Log the full response
-
-        if (response.data.user) {
-            setUserData(response.data.user);
+  // 🔹 Automatically refresh data when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      const fetchUserData = async () => {
+        setLoading(true);
+        try {
+          const storedToken = await Storage.getItem("token");
+          if (!storedToken) {
+            console.error("Token is not available.");
+            setLoading(false);
+            return;
           }
-  
+
+          const response = await axios.get(`${API_URL}/account`, {
+            headers: { Authorization: `Bearer ${storedToken}` },
+          });
+
+          console.log("📡 Full API Response:", response.data);
+
+          if (response.data.user) setUserData(response.data.user);
           if (response.data.business) {
             setBusinessData(response.data.business);
             setEditableBusinessName(response.data.business.businessName || '');
             setEditableBusinessLocation(response.data.business.businessLocation || '');
             setEditableWebsite(response.data.business.website || '');
           }
-  
-
-
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        if (error.response?.status === 401) {
-          Alert.alert("Unauthorized", "Session expired or invalid token. Please log in again.");
-          await Storage.removeItem("token");
-          navigation.replace('Login');
-        } else {
-          Alert.alert("Error", error?.response?.data?.error || "Failed to fetch user data.");
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+          if (error.response?.status === 401) {
+            Alert.alert("Unauthorized", "Session expired or invalid token. Please log in again.");
+            await Storage.removeItem("token");
+            navigation.replace('Login');
+          } else {
+            Alert.alert("Error", error?.response?.data?.error || "Failed to fetch user data.");
+          }
+        } finally {
+          setLoading(false);
         }
-      } finally {
-        setLoading(false);
-      }
-    };
+      };
 
-    fetchUserData();
-  }, []);
+      fetchUserData();
+    }, []) // No dependencies → Runs every time the screen is focused
+  );
 
   const handleUpdateBusinessInfo = async () => {
     if (!editableBusinessName.trim() || !editableBusinessLocation.trim() || !editableWebsite.trim()) {
@@ -184,105 +181,18 @@ export default function BusinessAccount({ navigation }) {
       )}
     </ScrollView>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    padding: 20,
-    backgroundColor: '#f7f7f7',
-  },
-  headerText: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#2c3e50',
-    textAlign: 'center',
-    marginBottom: 25,
-  },
-  sectionContainer: {
-    marginBottom: 40,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#34495e',
-    marginBottom: 10,
-  },
-  userInfoContainer: {
-    backgroundColor: '#ffffff',
-    padding: 20,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  userInfoText: {
-    fontSize: 16,
-    color: '#7f8c8d',
-    marginBottom: 8,
-  },
-  businessInfoContainer: {
-    backgroundColor: '#ffffff',
-    padding: 20,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 8,
-    position: 'relative',
-  },
-  businessText: {
-    fontSize: 16,
-    color: '#7f8c8d',
-    marginBottom: 12,
-  },
-  editButton: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: '#3498db',
-    borderRadius: 50,
-    padding: 10,
-    elevation: 5,
-  },
-  input: {
-    height: 50,
-    borderColor: '#ddd',
-    borderWidth: 1,
-    borderRadius: 8,
-    marginBottom: 15,
-    paddingLeft: 15,
-    fontSize: 16,
-    backgroundColor: '#f1f1f1',
-    color: '#2c3e50',
-  },
-  saveButtonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  saveButton: {
-    backgroundColor: '#27ae60',
-    borderRadius: 50,
-    padding: 12,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#e74c3c',
-    borderRadius: 50,
-    padding: 12,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  errorText: {
-    color: '#e74c3c',
-    fontSize: 16,
-    marginTop: 15,
-    textAlign: 'center',
-  },
+  container: { flexGrow: 1, padding: 20, backgroundColor: '#f7f7f7' },
+  headerText: { fontSize: 36, fontWeight: '700', color: '#2c3e50', textAlign: 'center', marginBottom: 25 },
+  sectionContainer: { marginBottom: 40 },
+  sectionTitle: { fontSize: 24, fontWeight: '600', color: '#34495e', marginBottom: 10 },
+  userInfoContainer: { backgroundColor: '#ffffff', padding: 20, borderRadius: 12, elevation: 8 },
+  userInfoText: { fontSize: 16, color: '#7f8c8d', marginBottom: 8 },
+  businessInfoContainer: { backgroundColor: '#ffffff', padding: 20, borderRadius: 12, elevation: 8 },
+  businessText: { fontSize: 16, color: '#7f8c8d', marginBottom: 12 },
+  editButton: { position: 'absolute', top: 10, right: 10, backgroundColor: '#3498db', borderRadius: 50, padding: 10, elevation: 5 },
+  input: { height: 50, borderColor: '#ddd', borderWidth: 1, borderRadius: 8, marginBottom: 15, paddingLeft: 15 },
 });
+

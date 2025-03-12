@@ -1,24 +1,35 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Linking, FlatList, Platform } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import axios from 'axios';
-import { API_URL } from '@env'; // Import the API_URL from the .env file
-import AsyncStorage from '@react-native-async-storage/async-storage'; // Ensure you import AsyncStorage
-import { Ionicons } from '@expo/vector-icons'; // Add icon library
+import React, { useEffect, useRef, useState } from "react";
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  TouchableOpacity,
+  Linking,
+  FlatList,
+  Platform,
+  ScrollView,
+  ActivityIndicator,
+} from "react-native";
+import { useRoute, useNavigation } from "@react-navigation/native";
+import axios from "axios";
+import { API_URL } from "@env";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
 
 const getToken = async () => {
-  if (Platform.OS === "web") {
-    return localStorage.getItem("token");
-  }
-  return await AsyncStorage.getItem("token");
+  return Platform.OS === "web"
+    ? localStorage.getItem("token")
+    : await AsyncStorage.getItem("token");
 };
 
 const CollectionScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
-  const { collectionId } = route.params; // Get the collection ID from the route params
+  const { collectionId } = route.params;
   const [polishData, setPolishData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const flatListRef = useRef(null);
 
   useEffect(() => {
     const fetchPolishes = async () => {
@@ -29,17 +40,15 @@ const CollectionScreen = () => {
           setLoading(false);
           return;
         }
-  
-        console.log("📡 Sending request to fetch polishes for collection...");
-        const response = await axios.get(`${API_URL}/collections/${collectionId}/polishes`, {
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        });
-  
-        console.log("🔍 Full API Response:", response.data);
-  
-        // Check if the response has data and if it's in the correct format
+
+        console.log("📡 Fetching polishes for collection...");
+        const response = await axios.get(
+          `${API_URL}/collections/${collectionId}/polishes`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
         if (response.data.status === "okay" && Array.isArray(response.data.data)) {
-          setPolishData(response.data.data); // Set polish data from the collection array
+          setPolishData(response.data.data);
         } else {
           console.error("Unexpected response format:", response.data);
         }
@@ -49,114 +58,136 @@ const CollectionScreen = () => {
         setLoading(false);
       }
     };
-  
+
     fetchPolishes();
   }, [collectionId]);
-
-  if (loading) {
-    return <Text>Loading...</Text>;
-  }
-
+  
   return (
     <View style={styles.container}>
-      {/* Back Button */}
-      <TouchableOpacity 
-        style={styles.backButton} 
-        onPress={() => navigation.goBack()} // Navigate back to the previous screen (ClientAccount)
-      >
-        <Ionicons name="arrow-back" size={30} color="#333" />
-      </TouchableOpacity>
-
-      <FlatList
-        data={polishData}
-        keyExtractor={(item, index) => item._id ? item._id.toString() : index.toString()}
-        renderItem={({ item }) => (
-          <View style={styles.polishContainer}>
-            <Image source={{ uri: item.picture }} style={styles.image} />
-            <Text style={styles.title}>{item.name || "No name available"}</Text>
-            <Text style={styles.text}>Brand: {item.brand || "Unknown brand"}</Text>
-            <Text style={styles.text}>Color Family: {item['color family'] || "Unknown color family"}</Text>
-            <Text style={styles.text}>Finish: {item.finish || "Unknown finish"}</Text>
-            <Text style={styles.text}>Type: {item.type || "Unknown type"}</Text>
-            <Text style={styles.text}>Hex: {item.hex || "Unknown hex value"}</Text>
-
-            {/* Buy Button */}
-            {item.link && (
-              <TouchableOpacity style={styles.buyButton} onPress={() => Linking.openURL(item.link)}>
-                <Text style={styles.buyButtonText}>Buy</Text>
+      {loading ? (
+        <ActivityIndicator size="large" color="#A020F0" style={{ marginTop: 20 }} />
+      ) : polishData.length === 0 ? (
+        <Text style={styles.emptyText}>No polishes found in this collection.</Text>
+      ) : (
+        <FlatList
+          data={polishData}
+          keyExtractor={(item) => item._id.toString()}
+          contentContainerStyle={styles.listContainer}
+          style={styles.flatList}
+          ListHeaderComponent={
+            <>
+              {/* Back Button */}
+              <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+                <Ionicons name="arrow-back" size={28} color="#333" />
               </TouchableOpacity>
-            )}
-          </View>
-        )}
-      />
+
+              {/* Header */}
+              <Text style={styles.headerText}>Your Collection</Text>
+            </>
+          }
+          renderItem={({ item }) => (
+            <View style={styles.polishCard}>
+              <Image source={{ uri: item.picture }} style={styles.image} />
+              <View style={styles.textContainer}>
+                <Text style={styles.title}>{item.name || "No name available"}</Text>
+                <Text style={styles.text}>Brand: {item.brand || "Unknown"}</Text>
+                <Text style={styles.text}>Finish: {item.finish || "Unknown"}</Text>
+                <Text style={styles.text}>Type: {item.type || "Unknown"}</Text>
+                <Text style={styles.text}>Hex: {item.hex || "Unknown"}</Text>
+
+                {item.link && (
+                  <TouchableOpacity style={styles.buyButton} onPress={() => Linking.openURL(item.link)}>
+                    <Text style={styles.buyButtonText}>Buy Now</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
+        />
+      )}
     </View>
   );
 };
 
+// Styles
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
-    flexGrow: 1,
-    backgroundColor: '#f1f1f1',
+    flex: 1, // Makes sure View fills the screen
+    backgroundColor: "#F8F8F8",
+    paddingTop: 40,
+  },
+  flatList: {
+    flex: 1, // Makes FlatList take full height
+    overflow: Platform.OS === "web" ? "scroll" : "visible", // Fix for web scrolling
+  },
+  listContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    flexGrow: 1, // Ensures FlatList grows properly
   },
   backButton: {
-    position: 'absolute',
-    top: 20,
-    left: 15,
-    zIndex: 1,
+    marginBottom: 10,
+    padding: 10,
+    alignSelf: "flex-start",
   },
   headerText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#333',
+    fontSize: 26,
+    fontWeight: "700",
+    color: "#333",
+    textAlign: "center",
     marginBottom: 20,
-    textAlign: 'center',
   },
-  polishContainer: {
-    backgroundColor: '#fff',
+  polishCard: {
+    backgroundColor: "#fff",
+    borderRadius: 15,
     padding: 15,
-    borderRadius: 10,
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.1,
-    shadowRadius: 6,
+    shadowRadius: 5,
     elevation: 5,
   },
   image: {
-    width: 200,
-    height: 200,
+    width: 90,
+    height: 90,
     borderRadius: 10,
-    marginBottom: 20,
+    marginRight: 15,
+  },
+  textContainer: {
+    flex: 1,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 5,
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 4,
   },
   text: {
-    fontSize: 16,
-    color: '#555',
-    marginBottom: 5,
+    fontSize: 14,
+    color: "#555",
+    marginBottom: 3,
   },
   buyButton: {
-    backgroundColor: '#A020F0',
-    padding: 10,
+    marginTop: 8,
+    backgroundColor: "#A020F0",
+    paddingVertical: 8,
     borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
+    alignItems: "center",
+    width: 120,
   },
   buyButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
   },
-  errorText: {
-    color: '#e74c3c',
+  emptyText: {
+    textAlign: "center",
     fontSize: 16,
+    color: "#666",
     marginTop: 20,
-    textAlign: 'center',
   },
 });
 
