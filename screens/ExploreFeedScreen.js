@@ -106,26 +106,65 @@ export default function ExploreFeedScreen() {
     return manipulatedImage.uri;
   };
 
-
-  const openCamera = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+  const openCameraRoll = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      alert("Camera access is required to take a photo.");
+      alert("Permission to access the camera roll is required.");
       return;
     }
-
-
-    const result = await ImagePicker.launchCameraAsync({
+  
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
     });
-
-
+  
     if (!result.canceled) {
       let selectedImage = result.assets[0].uri;
       const resizedUri = await resizeImage(selectedImage);
-      setPostData(prevData => ({ ...prevData, photoUri: resizedUri }));
+      setPostData((prevData) => ({ ...prevData, photoUri: resizedUri }));
+    }
+  }; 
+  
+  const openCamera = async (source) => {
+    if (source === "camera") {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        alert("Camera access is required to take a photo.");
+        return;
+      }
+  
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
+  
+      if (!result.canceled) {
+        let selectedImage = result.assets[0].uri;
+        const resizedUri = await resizeImage(selectedImage);
+        setPostData((prevData) => ({ ...prevData, photoUri: resizedUri }));
+      }
+    } else if (source === "cameraRoll") {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        alert("Permission to access the camera roll is required.");
+        return;
+      }
+  
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
+  
+      if (!result.canceled) {
+        let selectedImage = result.assets[0].uri;
+        const resizedUri = await resizeImage(selectedImage);
+        setPostData((prevData) => ({ ...prevData, photoUri: resizedUri }));
+      }
     }
   };
 
@@ -141,65 +180,60 @@ export default function ExploreFeedScreen() {
 
   const submitPost = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
-      if (!token) {
-        alert("Authentication token missing.");
-        return;
-      }
+        const token = await AsyncStorage.getItem("token");
+        if (!token) {
+            alert("Authentication token missing.");
+            return;
+        }
 
+        let base64Image = null;
+        if (postData.photoUri) {
+            if (Platform.OS !== "web") {
+                const base64Data = await FileSystem.readAsStringAsync(postData.photoUri, {
+                    encoding: FileSystem.EncodingType.Base64,
+                });
+                base64Image = `data:image/jpeg;base64,${base64Data}`;
+            } else {
+                const response = await fetch(postData.photoUri);
+                const blob = await response.blob();
+                base64Image = await blobToBase64(blob);
+            }
+        }
 
-      let base64Image = null;
-      if (postData.photoUri) {
-        if (Platform.OS !== "web") {
-          const base64Data = await FileSystem.readAsStringAsync(postData.photoUri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          base64Image = `data:image/jpeg;base64,${base64Data}`;
+        // ✅ Sending Post Data to API
+        const response = await axios.post(
+            `${API_URL}/posts`,
+            {
+                caption: postData.caption,
+                nailColor: postData.nailColor,
+                nailLocation: postData.nailLocation,
+                photoUri: base64Image || postData.photoUri, // 🖼️ Handle images
+            },
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        if (response.data) {
+            alert("Post created successfully!");
+            setModalVisible(false);
+
+            // ✅ Add New Post to Feed with username
+            setPosts(prevPosts => [response.data, ...prevPosts]);
+
+            // ✅ Reset Post Data After Submission
+            setPostData({ caption: "", nailColor: "", nailLocation: "", photoUri: null });
         } else {
-          const response = await fetch(postData.photoUri);
-          const blob = await response.blob();
-          base64Image = await blobToBase64(blob);
+            throw new Error("Failed to create post");
         }
-      }
-
-
-      // ✅ Sending Post Data to API
-      const response = await axios.post(
-        `${API_URL}/posts`,
-        {
-          caption: postData.caption,
-          nailColor: postData.nailColor,
-          nailLocation: postData.nailLocation,
-          photoUri: base64Image || postData.photoUri, // 🖼️ Handle images
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-
-      if (response.data) {
-        alert("Post created successfully!");
-        setModalVisible(false);
-
-
-        // ✅ Add New Post to Feed
-        setPosts(prevPosts => [response.data, ...prevPosts]);
-
-
-        // ✅ Reset Post Data After Submission
-        setPostData({ caption: "", nailColor: "", nailLocation: "", photoUri: null });
-      } else {
-        throw new Error("Failed to create post");
-      }
     } catch (error) {
-      console.error("Error creating post:", error.response ? error.response.data : error.message);
-      alert(error.response?.data?.error || "Error creating post");
+        console.error("Error creating post:", error.response ? error.response.data : error.message);
+        alert(error.response?.data?.error || "Error creating post");
     }
-  };
+};
 
 
 
@@ -285,81 +319,88 @@ export default function ExploreFeedScreen() {
 
       <Text style={styles.title}>Explore Feed</Text>
 
-
       <FlatList
-        data={posts}
-        keyExtractor={(item) => item._id || Math.random().toString()}
-        renderItem={({ item }) => (
-          <View style={{ position: "relative", alignItems: "center" }}>
+    data={posts}
+    keyExtractor={(item) => item._id || Math.random().toString()}
+    renderItem={({ item }) => (
+        <View style={{ position: "relative", alignItems: "center" }}>
             {/* Post Card */}
             <View style={styles.postCard}>
+                {/* ✅ Username Positioned at the Top-Left */}
+                <Text style={styles.username}>@{item.username}</Text>
 
+                <TouchableWithoutFeedback onPress={() => handleImagePress(item)}>
+                    {item.photoUri ? (
+                        <Image source={{ uri: item.photoUri }} style={styles.postImage} />
+                    ) : (
+                        <Text>No Image Available</Text>
+                    )}
+                </TouchableWithoutFeedback>
 
-              {/* ✅ Username Positioned at the Top-Left */}
-              <Text style={styles.username}>@{item.username}</Text>
-
-
-              <TouchableWithoutFeedback onPress={() => handleImagePress(item)}>
-                {item.photoUri ? (
-                  <Image source={{ uri: item.photoUri }} style={styles.postImage} />
-                ) : (
-                  <Text>No Image Available</Text>
-                )}
-              </TouchableWithoutFeedback>
-
-
-              <Text style={styles.postCaption}>{item.caption}</Text>
-              <Text style={styles.postDetails}>💅 {item.nailColor} | 📍 {item.nailLocation}</Text>
+                <Text style={styles.postCaption}>{item.caption}</Text>
+                <Text style={styles.postDetails}>💅 {item.nailColor} | 📍 {item.nailLocation}</Text>
             </View>
-
 
             {/* Trash Icon Positioned Outside */}
             <TouchableOpacity
-              style={styles.trashButton}
-              onPress={() => deletePost(item._id)}
+                style={styles.trashButton}
+                onPress={() => deletePost(item._id)}
             >
-              <Ionicons name="trash-outline" size={24} color="purple" />
+                <Ionicons name="trash-outline" size={24} color="purple" />
             </TouchableOpacity>
-          </View>
-        )}
-      />
-
-
-      {/* Create Post Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalBackground}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={styles.modalContainer}
-          >
-            <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
-              <Text style={styles.modalTitle}>Create a Post</Text>
-              <TouchableOpacity style={styles.imageButton} onPress={openCamera}>
-                <Text style={styles.imageButtonText}>+ Add Image</Text>
-              </TouchableOpacity>
-              {postData.photoUri && <Image source={{ uri: postData.photoUri }} style={styles.imagePreview} />}
-              {['caption', 'nailColor', 'nailLocation'].map((field) => (
-                <TextInput
-                  key={field}
-                  style={styles.input}
-                  placeholder={`Enter ${field}...`}
-                  placeholderTextColor="#aaa"
-                  value={postData[field]}
-                  onChangeText={(text) => setPostData((prev) => ({ ...prev, [field]: text }))}
-                />
-              ))}
-              <View style={styles.buttonRow}>
-                <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelButton}>
-                  <Text style={styles.buttonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={submitPost} style={styles.submitButton}>
-                  <Text style={styles.buttonText}>Submit</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </KeyboardAvoidingView>
         </View>
-      </Modal>
+    )}
+/>
+
+
+{/* Create Post Modal */}
+<Modal visible={modalVisible} transparent animationType="fade">
+  <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+    <View style={styles.modalOverlay}>
+      <View style={styles.modalContainer}>
+        <Text style={styles.modalTitle}>Create a Post</Text>
+
+        {/* Image Selection Buttons */}
+        <View style={styles.imageButtonContainer}>
+          <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("camera")}>
+            <Ionicons name="camera-outline" size={24} color="#fff" />
+            <Text style={styles.imageButtonText}>Camera</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("cameraRoll")}>
+            <Ionicons name="image-outline" size={24} color="#fff" />
+            <Text style={styles.imageButtonText}>Gallery</Text>
+          </TouchableOpacity>
+        </View>
+
+        {postData.photoUri && (
+          <Image source={{ uri: postData.photoUri }} style={styles.imagePreview} />
+        )}
+
+        {["caption", "nailColor", "nailLocation"].map((field) => (
+          <TextInput
+            key={field}
+            style={styles.input}
+            placeholder={`Enter ${field}...`}
+            placeholderTextColor="#aaa"
+            value={postData[field]}
+            onChangeText={(text) => setPostData((prev) => ({ ...prev, [field]: text }))}
+          />
+        ))}
+
+        {/* Action Buttons */}
+        <View style={styles.buttonRow}>
+          <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelButton}>
+            <Text style={styles.buttonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={submitPost} style={styles.submitButton}>
+            <Text style={styles.buttonText}>Post</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  </TouchableWithoutFeedback>
+</Modal>
+
 
 
       {/* Delete Confirmation Modal */}
@@ -609,6 +650,123 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     zIndex: 10,  // Make sure it's above other elements
   },
-
-
+  imageButtonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginBottom: 10,
+  },
+  imageButton: {
+    backgroundColor: "#6A5ACD",
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginHorizontal: 5,
+    alignItems: "center",
+  },
+  imageButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  
+  modalContainer: {
+    width: "90%",
+    maxWidth: 400,
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
+    alignItems: "center",
+  },
+  
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 15,
+  },
+  
+  imageButtonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginBottom: 15,
+  },
+  
+  imageButton: {
+    backgroundColor: "#6A5ACD",
+    padding: 12,
+    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  
+  imageButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    marginLeft: 8,
+  },
+  
+  imagePreview: {
+    width: "100%",
+    height: 200,
+    borderRadius: 10,
+    marginVertical: 10,
+    resizeMode: "cover",
+  },
+  
+  input: {
+    width: "100%",
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 10,
+    marginBottom: 10,
+    fontSize: 16,
+    backgroundColor: "#f9f9f9",
+  },
+  
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginTop: 10,
+  },
+  
+  cancelButton: {
+    backgroundColor: "#ddd",
+    padding: 12,
+    borderRadius: 10,
+    flex: 1,
+    alignItems: "center",
+    marginRight: 5,
+  },
+  
+  submitButton: {
+    backgroundColor: "#6A5ACD",
+    padding: 12,
+    borderRadius: 10,
+    flex: 1,
+    alignItems: "center",
+    marginLeft: 5,
+  },
+  
+  buttonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },  
 });
