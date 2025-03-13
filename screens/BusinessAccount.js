@@ -16,9 +16,9 @@ export default function BusinessAccount({ navigation }) {
   const [editableWebsite, setEditableWebsite] = useState('');
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [isEditing, setIsEditing] = useState(false); // New state for edit mode
+  const [isEditing, setIsEditing] = useState(false); 
 
-  // 🔹 Automatically refresh data when screen is focused
+
   useFocusEffect(
     useCallback(() => {
       const fetchUserData = async () => {
@@ -59,7 +59,7 @@ export default function BusinessAccount({ navigation }) {
       };
 
       fetchUserData();
-    }, []) // No dependencies → Runs every time the screen is focused
+    }, []) 
   );
 
   const handleUpdateBusinessInfo = async () => {
@@ -107,6 +107,11 @@ export default function BusinessAccount({ navigation }) {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.headerText}>User Profile</Text>
+
+       {/* Back Button */}
+       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Text style={styles.backButtonText}>← Back</Text>
+      </TouchableOpacity>
 
       {/* User Info Section */}
       {userData ? (
@@ -185,6 +190,8 @@ export default function BusinessAccount({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flexGrow: 1, padding: 20, backgroundColor: '#f7f7f7' },
+  backButton: { position: "absolute", top: 40, left: 20, padding: 10 },
+  backButtonText: { fontSize: 18, color: "#007BFF", fontWeight: "bold" },
   headerText: { fontSize: 36, fontWeight: '700', color: '#2c3e50', textAlign: 'center', marginBottom: 25 },
   sectionContainer: { marginBottom: 40 },
   sectionTitle: { fontSize: 24, fontWeight: '600', color: '#34495e', marginBottom: 10 },

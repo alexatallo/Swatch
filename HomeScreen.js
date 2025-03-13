@@ -4,25 +4,13 @@ import SearchScreen from "./screens/SearchScreen";
 import AccountScreen from "./screens/AccountScreen";
 import ExploreFeedScreen from "./screens/ExploreFeedScreen";
 import { Ionicons } from "@expo/vector-icons";
-import { createStackNavigator } from '@react-navigation/stack';
-import ClientAccount from './screens/ClientAccount';  // Import Client Account Screen
-import BusinessAccount from './screens/BusinessAccount';  // Import Business Account Screen
+import ClientAccount from './screens/ClientAccount'; 
+import BusinessAccount from './screens/BusinessAccount';
 
 const Tab = createBottomTabNavigator();
-const Stack = createStackNavigator();
-
-const AccountStack = () => {
-  return (
-    <Stack.Navigator>
-      <Stack.Screen name="Account" component={AccountScreen} />
-      <Stack.Screen name="ClientAccount" component={ClientAccount} />
-      <Stack.Screen name="BusinessAccount" component={BusinessAccount} />
-    </Stack.Navigator>
-  );
-};
 
 const HomeScreen = ({ route }) => {
-  const token = route.params?.token;  // Get token from previous screen's params
+  const token = route.params?.token;
 
   return (
     <Tab.Navigator
@@ -38,7 +26,7 @@ const HomeScreen = ({ route }) => {
     >
       <Tab.Screen name="Explore" component={ExploreFeedScreen} />
       <Tab.Screen name="Search" component={SearchScreen} />
-      <Tab.Screen name="Account" component={AccountStack} initialParams={{ token }} />
+      <Tab.Screen name="Account" component={AccountScreen} initialParams={{ token }} />
     </Tab.Navigator>
   );
 };
