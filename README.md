@@ -15,8 +15,8 @@ Swatch is a nail polish collection app designed to help users organize, view, an
 
 ## Technologies Used
 
-- **Frontend**: React (or specify other technologies you’re using, like HTML/CSS, etc.)
-- **Backend**: Node.js / Express (if applicable)
-- **Database**: MongoDB (or other databases you’re using)
-- **Authentication**: JWT / OAuth (if applicable)
+- **Frontend**: React
+- **Backend**: Node.js
+- **Database**: MongoDB
+- **Authentication**: JWT
 - **Environment Variables**: dotenv
