@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { API_URL } from '@env';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -31,7 +32,6 @@ const AccountScreen = () => {
 
         console.log("📡 API Response:", response.data);
 
-        // Access the user data from the response
         if (response.data && response.data.user) {
           setUser(response.data.user);
         } else {
@@ -47,9 +47,8 @@ const AccountScreen = () => {
     fetchUserData();
   }, []);
 
-  // Navigate once the user data is fetched and loading is complete
-  useEffect(() => {
-    if (!loading && user !== null) {
+  const handleSettingsPress = () => {
+    if (!loading && user) {
       if (user.isBusiness) {
         console.log("🚀 Navigating to Business Account Screen...");
         navigation.navigate("BusinessAccount");
@@ -58,17 +57,26 @@ const AccountScreen = () => {
         navigation.navigate("ClientAccount");
       }
     }
-  }, [user, loading, navigation]);
+  };
 
-  // Loading indicator while waiting for data
   if (loading) {
     return <ActivityIndicator size="large" color="#A020F0" />;
   }
 
-  // If no user data, show this text
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Loading user data...</Text>
+      <TouchableOpacity 
+        style={{ position: 'absolute', top: 50, right: 20 }} 
+        onPress={handleSettingsPress}
+      >
+        <Ionicons name="settings-outline" size={28} color="black" />
+      </TouchableOpacity>
+      <Text>Welcome to your account!</Text>
+      {user && (
+        <Text style={{ marginTop: 10, fontSize: 18 }}>
+          {user.isBusiness ? "Business Account" : "Client Account"}
+        </Text>
+      )}
     </View>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, ActivityIndicator, Alert, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native'; // 🔹 Import useFocusEffect
+import { useFocusEffect } from '@react-navigation/native'; 
 import axios from 'axios';
 import { API_URL } from "@env";
 
@@ -12,7 +12,7 @@ export default function ClientAccount({ navigation }) {
   const [collectionData, setCollectionData] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 🔹 useFocusEffect ensures data updates when the screen is revisited
+  
   useFocusEffect(
     useCallback(() => {
       const fetchUserData = async () => {
@@ -37,7 +37,7 @@ export default function ClientAccount({ navigation }) {
             setCollectionData(response.data.collection);
           } else {
             console.error("Collection data not found or invalid:", response.data.collection);
-            setCollectionData([]); // Default to empty array
+            setCollectionData([]); 
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
@@ -54,7 +54,7 @@ export default function ClientAccount({ navigation }) {
       };
 
       fetchUserData();
-    }, []) // No dependencies → runs every time the screen is focused
+    }, []) 
   );
 
   if (loading) {
@@ -64,6 +64,11 @@ export default function ClientAccount({ navigation }) {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.headerText}>User Profile</Text>
+
+      {/* Back Button */}
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Text style={styles.backButtonText}>← Back</Text>
+      </TouchableOpacity>
   
       {userData ? (
         <View style={styles.sectionContainer}>
@@ -103,6 +108,8 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#f5f5f5',
   },
+  backButton: { position: "absolute", top: 40, left: 20, padding: 10 },
+  backButtonText: { fontSize: 18, color: "#007BFF", fontWeight: "bold" },
   headerText: {
     fontSize: 34,
     fontWeight: '700',
