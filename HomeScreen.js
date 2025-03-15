@@ -5,7 +5,6 @@ import AccountScreen from "./screens/AccountScreen";
 import ExploreFeedScreen from "./screens/ExploreFeedScreen";
 import { Ionicons } from "@expo/vector-icons";
 
-// Define the Tab navigator
 const Tab = createBottomTabNavigator();
 
 const HomeScreen = ({ route }) => {
@@ -28,7 +27,7 @@ const HomeScreen = ({ route }) => {
       <Tab.Screen 
         name="Account" 
         component={AccountScreen} 
-        initialParams={{ token }}  // Pass token here as initialParams
+        initialParams={{ token }} 
       />
     </Tab.Navigator>
   );

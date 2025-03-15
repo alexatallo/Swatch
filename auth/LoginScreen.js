@@ -21,7 +21,7 @@ export default function LoginScreen({ navigation }) {
     setLoading(true); // Disable button during request
 
     try {
-      const response = await axios.post("http://35.50.71.xxx:5000/login", {
+      const response = await axios.post("http://10.0.0.214:5000/login", {
         emailOrUsername: emailOrUsername.trim().toLowerCase(),
         password,
       });
