@@ -5,6 +5,7 @@ import SignUpScreen from "./auth/SignUpScreen";
 import LoginScreen from "./auth/LoginScreen";
 import DashboardScreen from "./auth/DashBoardScreen";
 import HomeScreen from "./HomeScreen"; 
+import Camera from "./screens/Camera";
 
 const Stack = createStackNavigator();
 
@@ -16,7 +17,9 @@ export default function App() {
         <Stack.Screen name="SignUp" component={SignUpScreen} />
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
+         <Stack.Screen name="Camera" component={Camera} />
       </Stack.Navigator>
+      
     </NavigationContainer>
   );
 }
