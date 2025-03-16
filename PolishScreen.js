@@ -22,7 +22,9 @@ const getToken = async () => {
 };
 
 export default function PolishScreen({ route }) {
+  console.log("Route Params:", route.params);
   const { item } = route.params;
+  
   const navigation = useNavigation();
 
   // State
@@ -32,6 +34,14 @@ export default function PolishScreen({ route }) {
   const [loading, setLoading] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState(null);
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
+
+  if (!item) {
+    return (
+      <View style={styles.container}>
+        <Text>Error: Polish data not found.</Text>
+      </View>
+    );
+  }
 
   useEffect(() => {
     fetchCollections();
