@@ -162,60 +162,58 @@ app.post("/login", async (req, res) => {
 
 
 
-
 app.post("/posts", async (req, res) => {
-   try {
-       if (!client.topology || !client.topology.isConnected()) {
-           return res.status(500).json({ error: "Database not connected" });
-       }
-
-
-       const token = req.headers.authorization?.split(" ")[1];
-       if (!token) return res.status(403).json({ error: "No token provided" });
-
-
-       const decoded = jwt.verify(token, jwtSecret);
-       const { caption, nailColor, nailLocation, photoUri } = req.body;
-
-
-       if (!caption || !nailColor || !nailLocation || !photoUri) {
-           return res.status(400).json({ error: "All fields are required." });
-       }
-
-
-       // Fetch the user's username
-       const usersCollection = db.collection("User");
-       const user = await usersCollection.findOne({ _id: new ObjectId(decoded.userId) });
-       if (!user) {
-           return res.status(404).json({ error: "User not found" });
-       }
-
-
-       const postsCollection = db.collection("posts");
-
-
-       const newPost = {
-           userId: new ObjectId(decoded.userId),
-           username: user.username, // Include the username
-           caption,
-           nailColor,
-           nailLocation,
-           photoUri,
-           createdAt: new Date(),
-       };
-
-
-       const result = await postsCollection.insertOne(newPost);
-       newPost._id = result.insertedId;
-
-
-       res.json(newPost); // Send full post back with username
-   } catch (error) {
-       console.error("❌ Error creating post:", error);
-       res.status(500).json({ error: "Internal server error" });
-   }
-});
-
+    try {
+        if (!client.topology || !client.topology.isConnected()) {
+            return res.status(500).json({ error: "Database not connected" });
+        }
+ 
+        // Validate token
+        const token = req.headers.authorization?.split(" ")[1];
+        if (!token) return res.status(403).json({ error: "No token provided" });
+ 
+        const decoded = jwt.verify(token, jwtSecret);
+        const { caption, polishId, nailLocation, photoUri } = req.body;
+ 
+        // Validate required fields
+        if (!caption || !polishId || !nailLocation) {
+            return res.status(400).json({ error: "Missing required fields." });
+        }
+ 
+        // Validate ObjectId format for polishId
+        if (!ObjectId.isValid(polishId)) {
+            return res.status(400).json({ error: "Invalid polishId format." });
+        }
+ 
+        // Fetch user details
+        const usersCollection = db.collection("User");
+        const user = await usersCollection.findOne({ _id: new ObjectId(decoded.userId) });
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+ 
+        // Insert new post
+        const postsCollection = db.collection("posts");
+        const newPost = {
+            userId: new ObjectId(decoded.userId),
+            username: user.username, // Include username
+            caption,
+            polishId: new ObjectId(polishId),
+            nailLocation,
+            photoUri: photoUri || null, // Allow photoUri to be optional
+            createdAt: new Date(),
+        };
+ 
+        const result = await postsCollection.insertOne(newPost);
+        newPost._id = result.insertedId;
+ 
+        res.json(newPost); // Send full post back with username
+    } catch (error) {
+        console.error("❌ Error creating post:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+ });
+ 
 
 
 
@@ -509,8 +507,7 @@ app.get("/polishes", async (req, res) => {
        return res.status(500).json({ message: "Server error" });
    }
 });
-
-
+        
 app.get("/collections/:collectionId/polishes", async (req, res) => {
    const { collectionId } = req.params;
 

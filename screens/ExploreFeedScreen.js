@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, Modal, TextInput,
+  View, Button, Text, TouchableOpacity, Modal, TextInput,
   Image, Dimensions, SafeAreaView, StyleSheet, FlatList,
-  ActivityIndicator, KeyboardAvoidingView, ScrollView,
-  TouchableWithoutFeedback, Keyboard, Platform
+  TouchableWithoutFeedback, Keyboard, Platform, ActivityIndicator
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
@@ -12,36 +11,125 @@ import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system";
 import axios from "axios";
 import { API_URL } from "@env";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { useFocusEffect } from "@react-navigation/native";
 
-
-
-
-export default function ExploreFeedScreen() {
+export default function ExploreFeedScreen({navigation}) {
+  const [polishData, setPolishData] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [polishModalVisible, setPolishModalVisible] = useState(false);
   const [lastTap, setLastTap] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredPolishData, setFilteredPolishData] = useState([]);
+  const [selectedPolish, setSelectedPolish] = useState(null);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [isSelectedImageVisible, setIsSelectedImageVisible] = useState(false);
   const [postToDelete, setPostToDelete] = useState(null);
+  const flatListRef = useRef(null);
   const [postData, setPostData] = useState({
     caption: "",
     nailColor: "",
     nailLocation: "",
+    polishId: null,  // Store the polishId
+    polishName: "",  // Store polish name
     photoUri: null,
   });
   const [posts, setPosts] = useState([]);
   const [page, setPage] = useState(1);
+  const [polishPage, setPolishPage] = useState(1);
+  const [hasMorePolishes, setHasMorePolishes] = useState(true);
   const [loading, setLoading] = useState(false);
   const [hasMorePosts, setHasMorePosts] = useState(true);
-
-
-  const { width } = Dimensions.get("window");
-
-
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 4;
   useEffect(() => {
     fetchPosts();
-  }, []);
+    fetchPolishes();
+  }, [navigation]);
+  const fetchPolishes = async (pageNum = 1, limit = 10) => {
+    if (loading || !hasMorePolishes) return;
+  
+    setLoading(true);
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        console.error("Token is missing.");
+        return;
+      }
+  
+      console.log(`📡 Fetching polishes... Page: ${pageNum}`);
+      const response = await axios.get(`${API_URL}/polishes`, {
+        params: { page: pageNum, limit },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+  
+      if (response.data && Array.isArray(response.data.data)) {
+        setPolishData((prev) => [...prev, ...response.data.data]);
+        setFilteredPolishData((prev) => [...prev, ...response.data.data]);
+  
+        if (response.data.data.length < limit) {
+          setHasMorePolishes(false); // No more pages to load
+        }
+      } else {
+        console.error("Unexpected response format:", response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching polishes:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const polishLookup = polishData.reduce((acc, polish) => {
+    acc[polish._id] = polish;
+    return acc;
+  }, {});
+  
+  const handleSearch = (text) => {
+    setSearchQuery(text);
+    setCurrentPage(1); // Reset pagination
+    applyFilters(text); // Filter the data
+  };
 
+  const handleAddPolishPress = () => {
+    setModalVisible(false); // Close the first modal
+    setPolishModalVisible(true); // Open the second modal
+  };
+
+  const handlePolishNamePress = (polishId) => {
+    
+    setIsSelectedImageVisible(false);
+    const item = polishLookup[polishId];
+    if (item) {
+      navigation.navigate("PolishScreen", { item });
+    } else {
+      console.error("Polish not found:", polishId);
+    }
+  };
+
+  const applyFilters = useCallback(
+      (search = searchQuery) => {
+        // If no color and no search, show full list
+        if (!search) {
+          setFilteredPolishData(polishData);
+          return;
+        }
+        let filtered = polishData;
+        
+        if (search) {
+          filtered = filtered.filter((item) =>
+            item.name.toLowerCase().includes(search.toLowerCase())
+          );
+        }
+        setFilteredPolishData(filtered);
+        flatListRef.current?.scrollToOffset({ animated: true, offset: 0 });
+      },
+      [searchQuery, polishData]
+    );
 
 
   const fetchPosts = async (pageNum = 1, limit = 10) => {
@@ -201,7 +289,7 @@ export default function ExploreFeedScreen() {
             `${API_URL}/posts`,
             {
                 caption: postData.caption,
-                nailColor: postData.nailColor,
+                polishId: postData.polishId,
                 nailLocation: postData.nailLocation,
                 photoUri: base64Image || postData.photoUri, 
             },
@@ -216,10 +304,10 @@ export default function ExploreFeedScreen() {
         if (response.data) {
             alert("Post created successfully!");
             setModalVisible(false);
-
+            setSelectedPolish(null);
+            setPostData({ caption: "", polishId: null, nailLocation: "", photoUri: null });
             setPosts(prevPosts => [response.data, ...prevPosts]);
 
-            setPostData({ caption: "", nailColor: "", nailLocation: "", photoUri: null });
         } else {
             throw new Error("Failed to create post");
         }
@@ -228,11 +316,6 @@ export default function ExploreFeedScreen() {
         alert(error.response?.data?.error || "Error creating post");
     }
 };
-
-
-
-
-
 
   const deletePost = async (postId) => {
     setPostToDelete(postId);
@@ -274,6 +357,11 @@ export default function ExploreFeedScreen() {
     setPostToDelete(null);
   };
 
+  const handlePostCancel = () => {
+    setModalVisible(false);
+    setSelectedPolish(null)
+    setPostData({ caption: "", polishId: null, nailLocation: "", photoUri: null });
+  };
 
   const handleDeleteCancel = () => {
     setIsDeleteModalVisible(false);
@@ -287,6 +375,7 @@ export default function ExploreFeedScreen() {
     if (lastTap && now - lastTap < DOUBLE_PRESS_DELAY) {
       if (post?.photoUri) {
         setSelectedImage(post);
+        setIsSelectedImageVisible(true);
       } else {
         alert("Image not available.");
       }
@@ -295,110 +384,210 @@ export default function ExploreFeedScreen() {
     }
   };
 
-
-
-
-
-
-
   return (
     <SafeAreaView style={styles.container}>
+      {/* Add Button */}
       <TouchableOpacity
         style={styles.addButton}
         onPress={() => setModalVisible(true)}
       >
         <Ionicons name="add-circle" size={50} color="#6A5ACD" />
       </TouchableOpacity>
-
-
+  
       <Text style={styles.title}>Explore Feed</Text>
-
+  
+      {/* Posts List */}
       <FlatList
-    data={posts}
-    keyExtractor={(item) => item._id || Math.random().toString()}
-    renderItem={({ item }) => (
-        <View style={{ position: "relative", alignItems: "center" }}>
-            {/* Post Card */}
-            <View style={styles.postCard}>
-                {/* Username */}
-                <Text style={styles.username}>@{item.username}</Text>
+  data={posts}
+  keyExtractor={(item) => item._id || Math.random().toString()}
+  renderItem={({ item }) => (
+    <View style={{ position: "relative", alignItems: "center" }}>
+      {/* Post Card */}
+      <View style={styles.postCard}>
+        {/* Username */}
+        <Text style={styles.username}>@{item.username}</Text>
 
-                <TouchableWithoutFeedback onPress={() => handleImagePress(item)}>
-                    {item.photoUri ? (
-                        <Image source={{ uri: item.photoUri }} style={styles.postImage} />
-                    ) : (
-                        <Text>No Image Available</Text>
-                    )}
-                </TouchableWithoutFeedback>
+        {/* Post Image */}
+        <TouchableWithoutFeedback onPress={() => handleImagePress(item)}>
+          {item.photoUri ? (
+            <Image source={{ uri: item.photoUri }} style={styles.postImage} />
+          ) : (
+            <Text>No Image Available</Text>
+          )}
+        </TouchableWithoutFeedback>
 
-                <Text style={styles.postCaption}>{item.caption}</Text>
-                <Text style={styles.postDetails}>💅 {item.nailColor} | 📍 {item.nailLocation}</Text>
-            </View>
+        {/* Caption */}
+        <Text style={styles.postCaption}>{item.caption}</Text>
 
-            {/* Trash Icon */}
-            <TouchableOpacity
-                style={styles.trashButton}
-                onPress={() => deletePost(item._id)}
-            >
-                <Ionicons name="trash-outline" size={24} color="purple" />
-            </TouchableOpacity>
+        {/* Nail Polish Details */}
+        <View style={styles.polishDetailsContainer}>
+          {/* Color Circle */}
+          <View
+            style={[
+              styles.colorCircle,
+              { backgroundColor: polishLookup[item.polishId]?.hex || "#ccc" },
+            ]}
+          />
+
+          {/* Nail Polish Name and Location */}
+          
+           {/* Nail Polish Name and Location */}
+           <TouchableOpacity onPress={() => handlePolishNamePress(item.polishId)}>
+    <Text style={styles.postDetails}>
+      {polishLookup[item.polishId]?.brand || ""}: {polishLookup[item.polishId]?.name || "Unknown Polish"}
+    </Text>
+  </TouchableOpacity>
+
+  {/* Non-clickable Separator and Location */}
+  <Text> | 📍 {item.nailLocation}</Text>
         </View>
-    )}
+      </View>
+
+      {/* Trash Icon */}
+      <TouchableOpacity
+          style={styles.trashButton}
+          onPress={() => deletePost(item._id)}
+        >
+          <Ionicons name="trash-outline" size={24} color="purple" />
+        </TouchableOpacity>
+    </View>
+  )}
 />
+  
+      {/* Create Post Modal */}
+      <Modal visible={modalVisible} transparent animationType="none">
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Create a Post</Text>
+  
+              {/* Image Selection Buttons */}
+              <View style={styles.imageButtonContainer}>
+                <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("camera")}>
+                  <Ionicons name="camera-outline" size={24} color="#fff" />
+                  <Text style={styles.imageButtonText}>Camera</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("cameraRoll")}>
+                  <Ionicons name="image-outline" size={24} color="#fff" />
+                  <Text style={styles.imageButtonText}>Gallery</Text>
+                </TouchableOpacity>
+              </View>
+  
+              {postData.photoUri && (
+                <Image source={{ uri: postData.photoUri }} style={styles.imagePreview} />
+              )}
+  
+              {/* Caption Input */}
+              <TextInput
+                style={styles.input}
+                placeholder="Enter caption..."
+                placeholderTextColor="#aaa"
+                value={postData.caption}
+                onChangeText={(text) => setPostData((prev) => ({ ...prev, caption: text }))}
+              />
+  
+              {/* Nail Location Input */}
+              <TextInput
+                style={styles.input}
+                placeholder="Enter nail location..."
+                placeholderTextColor="#aaa"
+                value={postData.nailLocation}
+                onChangeText={(text) => setPostData((prev) => ({ ...prev, nailLocation: text }))}
+              />
+  
+              {/* Add Nail Polish Button */}
+              <TouchableOpacity
+                style={styles.addPolishButton}
+                onPress={handleAddPolishPress}
+              >
+                <Text style={styles.addPolishText}>
+                  {postData.polishName ? `Selected: ${postData.polishName}` : "Add Nail Polish"}
+                </Text>
+              </TouchableOpacity>
+  
+              {/* Action Buttons */}
+              <View style={styles.buttonRow}>
+                <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelButton}>
+                  <Text style={styles.buttonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={submitPost} style={styles.submitButton}>
+                  <Text style={styles.buttonText}>Post</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
 
-
-{/* Create Post Modal */}
-<Modal visible={modalVisible} transparent animationType="fade">
+  
+      {/* Polish Modal */}
+      <Modal
+  transparent={true}
+  visible={polishModalVisible}
+  onRequestClose={() => setPolishModalVisible(false)}
+>
   <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
     <View style={styles.modalOverlay}>
       <View style={styles.modalContainer}>
-        <Text style={styles.modalTitle}>Create a Post</Text>
+        <Text style={styles.modalTitle}>Select a Nail Polish</Text>
 
-        {/* Image Selection Buttons */}
-        <View style={styles.imageButtonContainer}>
-          <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("camera")}>
-            <Ionicons name="camera-outline" size={24} color="#fff" />
-            <Text style={styles.imageButtonText}>Camera</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("cameraRoll")}>
-            <Ionicons name="image-outline" size={24} color="#fff" />
-            <Text style={styles.imageButtonText}>Gallery</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Search Bar */}
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search nail polish..."
+          placeholderTextColor="#888"
+          onChangeText={handleSearch}
+          value={searchQuery}
+        />
 
-        {postData.photoUri && (
-          <Image source={{ uri: postData.photoUri }} style={styles.imagePreview} />
-        )}
-
-        {["caption", "nailColor", "nailLocation"].map((field) => (
-          <TextInput
-            key={field}
-            style={styles.input}
-            placeholder={`Enter ${field}...`}
-            placeholderTextColor="#aaa"
-            value={postData[field]}
-            onChangeText={(text) => setPostData((prev) => ({ ...prev, [field]: text }))}
+        {/* List of Nail Polishes */}
+        <View style={styles.polishListContainer}>
+          <FlatList
+            ref={flatListRef}
+            data={filteredPolishData.slice(0, currentPage * itemsPerPage)}
+            keyExtractor={(item, index) => item._id ? item._id.toString() : index.toString()}
+            numColumns={1} // One polish per row
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.polishItem}
+                onPress={() => {
+                  setPostData((prev) => ({
+                    ...prev,
+                    polishId: item._id,
+                    polishName: item.name,
+                  }));
+                  setPolishModalVisible(false);
+                  setModalVisible(true);
+                }}
+              >
+                <Image source={{ uri: item.picture }} style={styles.polishImage} />
+                <Text style={styles.polishName}>{item.name}</Text>
+              </TouchableOpacity>
+            )}
+            onEndReached={() => {
+              if (!loading && filteredPolishData.length > currentPage * itemsPerPage) {
+                setCurrentPage((prev) => prev + 1); // Load more polishes
+              }
+            }}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={loading && <ActivityIndicator size="small" color="purple" />}
           />
-        ))}
-
-        {/* Action Buttons */}
-        <View style={styles.buttonRow}>
-          <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelButton}>
-            <Text style={styles.buttonText}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={submitPost} style={styles.submitButton}>
-            <Text style={styles.buttonText}>Post</Text>
-          </TouchableOpacity>
         </View>
+
+        {/* Close Button */}
+        <TouchableOpacity
+          style={styles.closeButton}
+          onPress={() => setPolishModalVisible(false)}
+        >
+          <Text style={styles.closeButtonText}>Close</Text>
+        </TouchableOpacity>
       </View>
     </View>
   </TouchableWithoutFeedback>
 </Modal>
 
-
-
-      {/* Delete Confirmation Modal */}
-      {isDeleteModalVisible && (
+{/* Delete Confirmation Modal */}
+{isDeleteModalVisible && (
         <Modal transparent visible={isDeleteModalVisible} animationType="slide">
           <View style={styles.modalBackground}>
             <View style={styles.modalContainer}>
@@ -417,7 +606,7 @@ export default function ExploreFeedScreen() {
       )}
       {selectedImage && selectedImage.photoUri && (
         <Modal
-          visible={true}
+          visible={isSelectedImageVisible}
           transparent
           animationType="fade"
           onRequestClose={() => setSelectedImage(null)}
@@ -432,23 +621,25 @@ export default function ExploreFeedScreen() {
                 />
                 <Text style={styles.fullScreenCaption}>{selectedImage.caption}</Text>
                 <Text style={styles.fullScreenDetails}>
-                  💅 {selectedImage.nailColor} | 📍 {selectedImage.nailLocation}
-                </Text>
+  {/* Clickable Polish Name */}
+  <TouchableOpacity onPress={() => handlePolishNamePress(selectedImage.polishId)}>
+    <Text style={styles.clickableText}>
+      {polishLookup[selectedImage.polishId]?.brand || ""}: {polishLookup[selectedImage.polishId]?.name || "Unknown Polish"}
+    </Text>
+  </TouchableOpacity>
+
+  {/* Non-clickable Separator and Location */}
+  <Text> | 📍 {selectedImage.nailLocation}</Text>
+</Text>
 
               </View>
             </View>
           </TouchableWithoutFeedback>
         </Modal>
       )}
-
-
-
-
     </SafeAreaView>
   );
 };
-
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -469,95 +660,104 @@ const styles = StyleSheet.create({
   postCard: {
     backgroundColor: "#f9f9f9",
     padding: 15,
-    borderRadius: 10,
+    borderRadius: 15,
     marginVertical: 10,
     width: "90%",
     alignSelf: "center",
   },
   postImage: {
     width: "100%",
-    height: 300,
+    height: 350,
     borderRadius: 10,
-    marginBottom: 10,
+    marginBottom: 15,
   },
   postCaption: {
-    fontSize: 16,
+    fontSize: 18, // Larger font size
     fontWeight: "bold",
+    marginBottom: 10,
+  },
+  polishDetailsContainer: {
+    flexDirection: "row", // Align color circle and text horizontally
+    alignItems: "center", // Center items vertically
+    marginTop: 10,
+  },
+  colorCircle: {
+    width: 20, // Size of the circle
+    height: 20,
+    borderRadius: 10, // Make it circular
+    marginRight: 10, // Space between circle and text
   },
   postDetails: {
-    fontSize: 14,
+    fontSize: 16, // Larger font size
     color: "#666",
+    flex: 1, 
   },
-  deleteButton: {
-    backgroundColor: "#FF6347",
-    padding: 10,
-    borderRadius: 5,
-    marginTop: 10,
-    alignItems: "center",
-  },
-  deleteButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  modalBackground: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContainer: {
-    width: Dimensions.get("window").width * 0.9,
-    maxWidth: 500,
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  modalContent: {
+  
+  imageButtonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     width: "100%",
-    alignItems: "center",
+    marginBottom: 15,
   },
   imageButton: {
     backgroundColor: "#6A5ACD",
-    padding: 10,
-    borderRadius: 5,
-    marginBottom: 10,
+    padding: 12,
+    borderRadius: 10,
+    flex: 1,
+    marginHorizontal: 5,
+    alignItems: "center",
   },
   imageButtonText: {
     color: "#fff",
     fontWeight: "bold",
   },
   imagePreview: {
-    width: 200,
+    width: "100%",
     height: 200,
-    marginVertical: 10,
     borderRadius: 10,
+    marginVertical: 10,
+    resizeMode: "cover",
   },
   input: {
     width: "100%",
-    padding: 10,
+    padding: 12,
     borderWidth: 1,
     borderColor: "#ddd",
-    borderRadius: 5,
+    borderRadius: 10,
     marginBottom: 10,
+    fontSize: 16,
+    backgroundColor: "#f9f9f9",
+  },
+  addPolishButton: {
+    backgroundColor: "#6A5ACD",
+    padding: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  addPolishText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
   },
   buttonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
+    marginTop: 10,
   },
   cancelButton: {
-    backgroundColor: "#ccc",
-    padding: 10,
-    borderRadius: 5,
+    backgroundColor: "#ddd",
+    padding: 12,
+    borderRadius: 10,
     flex: 1,
     alignItems: "center",
     marginRight: 5,
   },
   submitButton: {
     backgroundColor: "#6A5ACD",
-    padding: 10,
-    borderRadius: 5,
+    padding: 12,
+    borderRadius: 10,
     flex: 1,
     alignItems: "center",
     marginLeft: 5,
@@ -565,62 +765,22 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#fff",
     fontWeight: "bold",
-  },
-  modalImageContainer: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.9)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  fullScreenImage: {
-    width: "100%",
-    height: "100%",
-  },
-  modalImageContainer: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.9)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  modalImageContent: {
-    backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 10,
-    alignItems: "center",
-    width: "90%",
-  },
-  fullScreenImage: {
-    width: "100%",
-    height: 300,
-    borderRadius: 10,
-  },
-  fullScreenCaption: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginTop: 10,
-    textAlign: "center",
-  },
-  fullScreenDetails: {
     fontSize: 16,
-    color: "#666",
-    marginTop: 5,
-    textAlign: "center",
   },
-  closeButton: {
-    backgroundColor: "#6A5ACD",
-    padding: 10,
-    borderRadius: 5,
-    marginTop: 10,
-  },
-  closeButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
+  polishModalContainer: {
+    width: "90%",
+    maxWidth: 400,
+    maxHeight: "80%", // Fixed modal height
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "space-between", // Ensures the Close button sticks to the bottom
   },
   trashButton: {
     position: "absolute",
     bottom: 20,
-    right: 35,
+    right: 45,
     zIndex: 10,
     backgroundColor: "rgba(255, 255, 255, 1)",
     padding: 8,
@@ -644,123 +804,96 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     zIndex: 10,   
   },
-  imageButtonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    marginBottom: 10,
-  },
-  imageButton: {
-    backgroundColor: "#6A5ACD",
-    padding: 10,
-    borderRadius: 5,
-    flex: 1,
-    marginHorizontal: 5,
-    alignItems: "center",
-  },
-  imageButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  
-  modalContainer: {
-    width: "90%",
-    maxWidth: 400,
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 10,
-    alignItems: "center",
-  },
-  
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 15,
-  },
-  
-  imageButtonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    marginBottom: 15,
-  },
-  
-  imageButton: {
-    backgroundColor: "#6A5ACD",
-    padding: 12,
-    borderRadius: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-    marginHorizontal: 5,
-  },
-  
-  imageButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    marginLeft: 8,
-  },
-  
-  imagePreview: {
-    width: "100%",
-    height: 200,
-    borderRadius: 10,
-    marginVertical: 10,
-    resizeMode: "cover",
-  },
-  
-  input: {
-    width: "100%",
-    padding: 12,
+    modalOverlay: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+    },
+    modalContainer: {
+      width: "90%",
+      maxWidth: 400,
+      maxHeight: "80%", // Fixed modal height
+      backgroundColor: "#fff",
+      padding: 20,
+      borderRadius: 15,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: "bold",
+      marginBottom: 10,
+      textAlign: 'center',
+    },
+    searchInput: {
+      height: 40,
+    borderColor: '#ccc',
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
+    borderRadius: 5,
+    paddingHorizontal: 10,
     marginBottom: 10,
-    fontSize: 16,
-    backgroundColor: "#f9f9f9",
-  },
-  
-  buttonRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    marginTop: 10,
-  },
-  
-  cancelButton: {
-    backgroundColor: "#ddd",
-    padding: 12,
-    borderRadius: 10,
-    flex: 1,
-    alignItems: "center",
-    marginRight: 5,
-  },
-  
-  submitButton: {
-    backgroundColor: "#6A5ACD",
-    padding: 12,
-    borderRadius: 10,
-    flex: 1,
-    alignItems: "center",
-    marginLeft: 5,
-  },
-  
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },  
+    },
+    polishListContainer: {
+      flex: 1, // Take up remaining space
+    marginBottom: 10, 
+    },
+    polishItem: {
+      flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    },
+    polishImage: {
+      width: 60,
+      height: 60,
+      borderRadius: 10,
+      marginRight: 10,
+    },
+    polishName: {
+      fontSize: 16,
+      fontWeight: "bold",
+      color: "#333",
+    },
+    closeButton: {
+      backgroundColor: "#6A5ACD",
+      padding: 10,
+      borderRadius: 15,
+      alignItems: "center",
+    },
+    closeButtonText: {
+      color: "#fff",
+      fontWeight: "bold",
+      fontSize: 16,
+    },
+    modalImageContainer: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.9)",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 20,
+    },
+    modalImageContent: {
+      backgroundColor: "#fff",
+      padding: 15,
+      borderRadius: 10,
+      alignItems: "center",
+      width: "90%",
+    },
+    fullScreenImage: {
+      width: "100%",
+      height: 300,
+      borderRadius: 10,
+    },
+    fullScreenCaption: {
+      fontSize: 18,
+      fontWeight: "bold",
+      marginTop: 10,
+      textAlign: "center",
+    },
+    fullScreenDetails: {
+      fontSize: 16,
+      color: "#666",
+      marginTop: 5,
+      textAlign: "center",
+    },
 });
