@@ -505,7 +505,7 @@ export default function ExploreFeedScreen({navigation}) {
   
               {/* Action Buttons */}
               <View style={styles.buttonRow}>
-                <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelButton}>
+                <TouchableOpacity onPress={handlePostCancel} style={styles.cancelButton}>
                   <Text style={styles.buttonText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={submitPost} style={styles.submitButton}>
@@ -526,7 +526,7 @@ export default function ExploreFeedScreen({navigation}) {
 >
   <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
     <View style={styles.modalOverlay}>
-      <View style={styles.modalContainer}>
+      <View style={styles.polishModalContainer}>
         <Text style={styles.modalTitle}>Select a Nail Polish</Text>
 
         {/* Search Bar */}
@@ -540,7 +540,7 @@ export default function ExploreFeedScreen({navigation}) {
 
         {/* List of Nail Polishes */}
         <View style={styles.polishListContainer}>
-          <FlatList
+        <FlatList
             ref={flatListRef}
             data={filteredPolishData.slice(0, currentPage * itemsPerPage)}
             keyExtractor={(item, index) => item._id ? item._id.toString() : index.toString()}
@@ -575,7 +575,8 @@ export default function ExploreFeedScreen({navigation}) {
         {/* Close Button */}
         <TouchableOpacity
           style={styles.closeButton}
-          onPress={() => setPolishModalVisible(false)}
+          onPress={() => {setPolishModalVisible(false);
+            setModalVisible(true);}}
         >
           <Text style={styles.closeButtonText}>Close</Text>
         </TouchableOpacity>
@@ -807,6 +808,16 @@ const styles = StyleSheet.create({
       justifyContent: "center",
       alignItems: "center",
       backgroundColor: "rgba(0, 0, 0, 0.5)",
+    },
+    polishModalContainer: {
+      width: "90%",
+      maxWidth: 400,
+      height: 580, // Fixed modal height
+      backgroundColor: "#fff",
+      padding: 20,
+      borderRadius: 15,
+      justifyContent: "center", // Center content vertically
+      alignItems: "center", // Center content horizontally
     },
     modalContainer: {
       width: "90%",
