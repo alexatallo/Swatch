@@ -29,12 +29,14 @@ export default function SignUpScreen({ navigation }) {
 
     try {
       const userPayload = { email, password, username, firstname: firstName, lastname: lastName, isBusiness: isBusinessAccount };
-      let response = await axios.post("http://10.0.0.214:5000/signup", userPayload);
+      let response = await axios.post("http://35.50.69.130:5000/signup", userPayload);
       let userId = response.data.userId;
 
       if (isBusinessAccount) {
         const businessPayload = { userId, businessName, businessLocation, website };
-        await axios.post("http://10.0.0.214:5000/business/signup", businessPayload);
+        await axios.post("http://35.50.69.130:5000/business/signup", businessPayload);
+        //35.50.69.130
+        //10.0.0.214
       }
 
       Alert.alert("Success", "Account created!");

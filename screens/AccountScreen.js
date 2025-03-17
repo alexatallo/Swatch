@@ -24,8 +24,8 @@ export default function AccountScreen({ navigation }) {
 
         console.log("Token used in request:", storedToken); // Check token in request
 
-        const response = await axios.get("http://10.0.0.214:5000/account", {
-
+        const response = await axios.get("http://35.50.69.130:5000/account", {
+          //10.0.0.214
           //35.50.69.130
           headers: { Authorization: `Bearer ${storedToken}` },
         });
