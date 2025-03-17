@@ -78,7 +78,11 @@ const EyedropperTool = () => {
       );
 
       console.log("Cropped Image URI:", croppedImage.uri);
-      setPickedColor(croppedImage.uri);
+
+    
+    setPickedColor(croppedImage.uri);
+    
+    
     } catch (error) {
       console.error("Error extracting color:", error);
     }
@@ -142,7 +146,7 @@ const EyedropperTool = () => {
           />
         </View>
       )}
-    </View>
+    </View> 
   );
 };
 
