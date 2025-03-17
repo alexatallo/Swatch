@@ -11,8 +11,6 @@ import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system";
 import axios from "axios";
 import { API_URL } from "@env";
-import { useNavigation, useRoute } from "@react-navigation/native";
-import { useFocusEffect } from "@react-navigation/native";
 
 export default function ExploreFeedScreen({navigation}) {
   const [polishData, setPolishData] = useState([]);
@@ -895,5 +893,11 @@ const styles = StyleSheet.create({
       color: "#666",
       marginTop: 5,
       textAlign: "center",
+    },
+    modalBackground: {
+      flex: 1,
+      justifyContent: 'center', // Centers vertically
+      alignItems: 'center', // Centers horizontally
+      backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
     },
 });
