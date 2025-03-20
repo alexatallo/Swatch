@@ -24,7 +24,7 @@ const getToken = async () => {
 export default function PolishScreen({ route }) {
   console.log("Route Params:", route.params);
   const { item } = route.params;
-  
+
   const navigation = useNavigation();
 
   // State
@@ -61,7 +61,11 @@ export default function PolishScreen({ route }) {
       });
 
       if (Array.isArray(response.data)) {
-        setUserCollections(response.data);
+        // Filter out the "Inventory" collection
+        const filteredCollections = response.data.filter(
+          (collection) => collection.name !== "Inventory"
+        );
+        setUserCollections(filteredCollections);
       } else {
         console.error("Unexpected API response:", response.data);
       }

@@ -8,7 +8,6 @@ import {
   Linking,
   FlatList,
   Platform,
-  ScrollView,
   ActivityIndicator,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -61,7 +60,7 @@ const CollectionScreen = () => {
 
     fetchPolishes();
   }, [collectionId]);
-  
+
   return (
     <View style={styles.container}>
       {loading ? (
@@ -69,41 +68,41 @@ const CollectionScreen = () => {
       ) : polishData.length === 0 ? (
         <Text style={styles.emptyText}>No polishes found in this collection.</Text>
       ) : (
-        <FlatList
-          data={polishData}
-          keyExtractor={(item) => item._id.toString()}
-          contentContainerStyle={styles.listContainer}
-          style={styles.flatList}
-          ListHeaderComponent={
-            <>
-              {/* Back Button */}
-              <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-                <Ionicons name="arrow-back" size={28} color="#333" />
-              </TouchableOpacity>
+        <>
+          {/* Header and Back Button */}
+          <View style={styles.headerContainer}>
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={28} color="#333" />
+            </TouchableOpacity>
+            <Text style={styles.headerText}>Your Collection</Text>
+          </View>
 
-              {/* Header */}
-              <Text style={styles.headerText}>Your Collection</Text>
-            </>
-          }
-          renderItem={({ item }) => (
-            <View style={styles.polishCard}>
-              <Image source={{ uri: item.picture }} style={styles.image} />
-              <View style={styles.textContainer}>
-                <Text style={styles.title}>{item.name || "No name available"}</Text>
-                <Text style={styles.text}>Brand: {item.brand || "Unknown"}</Text>
-                <Text style={styles.text}>Finish: {item.finish || "Unknown"}</Text>
-                <Text style={styles.text}>Type: {item.type || "Unknown"}</Text>
-                <Text style={styles.text}>Hex: {item.hex || "Unknown"}</Text>
+          {/* Polish List */}
+          <FlatList
+            data={polishData}
+            keyExtractor={(item) => item._id.toString()}
+            contentContainerStyle={[styles.listContainer, { flexGrow: 1 }]}
+            style={[styles.flatList, Platform.OS === "web" ? { height: "calc(100vh - 150px)" } : null]} 
+            renderItem={({ item }) => (
+              <View style={styles.polishCard}>
+                <Image source={{ uri: item.picture }} style={styles.image} />
+                <View style={styles.textContainer}>
+                  <Text style={styles.title}>{item.name || "No name available"}</Text>
+                  <Text style={styles.text}>Brand: {item.brand || "Unknown"}</Text>
+                  <Text style={styles.text}>Finish: {item.finish || "Unknown"}</Text>
+                  <Text style={styles.text}>Type: {item.type || "Unknown"}</Text>
+                  <Text style={styles.text}>Hex: {item.hex || "Unknown"}</Text>
 
-                {item.link && (
-                  <TouchableOpacity style={styles.buyButton} onPress={() => Linking.openURL(item.link)}>
-                    <Text style={styles.buyButtonText}>Buy Now</Text>
-                  </TouchableOpacity>
-                )}
+                  {item.link && (
+                    <TouchableOpacity style={styles.buyButton} onPress={() => Linking.openURL(item.link)}>
+                      <Text style={styles.buyButtonText}>Buy Now</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
-            </View>
-          )}
-        />
+            )}
+          />
+        </>
       )}
     </View>
   );
@@ -112,18 +111,21 @@ const CollectionScreen = () => {
 // Styles
 const styles = StyleSheet.create({
   container: {
-    flex: 1, 
-    backgroundColor: "#F8F8F8",
-    paddingTop: 40,
+    flex: 1,
+  backgroundColor: "#F8F8F8",
+  paddingTop: Platform.OS === "web" ? 20 : 40,
+  paddingHorizontal: Platform.OS === "web" ? 20 : 10,
+  },
+  headerContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 10,
   },
   flatList: {
-    flex: 1, 
-    overflow: Platform.OS === "web" ? "scroll" : "visible", 
+    height: Platform.OS === 'web' ? '70vh' : undefined, // Fixed height for web
   },
   listContainer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
-    flexGrow: 1, 
   },
   backButton: {
     marginBottom: 10,
