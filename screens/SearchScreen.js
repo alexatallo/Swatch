@@ -9,6 +9,7 @@ import {
   Dimensions,
   Text,
   Image,
+  Button,
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
@@ -17,9 +18,13 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "@env";
 import Slider from "@react-native-community/slider";
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
+import * as FileSystem from 'expo-file-system';
 
 const { width, height } = Dimensions.get("window");
 const colorPickerSize = Platform.OS === "web" ? Math.min(width * 0.4, 250) : width * 0.8;
+
 
 // Convert HEX to RGB
 const hexToRgb = (hex) => {
@@ -34,11 +39,13 @@ const hexToRgb = (hex) => {
   ];
 };
 
+
 const colorDistance = (rgb1, rgb2) => {
   return Math.sqrt(
     (rgb1[0] - rgb2[0]) ** 2 + (rgb1[1] - rgb2[1]) ** 2 + (rgb1[2] - rgb2[2]) ** 2
   );
 };
+
 
 export default function SearchScreen({ navigation, route }) {
   const [polishData, setPolishData] = useState([]);
@@ -46,8 +53,134 @@ export default function SearchScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [selectedColor, setSelectedColor] = useState("");
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showColorExtractor, setShowColorExtractor] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [pickedColor, setPickedColor] = useState("");
+
+
+  //color extractor tools
+  const [image, setImage] = useState(null); // Store selected image URI
+  const [imageSize, setImageSize] = useState(null); // Store original image size
+  const [displaySize, setDisplaySize] = useState({ width: 300, height: 300 }); // Displayed image size
+  const [tapLocation, setTapLocation] = useState(null); // Store tap coordinates
+  const [hasCameraPermission, setHasCameraPermission] = useState(null);
+  const [hasMediaLibraryPermission, setHasMediaLibraryPermission] = useState(null);
+
+
   const flatListRef = useRef(null);
+
+
+  // Request permissions
+  useEffect(() => {
+    (async () => {
+      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+      const mediaLibraryPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      setHasCameraPermission(cameraPermission.status === "granted");
+      setHasMediaLibraryPermission(mediaLibraryPermission.status === "granted");
+    })();
+  }, []);
+
+
+  // Pick image from gallery
+  const openImagePicker = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({ quality: 1 });
+
+
+    if (!result.canceled) {
+      const imageUri = result.assets[0].uri;
+      setImage(imageUri);
+      setTapLocation(null);
+      setPickedColor(null);
+
+
+      // Get the original size of the image
+      const imageInfo = await ImageManipulator.manipulateAsync(imageUri, [], { base64: false });
+      setImageSize({ width: imageInfo.width, height: imageInfo.height });
+    }
+  };
+
+
+  // Open camera
+  const openCamera = async () => {
+    let result = await ImagePicker.launchCameraAsync({ quality: 1 });
+
+
+    if (!result.canceled) {
+      const imageUri = result.assets[0].uri;
+      setImage(imageUri);
+      setTapLocation(null);
+      setPickedColor(null);
+
+
+      // Get the original size of the image
+      const imageInfo = await ImageManipulator.manipulateAsync(imageUri, [], { base64: false });
+      setImageSize({ width: imageInfo.width, height: imageInfo.height });
+    }
+  };
+
+
+  // Convert tap location to actual image coordinates
+  const handleImageTap = async (event) => {
+    if (!image || !imageSize) return;
+
+
+    const { locationX, locationY } = event.nativeEvent;
+
+
+    // Scale tap coordinates to match the original image size
+    const actualX = Math.round((locationX / displaySize.width) * imageSize.width);
+    const actualY = Math.round((locationY / displaySize.height) * imageSize.height);
+
+
+    setTapLocation({ x: actualX, y: actualY });
+
+
+    console.log(`Tapped at Display: X=${locationX}, Y=${locationY}`);
+    console.log(`Mapped to Original Image: X=${actualX}, Y=${actualY}`);
+
+
+    try {
+      // Crop the image at the corrected tap point (1x1 pixel)
+      const croppedImage = await ImageManipulator.manipulateAsync(
+        image,
+        [{ crop: { originX: actualX, originY: actualY, width: 1, height: 1 } }],
+        { format: ImageManipulator.SaveFormat.PNG }
+      );
+
+
+      console.log("Cropped Image URI:", croppedImage.uri);
+
+
+   
+    setPickedColor(uriToHex(croppedImage.uri));
+   
+   
+    } catch (error) {
+      console.error("Error extracting color:", error);
+    }
+  };
+
+async function uriToHex(fileUri) {
+  // Extract the file path from the URI
+  const filePath = fileUri.replace('file://', '');
+
+  // Read the file content using expo-file-system
+  const fileBase64 = await FileSystem.readAsStringAsync(filePath, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+
+  // Convert the base64 string to a buffer
+  const buffer = Buffer.from(fileBase64, 'base64');
+
+  // Convert the buffer to a hexadecimal string
+  let hexString = '';
+  for (const byte of buffer) {
+    hexString += byte.toString(16).padStart(2, '0');
+  }
+
+  return hexString;
+}
+
   useEffect(() => {
     const fetchPolishes = async () => {
       try {
@@ -79,6 +212,7 @@ export default function SearchScreen({ navigation, route }) {
     fetchPolishes();
   }, [navigation]);
 
+
   const findSimilarColors = (targetHex, polishList, N = 15) => {
     const targetRgb = hexToRgb(targetHex);
     const distances = polishList
@@ -91,12 +225,14 @@ export default function SearchScreen({ navigation, route }) {
     return distances.slice(0, N);
   };
 
+
   const clearFilters = () => {
     setSearchQuery("");
     setSelectedColor("");
     setFilteredData(polishData);
     flatListRef.current?.scrollToOffset({ animated: true, offset: 0 });
   };
+
 
   //applyfilters
   const applyFilters = useCallback(
@@ -121,14 +257,17 @@ export default function SearchScreen({ navigation, route }) {
     [selectedColor, searchQuery, polishData]
   );
 
+
   const handleSearch = (text) => {
     setSearchQuery(text);
     applyFilters(selectedColor, text); // Use the latest search input
   };
 
+
   if (loading) {
     return <ActivityIndicator size="large" color="#5D3FD3" />;
   }
+
 
   return (
     <View style={styles.container}>
@@ -147,7 +286,14 @@ export default function SearchScreen({ navigation, route }) {
         >
           <Text style={styles.buttonText}>Color 🎨</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.colorButton}
+          onPress={() => setShowColorExtractor(true)}
+        >
+          <Text style={styles.buttonText}>Cam</Text>
+        </TouchableOpacity>
       </View>
+
 
       {/* Clear Filters Button (Outside the search container) */}
       {(searchQuery || selectedColor) && (
@@ -155,6 +301,7 @@ export default function SearchScreen({ navigation, route }) {
           <Text style={styles.clearButtonText}>Clear Filters</Text>
         </TouchableOpacity>
       )}
+
 
       {/* Polish List */}
       <FlatList
@@ -177,7 +324,9 @@ export default function SearchScreen({ navigation, route }) {
         )}
       />
 
+
       <View style={[styles.colorPreview, { backgroundColor: selectedColor }]} />
+
 
       {/* Color Picker Modal */}
       <Modal
@@ -189,6 +338,7 @@ export default function SearchScreen({ navigation, route }) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Select a Color</Text>
+
 
             {/* Color Picker */}
             <View
@@ -208,6 +358,7 @@ export default function SearchScreen({ navigation, route }) {
                 />
               </View>
             </View>
+
 
             {/* Buttons */}
             <View style={styles.modalButtons}>
@@ -230,9 +381,94 @@ export default function SearchScreen({ navigation, route }) {
           </View>
         </View>
       </Modal>
+
+
+    {/*color extractor modal*/}
+    <Modal
+        transparent={true}
+        visible={showColorExtractor}
+        animationType="slide"
+        onRequestClose={() => setShowColorExtractor(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Pick Color from Image</Text>
+
+
+            <Button title="Pick an Image from Gallery" onPress={openImagePicker} />
+            <Button title="Open Camera" onPress={openCamera} />
+            {image && (
+        <View style={{ position: "relative", marginTop: 20 }}>
+          <TouchableOpacity onPress={handleImageTap} activeOpacity={1}>
+            <Image
+              source={{ uri: image }}
+              style={{ width: displaySize.width, height: displaySize.height }}
+              onLayout={(event) => {
+                const { width, height } = event.nativeEvent.layout;
+                setDisplaySize({ width, height });
+              }}
+            />
+          </TouchableOpacity>
+
+
+          {/* Display tap location indicator */}
+          {tapLocation && (
+            <View
+              style={{
+                position: "absolute",
+                left: (tapLocation.x / imageSize.width) * displaySize.width - 5,
+                top: (tapLocation.y / imageSize.height) * displaySize.height - 5,
+                width: 10,
+                height: 10,
+                backgroundColor: "red",
+                borderRadius: 5,
+              }}
+            />
+          )}
+        </View>
+      )}
+
+
+      {/* Display mapped tap coordinates */}
+      {tapLocation && (
+        <Text style={{ marginTop: 10 }}>
+          Original Image Tapped at: X: {tapLocation.x}, Y: {tapLocation.y}
+        </Text>
+      )}
+
+
+      {/* Display extracted color */}
+      {pickedColor && (
+        <View style={{ marginTop: 20, alignItems: "center" }}>
+          <Text>Picked Color:</Text>
+          <Image
+            style={{
+              width: 50,
+              height: 50,
+              borderRadius: 25,
+              borderWidth: 2,
+              borderColor: "black",
+              backgroundColor: pickedColor,
+            }}
+          />
+        </View>
+      )}
+      <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: "#5D3FD3" }]}
+                onPress={() => {
+                  setShowColorExtractor(false);
+                  applyFilters(pickedColor); // Call another function
+                }}
+              >
+                <Text style={[styles.buttonText, { color: "#fff" }]}>Confirm</Text>
+              </TouchableOpacity>
+    </View>
+    </View>
+      </Modal>
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
@@ -408,3 +644,4 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
+

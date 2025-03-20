@@ -9,7 +9,7 @@ import PolishScreen from "./PolishScreen";
 import CollectionScreen from "./screens/CollectionScreen"; 
 import ClientAccount from "./screens/ClientAccount";
 import BusinessAccount from "./screens/BusinessAccount";
-
+import InventoryScreen from "./screens/InventoryScreen";
 const Stack = createStackNavigator();
 
 export default function App() {
@@ -24,7 +24,11 @@ export default function App() {
         <Stack.Screen name="CollectionScreen" component={CollectionScreen} />
         <Stack.Screen name="ClientAccount" component={ClientAccount} />
         <Stack.Screen name="BusinessAccount" component={BusinessAccount} />
+        <Stack.Screen name="InventoryScreen" component={InventoryScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
+
+
+
