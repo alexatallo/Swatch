@@ -9,6 +9,9 @@ import PolishScreen from "./PolishScreen";
 import CollectionScreen from "./screens/CollectionScreen"; 
 import ClientAccount from "./screens/ClientAccount";
 import BusinessAccount from "./screens/BusinessAccount";
+import SearchUserScreen from "./screens/SearchUserScreen";
+import { Buffer } from 'buffer';
+global.Buffer = Buffer;
 
 const Stack = createStackNavigator();
 
@@ -24,6 +27,7 @@ export default function App() {
         <Stack.Screen name="CollectionScreen" component={CollectionScreen} />
         <Stack.Screen name="ClientAccount" component={ClientAccount} />
         <Stack.Screen name="BusinessAccount" component={BusinessAccount} />
+        <Stack.Screen name="SearchUser" component={SearchUserScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
