@@ -384,6 +384,16 @@ export default function ExploreFeedScreen({navigation}) {
 
   return (
     <SafeAreaView style={styles.container}>
+    {/* Custom Header with Button */}
+    <View style={styles.header}>
+      <Text style={styles.title}>Explore Feed</Text>
+      <TouchableOpacity 
+        onPress={() => navigation.navigate("SearchUser")}
+        style={styles.headerButton}
+      >
+        <Ionicons name="add-circle-outline" size={30} color="purple" />
+      </TouchableOpacity>
+    </View>
       {/* Add Button */}
       <TouchableOpacity
         style={styles.addButton}
@@ -643,6 +653,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: "#fff",
+    elevation: 4, // Shadow effect for Android
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   addButton: {
     position: "absolute",
