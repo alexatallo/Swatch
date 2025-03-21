@@ -960,4 +960,62 @@ app.post("/collections", async (req, res) => {
     }
 });
 
+app.get("/users", async (req, res) => {
+    console.log("✅ Endpoint /users hit"); // Check if this logs
+ 
+ 
+    try {
+        console.log("✅ Headers:", req.headers); // Log headers to confirm request is received
+        console.log("✅ Checking token...");
+ 
+ 
+        const authHeader = req.headers.authorization;
+        const token = authHeader ? authHeader.split(" ")[1] : null;
+ 
+ 
+        if (!token) {
+            console.log("❌ No token received");
+            return res.status(403).json({ message: "No token provided" });
+        }
+ 
+ 
+        console.log("✅ Token received:", token);
+ 
+ 
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+            console.log("✅ Token Verified:", decoded);
+        } catch (err) {
+            console.error("❌ JWT Verification Failed:", err.message);
+            return res.status(401).json({ message: "Invalid or expired token" });
+        }
+ 
+ 
+        console.log("✅ Connecting to database...");
+        await client.connect();
+        const db = client.db("Swatch");
+        const polishCollection = db.collection("User");
+ 
+ 
+        console.log("✅ Fetching all users...");
+        const allUsers = await polishCollection.find().toArray();
+ 
+ 
+        if (!allUsers.length) {
+            console.log("❌ No users found.");
+            return res.status(404).json({ message: "No users found" });
+        }
+ 
+ 
+        console.log("✅ Backend Data:", allUsers.length, "entries found");
+        res.json({ status: "okay", data: allUsers });
+ 
+ 
+    } catch (error) {
+        console.error("❌ Server Error:", error);
+        return res.status(500).json({ message: "Server error" });
+    }
+ });
+
 app.listen(5000, () => console.log("🚀 Backend API running on port 5000"));

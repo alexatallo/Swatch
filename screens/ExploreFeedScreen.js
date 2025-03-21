@@ -384,6 +384,14 @@ export default function ExploreFeedScreen({navigation}) {
 
   return (
     <SafeAreaView style={styles.container}>
+       {/* Search Button in the Top-Right Corner */}
+       <TouchableOpacity 
+        onPress={() => navigation.navigate("SearchUser")}
+        style={styles.searchButton}
+      >
+        <Ionicons name="search-outline" size={30} color="purple" />
+      </TouchableOpacity>
+    
       {/* Add Button */}
       <TouchableOpacity
         style={styles.addButton}
@@ -910,5 +918,11 @@ const styles = StyleSheet.create({
       justifyContent: 'center', // Centers vertically
       alignItems: 'center', // Centers horizontally
       backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
+    },
+    searchButton: {
+      position: "absolute",
+      top: 50, // Adjust for notch/safe area
+      right: 20, // Distance from right
+      zIndex: 10, // Make sure it's on top of other elements
     },
 });

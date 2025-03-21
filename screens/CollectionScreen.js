@@ -111,7 +111,7 @@ const CollectionScreen = () => {
 // Styles
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+  flex: 1,
   backgroundColor: "#F8F8F8",
   paddingTop: Platform.OS === "web" ? 20 : 40,
   paddingHorizontal: Platform.OS === "web" ? 20 : 10,
