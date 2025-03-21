@@ -25,8 +25,8 @@ const AccountScreen = () => {
  const [loading, setLoading] = useState(true);
  const [refreshing, setRefreshing] = useState(false);
  const isMounted = useRef(true); // Prevent state updates on unmounted component
-
-
+ const [settingButtonVisible, setSettingButtonVisible] = useState(true);
+ 
  // Memoized merged posts (local + database) to prevent unnecessary re-renders
  const mergedPosts = useMemo(() => {
    const allPosts = [...localPosts, ...databasePosts];
@@ -142,6 +142,7 @@ const AccountScreen = () => {
  return (
    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 10 }}>
      <TouchableOpacity
+       visible={settingButtonVisible}
        style={{ position: 'absolute', top: 50, right: 20 }}
        onPress={() => {
          if (user?.isBusiness) {
@@ -151,12 +152,16 @@ const AccountScreen = () => {
          }
        }}
      >
-       <Ionicons name="settings-outline" size={28} color="black" />
+       <Ionicons name="
+       s-outline" size={28} color="black" />
      </TouchableOpacity>
 
+     <Text style={{ fontSize: 22, fontWeight: "bold", marginBottom: 10 }}>
+       {user.username}
+     </Text>
 
      <Text style={{ fontSize: 22, fontWeight: "bold", marginBottom: 10 }}>
-       {user?.isBusiness ? "Your Business Posts" : "Your Posts"}
+       {user?.isBusiness ? "Business Posts" : "Posts"}
      </Text>
 
 
