@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ActivityIndicator, Alert, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { View, Text, ActivityIndicator, Alert, Modal, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native'; 
+import { useFocusEffect } from '@react-navigation/native';
 import Feather from 'react-native-vector-icons/Feather';
+import Ionicons from "react-native-vector-icons/Ionicons";
 import axios from 'axios';
 import { API_URL } from "@env";
 
@@ -18,6 +19,8 @@ export default function BusinessAccount({ navigation }) {
   const [updating, setUpdating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [collectionData, setCollectionData] = useState([]);
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [collectionToDelete, setCollectionToDelete] = useState(null);
 
 
   useFocusEffect(
@@ -107,12 +110,52 @@ export default function BusinessAccount({ navigation }) {
     }
   };
 
+  const deleteCollection = async (postId) => {
+    setCollectionToDelete(postId);
+    setIsDeleteModalVisible(true);  // Show delete confirmation modal
+  };
+
+  const handleDeleteConfirmation = async () => {
+    if (!collectionToDelete) return;
+  
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        alert("Authentication token missing.");
+        return;
+      }
+  
+      const response = await axios.delete(`${API_URL}/collection/${collectionToDelete}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+  
+      if (response.status === 200) {
+        alert("Collection deleted successfully!");
+  
+        // Update state to remove deleted collection
+        setCollectionData(prevCollections => prevCollections.filter(col => col._id !== collectionToDelete));
+      } else {
+        throw new Error("Failed to delete collection");
+      }
+    } catch (error) {
+      alert("Error deleting collection: " + (error.response?.data?.error || error.message));
+    }
+  
+    setIsDeleteModalVisible(false);
+    setCollectionToDelete(null);
+  };
+
   if (loading) {
     return <ActivityIndicator size="large" color="#0000ff" />;
   }
 
+  const handleDeleteCancel = () => {
+    setIsDeleteModalVisible(false);
+    setCollectionToDelete(null);
+  };
+
   return (
-    
+
     <ScrollView
       contentContainerStyle={styles.container}
       style={Platform.OS === "web" ? { height: "100vh" } : null} // Fixed height for web
@@ -157,10 +200,36 @@ export default function BusinessAccount({ navigation }) {
           >
             <Text style={styles.collectionName}>{collection.name}</Text>
             <Text style={styles.collectionDescription}>Click to view details</Text>
+            {/* Trash Icon */}
+            <TouchableOpacity
+              style={styles.trashButton}
+              onPress={() => deleteCollection(collection._id)}
+            >
+              <Ionicons name="trash-outline" size={24} color="purple" />
+            </TouchableOpacity>
           </TouchableOpacity>
         ))
       ) : (
         <Text style={styles.errorText}>No collections found.</Text>
+      )}
+
+      {/* Delete Confirmation Modal */}
+{isDeleteModalVisible && (
+        <Modal transparent visible={isDeleteModalVisible} animationType="slide">
+          <View style={styles.modalBackground}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Are you sure you want to delete this post?</Text>
+              <View style={styles.buttonRow}>
+                <TouchableOpacity onPress={handleDeleteCancel} style={styles.cancelButton}>
+                  <Text style={styles.buttonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleDeleteConfirmation} style={styles.submitButton}>
+                  <Text style={styles.buttonText}>Confirm</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       )}
 
 
@@ -297,6 +366,45 @@ const styles = StyleSheet.create({
     marginTop: 10,
     textAlign: 'center',
   },
+  trashButton: {
+    position: "absolute",
+    bottom: 20,
+    right: 45,
+    zIndex: 10,
+    backgroundColor: "rgba(255, 255, 255, 1)",
+    padding: 8,
+    borderRadius: 20,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  modalBackground: {
+    flex: 1,
+    justifyContent: 'center', // Centers vertically
+    alignItems: 'center', // Centers horizontally
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
+  },
+  modalContainer: {
+    width: "90%",
+    maxWidth: 400,
+    maxHeight: "80%", // Fixed modal height
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 15,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginTop: 10,
+  },
   input: { height: 50, borderColor: '#ddd', borderWidth: 1, borderRadius: 8, marginBottom: 15, paddingLeft: 15 },
 });
-

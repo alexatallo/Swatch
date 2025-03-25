@@ -21,9 +21,7 @@ export default function ExploreFeedScreen({navigation}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredPolishData, setFilteredPolishData] = useState([]);
   const [selectedPolish, setSelectedPolish] = useState(null);
-  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [isSelectedImageVisible, setIsSelectedImageVisible] = useState(false);
-  const [postToDelete, setPostToDelete] = useState(null);
   const flatListRef = useRef(null);
   const [postData, setPostData] = useState({
     caption: "",
@@ -315,45 +313,7 @@ export default function ExploreFeedScreen({navigation}) {
     }
 };
 
-  const deletePost = async (postId) => {
-    setPostToDelete(postId);
-    setIsDeleteModalVisible(true);  // Show delete confirmation modal
-  };
 
-
-  const handleDeleteConfirmation = async () => {
-    if (!postToDelete) return;
-
-
-    try {
-      const token = await AsyncStorage.getItem("token");
-      if (!token) {
-        alert("Authentication token missing.");
-        return;
-      }
-
-
-      const response = await axios.delete(`${API_URL}/posts/${postToDelete}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-        },
-      });
-
-
-      if (response.data) {
-        alert("Post deleted successfully!");
-        setPosts(prevPosts => prevPosts.filter(post => post._id !== postToDelete));
-      } else {
-        throw new Error("Failed to delete post");
-      }
-    } catch (error) {
-      alert("Error deleting post: " + (error.response?.data?.error || error.message));
-    }
-
-
-    setIsDeleteModalVisible(false);
-    setPostToDelete(null);
-  };
 
   const handlePostCancel = () => {
     setModalVisible(false);
@@ -361,10 +321,6 @@ export default function ExploreFeedScreen({navigation}) {
     setPostData({ caption: "", polishId: null, nailLocation: "", photoUri: null });
   };
 
-  const handleDeleteCancel = () => {
-    setIsDeleteModalVisible(false);
-    setPostToDelete(null);
-  };
 
 
   const handleImagePress = (post) => {
@@ -403,6 +359,7 @@ export default function ExploreFeedScreen({navigation}) {
       <Text style={styles.title}>Explore Feed</Text>
   
       {/* Posts List */}
+      
       <FlatList
   data={posts}
   keyExtractor={(item) => item._id || Math.random().toString()}
@@ -412,7 +369,7 @@ export default function ExploreFeedScreen({navigation}) {
       <View style={styles.postCard}>
         {/* Username */}
         <Text style={styles.username}>@{item.username}</Text>
-
+  
         {/* Post Image */}
         <TouchableWithoutFeedback onPress={() => handleImagePress(item)}>
           {item.photoUri ? (
@@ -421,10 +378,10 @@ export default function ExploreFeedScreen({navigation}) {
             <Text>No Image Available</Text>
           )}
         </TouchableWithoutFeedback>
-
+  
         {/* Caption */}
         <Text style={styles.postCaption}>{item.caption}</Text>
-
+  
         {/* Nail Polish Details */}
         <View style={styles.polishDetailsContainer}>
           {/* Color Circle */}
@@ -434,31 +391,82 @@ export default function ExploreFeedScreen({navigation}) {
               { backgroundColor: polishLookup[item.polishId]?.hex || "#ccc" },
             ]}
           />
-
+  
           {/* Nail Polish Name and Location */}
-          
-           {/* Nail Polish Name and Location */}
-           <TouchableOpacity onPress={() => handlePolishNamePress(item.polishId)}>
-    <Text style={styles.postDetails}>
-      {polishLookup[item.polishId]?.brand || ""}: {polishLookup[item.polishId]?.name || "Unknown Polish"}
-    </Text>
-  </TouchableOpacity>
-
-  {/* Non-clickable Separator and Location */}
-  <Text> | 📍 {item.nailLocation}</Text>
+          <TouchableOpacity onPress={() => handlePolishNamePress(item.polishId)}>
+            <Text style={styles.postDetails}>
+              {polishLookup[item.polishId]?.brand || ""}: {polishLookup[item.polishId]?.name || "Unknown Polish"}
+            </Text>
+          </TouchableOpacity>
+  
+          <Text> | 📍 {item.nailLocation}</Text>
         </View>
       </View>
-
-      {/* Trash Icon */}
-      <TouchableOpacity
-          style={styles.trashButton}
-          onPress={() => deletePost(item._id)}
-        >
-          <Ionicons name="trash-outline" size={24} color="purple" />
-        </TouchableOpacity>
     </View>
-  )}
-/>
+  )}/>
+  <Modal visible={modalVisible} transparent animationType="none">
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Create a Post</Text>
+  
+              {/* Image Selection Buttons */}
+              <View style={styles.imageButtonContainer}>
+                <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("camera")}>
+                  <Ionicons name="camera-outline" size={24} color="#fff" />
+                  <Text style={styles.imageButtonText}>Camera</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("cameraRoll")}>
+                  <Ionicons name="image-outline" size={24} color="#fff" />
+                  <Text style={styles.imageButtonText}>Gallery</Text>
+                </TouchableOpacity>
+              </View>
+  
+              {postData.photoUri && (
+                <Image source={{ uri: postData.photoUri }} style={styles.imagePreview} />
+              )}
+  
+              {/* Caption Input */}
+              <TextInput
+                style={styles.input}
+                placeholder="Enter caption..."
+                placeholderTextColor="#aaa"
+                value={postData.caption}
+                onChangeText={(text) => setPostData((prev) => ({ ...prev, caption: text }))}
+              />
+  
+              {/* Nail Location Input */}
+              <TextInput
+                style={styles.input}
+                placeholder="Enter nail location..."
+                placeholderTextColor="#aaa"
+                value={postData.nailLocation}
+                onChangeText={(text) => setPostData((prev) => ({ ...prev, nailLocation: text }))}
+              />
+  
+              {/* Add Nail Polish Button */}
+              <TouchableOpacity
+                style={styles.addPolishButton}
+                onPress={handleAddPolishPress}
+              >
+                <Text style={styles.addPolishText}>
+                  {postData.polishName ? `Selected: ${postData.polishName}` : "Add Nail Polish"}
+                </Text>
+              </TouchableOpacity>
+  
+              {/* Action Buttons */}
+              <View style={styles.buttonRow}>
+                <TouchableOpacity onPress={handlePostCancel} style={styles.cancelButton}>
+                  <Text style={styles.buttonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={submitPost} style={styles.submitButton}>
+                  <Text style={styles.buttonText}>Post</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
   
       {/* Create Post Modal */}
       <Modal visible={modalVisible} transparent animationType="none">
@@ -593,24 +601,6 @@ export default function ExploreFeedScreen({navigation}) {
   </TouchableWithoutFeedback>
 </Modal>
 
-{/* Delete Confirmation Modal */}
-{isDeleteModalVisible && (
-        <Modal transparent visible={isDeleteModalVisible} animationType="slide">
-          <View style={styles.modalBackground}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Are you sure you want to delete this post?</Text>
-              <View style={styles.buttonRow}>
-                <TouchableOpacity onPress={handleDeleteCancel} style={styles.cancelButton}>
-                  <Text style={styles.buttonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleDeleteConfirmation} style={styles.submitButton}>
-                  <Text style={styles.buttonText}>Confirm</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-      )}
       {selectedImage && selectedImage.photoUri && (
         <Modal
           visible={isSelectedImageVisible}
@@ -783,20 +773,6 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: "center",
     justifyContent: "space-between", // Ensures the Close button sticks to the bottom
-  },
-  trashButton: {
-    position: "absolute",
-    bottom: 20,
-    right: 45,
-    zIndex: 10,
-    backgroundColor: "rgba(255, 255, 255, 1)",
-    padding: 8,
-    borderRadius: 20,
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
   },
   username: {
     position: "absolute",

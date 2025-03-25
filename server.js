@@ -1018,4 +1018,172 @@ app.get("/users", async (req, res) => {
     }
  });
 
+ app.post("/users/:targetUserId/follow", async (req, res) => {
+    try {
+      const token = req.headers.authorization?.split(" ")[1];
+      if (!token) return res.status(403).json({ message: "No token provided" });
+  
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const userId = decoded.userId;
+      const { targetUserId } = req.params;
+  
+      if (userId === targetUserId) {
+        return res.status(400).json({ message: "You cannot follow yourself." });
+      }
+  
+      const usersCollection = db.collection("User");
+  
+      // Add to the following array using $addToSet to avoid duplicates
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(userId) },
+        { $addToSet: { following: new ObjectId(targetUserId) } }
+      );
+  
+      res.json({ message: "Followed user successfully" });
+    } catch (error) {
+      console.error("Error following user:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  app.post("/users/:targetUserId/unfollow", async (req, res) => {
+    try {
+      const token = req.headers.authorization?.split(" ")[1];
+      if (!token) return res.status(403).json({ message: "No token provided" });
+  
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const userId = decoded.userId;
+      const { targetUserId } = req.params;
+  
+      const usersCollection = db.collection("User");
+  
+      // Remove from the following array
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(userId) },
+        { $pull: { following: new ObjectId(targetUserId) } }
+      );
+  
+      res.json({ message: "Unfollowed user successfully" });
+    } catch (error) {
+      console.error("Error unfollowing user:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  app.get("/users/is-following/:targetUserId", async (req, res) => {
+    try {
+      const token = req.headers.authorization?.split(" ")[1];
+      if (!token) return res.status(403).json({ message: "No token provided" });
+  
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const userId = decoded.userId;
+      const { targetUserId } = req.params;
+  
+      const usersCollection = db.collection("User");
+      const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
+  
+      if (!user) return res.status(404).json({ message: "User not found" });
+  
+      const isFollowing = user.following?.some(id => id.toString() === targetUserId);
+  
+      res.json({ isFollowing });
+    } catch (error) {
+      console.error("Error checking follow status:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  //delete a collection
+app.delete("/collection/:id", async (req, res) => {
+    console.log("✅ Delete request received for collection:", req.params.id);
+
+
+    try {
+        const authHeader = req.headers.authorization;
+        const token = authHeader ? authHeader.split(" ")[1] : null;
+
+
+        if (!token) {
+            console.log("❌ No token received");
+            return res.status(403).json({ message: "No token provided" });
+        }
+
+
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+            console.log("✅ Token Verified:", decoded);
+        } catch (err) {
+            console.error("❌ JWT Verification Failed:", err.message);
+            return res.status(401).json({ message: "Invalid or expired token" });
+        }
+
+
+        console.log("✅ Connecting to database...");
+        await client.connect();
+        const db = client.db("Swatch");
+        const collectionsCollection = db.collection("Collection");
+
+
+        const result = await collectionsCollection.deleteOne({ _id: new ObjectId(req.params.id) });
+
+
+        if (result.deletedCount === 0) {
+            console.log("❌ Collection not found");
+            return res.status(404).json({ message: "Collection not found" });
+        }
+
+
+        console.log("✅ Collection deleted successfully");
+        res.json({ status: "okay", message: "Collection deleted successfully" });
+
+
+    } catch (error) {
+        console.error("❌ Server Error:", error);
+        return res.status(500).json({ message: "Server error" });
+    }
+});
+// Delete a polish from a collection
+app.delete("/collections/:collectionId/polishes/:polishId", async (req, res) => {
+    const { collectionId, polishId } = req.params;
+
+    try {
+        const token = req.headers.authorization?.split(" ")[1];
+        if (!token) {
+            return res.status(403).json({ message: "No token provided" });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = decoded.userId;
+
+        // Verify the collection belongs to the user
+        const collection = await db.collection("Collection").findOne({ 
+            _id: new ObjectId(collectionId),
+            userId: new ObjectId(userId) 
+        });
+
+        if (!collection) {
+            return res.status(404).json({ message: "Collection not found" });
+        }
+
+        // Remove the polish from the collection
+        const result = await db.collection("Collection").updateOne(
+            { _id: new ObjectId(collectionId) },
+            { $pull: { polishes: new ObjectId(polishId) } }
+        );
+
+        if (result.modifiedCount === 0) {
+            return res.status(400).json({ message: "Polish not found in collection" });
+        }
+
+        res.json({ status: "okay", message: "Polish removed successfully" });
+
+    } catch (error) {
+        console.error("❌ Error removing polish:", error);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
+
+
+
+
+  
 app.listen(5000, () => console.log("🚀 Backend API running on port 5000"));
