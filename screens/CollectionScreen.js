@@ -29,6 +29,7 @@ const CollectionScreen = () => {
   const [polishData, setPolishData] = useState([]);
   const [loading, setLoading] = useState(true);
   const flatListRef = useRef(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     const fetchPolishes = async () => {
@@ -61,6 +62,25 @@ const CollectionScreen = () => {
     fetchPolishes();
   }, [collectionId]);
 
+  const handleDeletePolish = async (polishId) => {
+    try {
+      const token = await getToken();
+      if (!token) {
+        console.error("Token is missing.");
+        return;
+      }
+
+      await axios.delete(
+        `${API_URL}/collections/${collectionId}/polishes/${polishId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setPolishData(prevData => prevData.filter(polish => polish._id !== polishId));
+    } catch (error) {
+      console.error("Error deleting polish:", error);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {loading ? (
@@ -69,12 +89,20 @@ const CollectionScreen = () => {
         <Text style={styles.emptyText}>No polishes found in this collection.</Text>
       ) : (
         <>
-          {/* Header and Back Button */}
+
           <View style={styles.headerContainer}>
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
               <Ionicons name="arrow-back" size={28} color="#333" />
             </TouchableOpacity>
             <Text style={styles.headerText}>Your Collection</Text>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => setIsEditing(!isEditing)}
+            >
+              <Text style={styles.editButtonText}>
+                {isEditing ? 'Done' : 'Edit'}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* Polish List */}
@@ -82,9 +110,17 @@ const CollectionScreen = () => {
             data={polishData}
             keyExtractor={(item) => item._id.toString()}
             contentContainerStyle={[styles.listContainer, { flexGrow: 1 }]}
-            style={[styles.flatList, Platform.OS === "web" ? { height: "calc(100vh - 150px)" } : null]} 
+            style={[styles.flatList, Platform.OS === "web" ? { height: "calc(100vh - 150px)" } : null]}
             renderItem={({ item }) => (
               <View style={styles.polishCard}>
+                {isEditing && (
+                  <TouchableOpacity 
+                    style={styles.deleteButton}
+                    onPress={() => handleDeletePolish(item._id)}
+                  >
+                    <Ionicons name="trash-outline" size={24} color="#FF3B30" />
+                  </TouchableOpacity>
+                )}
                 <Image source={{ uri: item.picture }} style={styles.image} />
                 <View style={styles.textContainer}>
                   <Text style={styles.title}>{item.name || "No name available"}</Text>
@@ -92,9 +128,12 @@ const CollectionScreen = () => {
                   <Text style={styles.text}>Finish: {item.finish || "Unknown"}</Text>
                   <Text style={styles.text}>Type: {item.type || "Unknown"}</Text>
                   <Text style={styles.text}>Hex: {item.hex || "Unknown"}</Text>
-
+            
                   {item.link && (
-                    <TouchableOpacity style={styles.buyButton} onPress={() => Linking.openURL(item.link)}>
+                    <TouchableOpacity 
+                      style={styles.buyButton} 
+                      onPress={() => Linking.openURL(item.link)}
+                    >
                       <Text style={styles.buyButtonText}>Buy Now</Text>
                     </TouchableOpacity>
                   )}
@@ -111,10 +150,10 @@ const CollectionScreen = () => {
 // Styles
 const styles = StyleSheet.create({
   container: {
-  flex: 1,
-  backgroundColor: "#F8F8F8",
-  paddingTop: Platform.OS === "web" ? 20 : 40,
-  paddingHorizontal: Platform.OS === "web" ? 20 : 10,
+    flex: 1,
+    backgroundColor: "#F8F8F8",
+    paddingTop: Platform.OS === "web" ? 20 : 40,
+    paddingHorizontal: Platform.OS === "web" ? 20 : 10,
   },
   headerContainer: {
     paddingHorizontal: 20,
@@ -191,6 +230,41 @@ const styles = StyleSheet.create({
     color: "#666",
     marginTop: 20,
   },
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+  },
+  editButton: {
+    padding: 10,
+  },
+  editButtonText: {
+    fontSize: 16,
+    color: '#A020F0',
+    fontWeight: '600',
+  },
+  deleteButton: {
+    position: 'absolute',
+    right: 10,
+    top: 10,
+    zIndex: 1,
+    padding: 5,
+  },
+  polishCard: {
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 5,
+    position: 'relative'},
 });
 
 export default CollectionScreen;
