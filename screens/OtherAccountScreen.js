@@ -22,9 +22,10 @@ const OtherAccountScreen = ({route}) => {
   const [refreshing, setRefreshing] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [loadingFollowers, setLoadingFollowers] = useState(false);
+  const [polishData, setPolishData] = useState([]);
   const isMounted = useRef(true);
 
-  // Check follow status when component mounts or user changes
   const checkFollowingStatus = useCallback(async () => {
     try {
       const token = await getToken();
@@ -73,6 +74,7 @@ const OtherAccountScreen = ({route}) => {
   useEffect(() => {
     isMounted.current = true;
     fetchData();
+    fetchPolishes();
 
     return () => {
       isMounted.current = false;
@@ -85,6 +87,42 @@ const OtherAccountScreen = ({route}) => {
     }, [fetchData])
   );
 
+  const fetchPolishes = async (pageNum = 1, limit = 10) => {
+    if (loading || !hasMorePolishes) return;
+  
+    setLoading(true);
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        console.error("Token is missing.");
+        return;
+      }
+  
+      console.log(`📡 Fetching polishes... Page: ${pageNum}`);
+      const response = await axios.get(`${API_URL}/polishes`, {
+        params: { page: pageNum, limit },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+  
+      if (response.data && Array.isArray(response.data.data)) {
+        setPolishData((prev) => [...prev, ...response.data.data]);
+        setFilteredPolishData((prev) => [...prev, ...response.data.data]);
+  
+        if (response.data.data.length < limit) {
+          setHasMorePolishes(false); // No more pages to load
+        }
+      } else {
+        console.error("Unexpected response format:", response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching polishes:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
   const toggleFollow = async () => {
     if (!item?._id || followLoading) return;
   
@@ -111,6 +149,68 @@ const OtherAccountScreen = ({route}) => {
       setFollowLoading(false);
     }
   };
+
+  const handleViewFollowers = async () => {
+    if (loadingFollowers) return;
+    setLoadingFollowers(true);
+    try {
+      const token = await getToken();
+      console.log("Fetching followers from:", `${API_URL}/users/${item._id}/followers`);
+      const response = await axios.get(`${API_URL}/users/${item._id}/followers`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      console.log("Followers response:", response.data);
+      
+      if (response.data?.data) {
+        const followerList = response.data.data;
+        if (followerList.length === 0) {
+          Alert.alert("Followers", "No followers yet.");
+        } else {
+          Alert.alert(
+            "Followers",
+            followerList.map(user => `@${user.username}`).join("\n"),
+            [{ text: "OK" }]
+          );
+        }
+      } else {
+        Alert.alert("Error", "Unexpected response format");
+      }
+    } catch (error) {
+      console.error("Full error:", error);
+      console.error("Error response:", error.response);
+      Alert.alert(
+        "Error", 
+        error.response?.data?.message || "Could not fetch followers."
+      );
+    } finally {
+      setLoadingFollowers(false);
+    }
+  };
+
+  const polishLookup = polishData.reduce((acc, polish) => {
+    acc[polish._id] = polish;
+    return acc;
+  }, {});
+
+  const handlePolishNamePress = (polishId) => {
+    
+    setIsSelectedImageVisible(false);
+    const item = polishLookup[polishId];
+    if (item) {
+      navigation.navigate("PolishScreen", { item });
+    } else {
+      console.error("Polish not found:", polishId);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#A020F0" />
+      </View>
+    );
+  }
   
 
   return (
@@ -151,6 +251,27 @@ const OtherAccountScreen = ({route}) => {
         </TouchableOpacity>
       </View>
 
+      <View style={{ paddingHorizontal: 20 }}>
+        <TouchableOpacity
+          style={[
+            styles.followButton, 
+            { 
+              marginTop: 10, 
+              backgroundColor: '#ccc',
+              opacity: loadingFollowers ? 0.7 : 1
+            }
+          ]}
+          onPress={handleViewFollowers}
+          disabled={loadingFollowers}
+        >
+          {loadingFollowers ? (
+            <ActivityIndicator size="small" color="#333" />
+          ) : (
+            <Text style={{ color: '#333', fontWeight: 'bold' }}>View Followers</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
       <Text style={styles.sectionTitle}>
         {user?.isBusiness ? "Business Posts" : "Posts"}
       </Text>
@@ -161,6 +282,7 @@ const OtherAccountScreen = ({route}) => {
         </View>
       ) : (
         <FlatList
+        style={styles.flatlist}
           data={databasePosts}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => (
@@ -172,11 +294,15 @@ const OtherAccountScreen = ({route}) => {
                 />
               )}
               <Text style={styles.caption}>{item.caption}</Text>
-              {item.polishId && (
-                <Text style={styles.polishText}>
-                  Polish: {item.polishName || 'Unknown polish'}
-                </Text>
-              )}
+               <TouchableOpacity onPress={() => handlePolishNamePress(item.polishId)}>
+                          <Text style={styles.postDetails}>
+                            {polishLookup[item.polishId]?.brand || ""}: {polishLookup[item.polishId]?.name || "Unknown Polish"}
+                          </Text>
+                        </TouchableOpacity>
+                
+                        <Text> | 📍 {item.nailLocation}
+                          
+                        </Text>
             </View>
           )}
           refreshControl={
@@ -193,7 +319,7 @@ const OtherAccountScreen = ({route}) => {
       )}
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -212,6 +338,9 @@ const styles = StyleSheet.create({
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+  },
+  flatlist: {
+    height: Platform.OS == 'web' ? '70vh' : undefined,
   },
   backButton: {
     marginRight: 10,
