@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   View, Text, Platform, ActivityIndicator, StyleSheet, FlatList, Image, 
-  TouchableOpacity, RefreshControl, Alert
+  TouchableOpacity, TouchableWithoutFeedback, RefreshControl, Alert
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +16,7 @@ const getToken = async () => {
 const OtherAccountScreen = ({route}) => {
   const { item } = route.params || {};
   const navigation = useNavigation();
+  const [hasMorePolishes, setHasMorePolishes] = useState(true);
   const [user, setUser] = useState(null);
   const [databasePosts, setDatabasePosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +26,139 @@ const OtherAccountScreen = ({route}) => {
   const [loadingFollowers, setLoadingFollowers] = useState(false);
   const [polishData, setPolishData] = useState([]);
   const isMounted = useRef(true);
-
+    
+      // 1. Memoized polish lookup
+      const polishLookup = useMemo(() => {
+        const lookup = {};
+        polishData.forEach(polish => {
+          if (polish?._id) {
+            lookup[polish._id] = polish;
+          }
+        });
+        return lookup;
+      }, [polishData]);
+    
+      // 2. Fetch polishes - load once
+      const fetchPolishes = useCallback(async () => {
+        try {
+          const token = await getToken();
+          if (!token) return;
+    
+          const response = await axios.get(`${API_URL}/polishes`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+    
+          if (isMounted.current) {
+            setPolishData(response.data?.data || []);
+          }
+        } catch (error) {
+          console.error('Failed to fetch polishes:', error);
+        }
+      }, []);
+    
+      // 3. Fetch posts - can refresh
+      const fetchPosts = useCallback(async () => {
+        try {
+          const token = await getToken();
+          if (!token) {
+            console.error("Token is missing.");
+            setLoading(false);
+            return;
+          }
+    
+          if (route.params?.item) {
+            setUser(route.params.item);
+            await checkFollowingStatus();
+          }
+    
+          const postsResponse = await axios.get(`${API_URL}/posts/user/${item._id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+    
+          if (!isMounted.current) return;
+          setDatabasePosts(postsResponse.data?.data || []);
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+        } finally {
+          setLoading(false);
+          setRefreshing(false);
+        }
+      }, [route.params, checkFollowingStatus, item?._id]);
+    
+      // 4. Initial load - runs once on mount
+      useEffect(() => {
+        isMounted.current = true;
+        const loadInitialData = async () => {
+          setLoading(true);
+          await fetchPolishes(); // Load polishes once
+          await fetchPosts();    // Load initial posts
+        };
+        loadInitialData();
+    
+        return () => {
+          isMounted.current = false;
+        };
+      }, []); // Empty dependency array = runs once
+    
+      // 5. Refresh posts when screen comes into focus
+      useFocusEffect(
+        useCallback(() => {
+          if (isMounted.current) {
+            fetchPosts(); // Only refresh posts, not polishes
+          }
+        }, [fetchPosts])
+      );
+    
+      // 6. Render item with polish data
+      const renderItem = ({item}) => (
+        <View style={{ position: "relative", alignItems: "center" }}>
+        {/* Post Card */}
+        <View style={styles.postCard}>
+    
+          {/* Post Image */}
+          <TouchableWithoutFeedback onPress={() => handleImagePress(item)}>
+            {item.photoUri ? (
+              <Image 
+                source={{ uri: item.photoUri }} 
+                style={styles.postImage} 
+                resizeMode="cover"
+              />
+            ) : (
+                <Text>No Image Available</Text>
+            
+            )}
+          </TouchableWithoutFeedback>
+    
+          {/* Caption */}
+          <Text style={styles.postCaption}>{item.caption}</Text>
+    
+          {/* Nail Polish Details */}
+          <View style={styles.polishDetailsContainer}>
+            {/* Color Circle */}
+            <View
+              style={[
+                styles.colorCircle,
+                { backgroundColor: polishLookup[item.polishId]?.hex || "#ccc" },
+              ]}
+            />
+    
+            {/* Nail Polish Name and Location */}
+            <TouchableOpacity 
+              onPress={() => handlePolishNamePress(item.polishId)}
+              disabled={!polishLookup[item.polishId]}
+            >
+              <Text style={styles.postDetails}>
+                {polishLookup[item.polishId]?.brand || "Brand"}: 
+                {polishLookup[item.polishId]?.name || "Polish Name"}
+              </Text>
+            </TouchableOpacity>
+    
+            <Text> | 📍 {item.nailLocation}</Text>
+          </View>
+        </View>
+      </View>
+    );  
+  
   const checkFollowingStatus = useCallback(async () => {
     try {
       const token = await getToken();
@@ -43,86 +176,6 @@ const OtherAccountScreen = ({route}) => {
     }
   }, [item?._id]);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const token = await getToken();
-      if (!token) {
-        console.error("Token is missing.");
-        setLoading(false);
-        return;
-      }
-
-      if (route.params?.item) {
-        setUser(route.params.item);
-        await checkFollowingStatus();
-      }
-
-      const postsResponse = await axios.get(`${API_URL}/posts/user/${item._id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!isMounted.current) return;
-      setDatabasePosts(postsResponse.data?.data || []);
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [route.params, checkFollowingStatus, item?._id]);
-
-  useEffect(() => {
-    isMounted.current = true;
-    fetchData();
-    fetchPolishes();
-
-    return () => {
-      isMounted.current = false;
-    };
-  }, [fetchData]);
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchData();
-    }, [fetchData])
-  );
-
-  const fetchPolishes = async (pageNum = 1, limit = 10) => {
-    if (loading || !hasMorePolishes) return;
-  
-    setLoading(true);
-    try {
-      const token = await AsyncStorage.getItem("token");
-      if (!token) {
-        console.error("Token is missing.");
-        return;
-      }
-  
-      console.log(`📡 Fetching polishes... Page: ${pageNum}`);
-      const response = await axios.get(`${API_URL}/polishes`, {
-        params: { page: pageNum, limit },
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-  
-      if (response.data && Array.isArray(response.data.data)) {
-        setPolishData((prev) => [...prev, ...response.data.data]);
-        setFilteredPolishData((prev) => [...prev, ...response.data.data]);
-  
-        if (response.data.data.length < limit) {
-          setHasMorePolishes(false); // No more pages to load
-        }
-      } else {
-        console.error("Unexpected response format:", response.data);
-      }
-    } catch (error) {
-      console.error("Error fetching polishes:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
   const toggleFollow = async () => {
     if (!item?._id || followLoading) return;
   
@@ -188,14 +241,9 @@ const OtherAccountScreen = ({route}) => {
     }
   };
 
-  const polishLookup = polishData.reduce((acc, polish) => {
-    acc[polish._id] = polish;
-    return acc;
-  }, {});
 
   const handlePolishNamePress = (polishId) => {
     
-    setIsSelectedImageVisible(false);
     const item = polishLookup[polishId];
     if (item) {
       navigation.navigate("PolishScreen", { item });
@@ -285,32 +333,13 @@ const OtherAccountScreen = ({route}) => {
         style={styles.flatlist}
           data={databasePosts}
           keyExtractor={(item) => item._id}
-          renderItem={({ item }) => (
-            <View style={styles.postContainer}>
-              {item.photoUri && (
-                <Image 
-                  source={{ uri: item.photoUri }} 
-                  style={styles.postImage} 
-                />
-              )}
-              <Text style={styles.caption}>{item.caption}</Text>
-               <TouchableOpacity onPress={() => handlePolishNamePress(item.polishId)}>
-                          <Text style={styles.postDetails}>
-                            {polishLookup[item.polishId]?.brand || ""}: {polishLookup[item.polishId]?.name || "Unknown Polish"}
-                          </Text>
-                        </TouchableOpacity>
-                
-                        <Text> | 📍 {item.nailLocation}
-                          
-                        </Text>
-            </View>
-          )}
+          renderItem={renderItem}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => {
                 setRefreshing(true);
-                fetchData();
+                fetchPosts();
               }}
               tintColor="#A020F0"
             />
@@ -434,6 +463,42 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: '#888',
+  },
+  postCaption: {
+    fontSize: 18, // Larger font size
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  postCard: {
+    backgroundColor: "#f9f9f9",
+    padding: 15,
+    borderRadius: 15,
+    marginVertical: 10,
+    width: "90%",
+    alignSelf: "center",
+    borderWidth: 1, // Adds a border
+    borderColor: "#ccc", // Light gray border color
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  polishDetailsContainer: {
+    flexDirection: "row", // Align color circle and text horizontally
+    alignItems: "center", // Center items vertically
+    marginTop: 10,
+  },
+  colorCircle: {
+    width: 20, // Size of the circle
+    height: 20,
+    borderRadius: 10, // Make it circular
+    marginRight: 10, // Space between circle and text
+  },
+  postDetails: {
+    fontSize: 16, // Larger font size
+    color: "#666",
+    flex: 1, 
   },
 });
 
