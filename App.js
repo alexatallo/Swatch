@@ -12,6 +12,7 @@ import BusinessAccount from "./screens/BusinessAccount";
 import InventoryScreen from "./screens/InventoryScreen";
 import SearchUserScreen from "./screens/SearchUserScreen";
 import OtherAccountScreen from "./screens/OtherAccountScreen";
+import FollowerScreen from "./screens/FollowerScreen"; 
 const Stack = createStackNavigator();
 
 export default function App() {
@@ -29,7 +30,8 @@ export default function App() {
         <Stack.Screen name="InventoryScreen" component={InventoryScreen} />
         <Stack.Screen name="SearchUser" component={SearchUserScreen} />
         <Stack.Screen name="OtherAccount" component={OtherAccountScreen} />
-      </Stack.Navigator>
+        <Stack.Screen name="Followers" component={FollowerScreen} /> 
+        </Stack.Navigator>
     </NavigationContainer>
   );
 }
