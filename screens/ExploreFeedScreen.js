@@ -902,3 +902,4 @@ const styles = StyleSheet.create({
       zIndex: 10, // Make sure it's on top of other elements
     },
 });
+

@@ -17,6 +17,7 @@ const LOCAL_POSTS_KEY = "user_posts";
 
 const AccountScreen = () => {
   const navigation = useNavigation();
+  const [polishData, setPolishData] = useState([]);
   const [user, setUser] = useState(null);
   const [databasePosts, setDatabasePosts] = useState([]);
   const [localPosts, setLocalPosts] = useState([]);
@@ -63,6 +64,16 @@ const AccountScreen = () => {
     }
   };
 
+  const polishLookup = useMemo(() => {
+          const lookup = {};
+          polishData.forEach(polish => {
+            if (polish?._id) {
+              lookup[polish._id] = polish;
+            }
+          });
+          return lookup;
+        }, [polishData]);
+
   const loadLocalPosts = async () => {
     try {
       const localPostsJSON = await AsyncStorage.getItem(LOCAL_POSTS_KEY);
@@ -91,6 +102,32 @@ const AccountScreen = () => {
     }
   }, [lastTap]);
 
+  useEffect(() => {
+          const loadInitialData = async () => {
+            setLoading(true);
+            await fetchPolishes(); // Load polishes once
+          };
+          loadInitialData();
+      
+        }, [])
+
+        const fetchPolishes = useCallback(async () => {
+          try {
+            const token = await getToken();
+            if (!token) return;
+      
+            const response = await axios.get(`${API_URL}/polishes`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+      
+            if (isMounted.current) {
+              setPolishData(response.data?.data || []);
+            }
+          } catch (error) {
+            console.error('Failed to fetch polishes:', error);
+          }
+        }, []);      
+
   useFocusEffect(
     useCallback(() => {
       isMounted.current = true;
@@ -112,16 +149,6 @@ const AccountScreen = () => {
     }, []);
     return uniquePosts;
   }, [localPosts, databasePosts]);
-
-  const polishLookup = useMemo(() => {
-    const map = {};
-    mergedPosts.forEach(post => {
-      if (post.polishId && post.polish) {
-        map[post.polishId] = post.polish;
-      }
-    });
-    return map;
-  }, [mergedPosts]);
 
   const deletePost = async (postId) => {
     setPostToDelete(postId);
