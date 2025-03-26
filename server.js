@@ -1182,8 +1182,46 @@ app.delete("/collections/:collectionId/polishes/:polishId", async (req, res) => 
 });
 
 
-
-
+app.get("/users/:userId/followers", async (req, res) => {
+    try {
+      const token = req.headers.authorization?.split(" ")[1];
+      if (!token) return res.status(403).json({ message: "No token provided" });
+  
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  
+      const { userId } = req.params;
+      const usersCollection = db.collection("User");
+  
+      // Find all users where `following` array contains `userId`
+      const followers = await usersCollection
+        .find({ following: new ObjectId(userId) })
+        .project({ username: 1 }) // only return usernames
+        .toArray();
+  
+      res.json({ status: "okay", data: followers });
+    } catch (error) {
+      console.error("Error fetching followers:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
+  app.get("/posts/user/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+  
+      const postsCollection = db.collection("posts");
+      const posts = await postsCollection
+        .find({ userId: new ObjectId(userId) })
+        .sort({ createdAt: -1 })
+        .toArray();
+  
+      res.json({ status: "okay", data: posts });
+    } catch (error) {
+      console.error("Error fetching user posts:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
 
   
 app.listen(5000, () => console.log("🚀 Backend API running on port 5000"));
