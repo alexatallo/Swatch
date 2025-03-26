@@ -203,42 +203,8 @@ const OtherAccountScreen = ({route}) => {
     }
   };
 
-  const handleViewFollowers = async () => {
-    if (loadingFollowers) return;
-    setLoadingFollowers(true);
-    try {
-      const token = await getToken();
-      console.log("Fetching followers from:", `${API_URL}/users/${item._id}/followers`);
-      const response = await axios.get(`${API_URL}/users/${item._id}/followers`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      console.log("Followers response:", response.data);
-      
-      if (response.data?.data) {
-        const followerList = response.data.data;
-        if (followerList.length === 0) {
-          Alert.alert("Followers", "No followers yet.");
-        } else {
-          Alert.alert(
-            "Followers",
-            followerList.map(user => `@${user.username}`).join("\n"),
-            [{ text: "OK" }]
-          );
-        }
-      } else {
-        Alert.alert("Error", "Unexpected response format");
-      }
-    } catch (error) {
-      console.error("Full error:", error);
-      console.error("Error response:", error.response);
-      Alert.alert(
-        "Error", 
-        error.response?.data?.message || "Could not fetch followers."
-      );
-    } finally {
-      setLoadingFollowers(false);
-    }
+  const handleViewFollowers = () => {
+    navigation.navigate("Followers", { userId: item._id });
   };
 
 
