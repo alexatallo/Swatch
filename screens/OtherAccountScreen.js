@@ -285,6 +285,21 @@ const OtherAccountScreen = ({route}) => {
           )}
         </TouchableOpacity>
       </View>
+      <TouchableOpacity
+  style={[
+    styles.followButton,
+    { marginTop: 10, backgroundColor: '#ccc', opacity: loadingFollowers ? 0.7 : 1 }
+  ]}
+  onPress={() => navigation.navigate("Following", { userId: item._id })}
+  disabled={loadingFollowers}
+>
+  {loadingFollowers ? (
+    <ActivityIndicator size="small" color="#333" />
+  ) : (
+    <Text style={{ color: '#333', fontWeight: 'bold' }}>View Following</Text>
+  )}
+</TouchableOpacity>
+
 
       <Text style={styles.sectionTitle}>
         {user?.isBusiness ? "Business Posts" : "Posts"}

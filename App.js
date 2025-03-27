@@ -13,6 +13,7 @@ import InventoryScreen from "./screens/InventoryScreen";
 import SearchUserScreen from "./screens/SearchUserScreen";
 import OtherAccountScreen from "./screens/OtherAccountScreen";
 import FollowerScreen from "./screens/FollowerScreen"; 
+import FollowingScreen from "./screens/FollowingScreen";
 const Stack = createStackNavigator();
 
 export default function App() {
@@ -31,6 +32,7 @@ export default function App() {
         <Stack.Screen name="SearchUser" component={SearchUserScreen} />
         <Stack.Screen name="OtherAccount" component={OtherAccountScreen} />
         <Stack.Screen name="Followers" component={FollowerScreen} /> 
+        <Stack.Screen name="Following" component={FollowingScreen} /> 
         </Stack.Navigator>
     </NavigationContainer>
   );

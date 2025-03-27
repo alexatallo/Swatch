@@ -152,7 +152,7 @@ export default function BusinessAccount({ navigation }) {
   const handleDeleteCancel = () => {
     setIsDeleteModalVisible(false);
     setCollectionToDelete(null);
-  };
+  }; 
 
   return (
 
@@ -214,23 +214,22 @@ export default function BusinessAccount({ navigation }) {
       )}
 
       {/* Delete Confirmation Modal */}
-{isDeleteModalVisible && (
-        <Modal transparent visible={isDeleteModalVisible} animationType="slide">
-          <View style={styles.modalBackground}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Are you sure you want to delete this post?</Text>
-              <View style={styles.buttonRow}>
-                <TouchableOpacity onPress={handleDeleteCancel} style={styles.cancelButton}>
-                  <Text style={styles.buttonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleDeleteConfirmation} style={styles.submitButton}>
-                  <Text style={styles.buttonText}>Confirm</Text>
-                </TouchableOpacity>
-              </View>
+      <Modal transparent visible={isDeleteModalVisible} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Delete Collection?</Text>
+            <Text style={styles.modalMessage}>This action cannot be undone.</Text>
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity style={styles.cancelButton} onPress={handleDeleteCancel}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteConfirmation}>
+                <Text style={styles.deleteButtonText}>Delete</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        </Modal>
-      )}
+        </View>
+      </Modal>
 
 
       {/* Business Info Section */}
@@ -380,12 +379,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
   },
-  modalBackground: {
-    flex: 1,
-    justifyContent: 'center', // Centers vertically
-    alignItems: 'center', // Centers horizontally
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
-  },
   modalContainer: {
     width: "90%",
     maxWidth: 400,
@@ -400,11 +393,65 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textAlign: 'center',
   },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: 300,
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: "#555",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  modalButtonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+  },
   buttonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
     marginTop: 10,
+  },
+  cancelButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: "#ccc",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  deleteButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: "#A020F0", // Purple delete button
+    alignItems: "center",
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#fff",
   },
   input: { height: 50, borderColor: '#ddd', borderWidth: 1, borderRadius: 8, marginBottom: 15, paddingLeft: 15 },
 });

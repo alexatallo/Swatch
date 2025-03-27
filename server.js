@@ -1188,14 +1188,13 @@ app.get("/users/:userId/followers", async (req, res) => {
       if (!token) return res.status(403).json({ message: "No token provided" });
   
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-  
       const { userId } = req.params;
       const usersCollection = db.collection("User");
   
-      // Find all users where `following` array contains `userId`
+      // Find all users who follow this user (userId appears in their following list)
       const followers = await usersCollection
         .find({ following: new ObjectId(userId) })
-        .project({ username: 1 }) // only return usernames
+        .project({ username: 1, firstname: 1, lastname: 1 }) // <-- 👈 include names
         .toArray();
   
       res.json({ status: "okay", data: followers });
@@ -1203,7 +1202,7 @@ app.get("/users/:userId/followers", async (req, res) => {
       console.error("Error fetching followers:", error);
       res.status(500).json({ message: "Server error" });
     }
-  });
+  });  
   
   app.get("/posts/user/:userId", async (req, res) => {
     try {
@@ -1222,6 +1221,39 @@ app.get("/users/:userId/followers", async (req, res) => {
     }
   });
   
-
+  app.get("/users/:userId/following", async (req, res) => {
+    try {
+      const token = req.headers.authorization?.split(" ")[1];
+      if (!token) return res.status(403).json({ message: "No token provided" });
+  
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const { userId } = req.params;
+  
+      const usersCollection = db.collection("User");
+  
+      // Find the user and get the following array
+      const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
+      if (!user) return res.status(404).json({ message: "User not found" });
+  
+      const followingIds = user.following || [];
+  
+      if (followingIds.length === 0) {
+        return res.json({ status: "okay", data: [] });
+      }
+  
+      // Fetch full user objects for those being followed
+      const followingUsers = await usersCollection
+        .find({ _id: { $in: followingIds } })
+        .project({ username: 1, firstname: 1, lastname: 1 }) // add more fields if needed
+        .toArray();
+  
+      res.json({ status: "okay", data: followingUsers });
+  
+    } catch (error) {
+      console.error("Error fetching following:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+  
   
 app.listen(5000, () => console.log("🚀 Backend API running on port 5000"));
