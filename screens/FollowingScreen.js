@@ -1,11 +1,10 @@
-// FollowingScreen.js
-
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, ActivityIndicator, FlatList, TouchableOpacity, StyleSheet, Platform
+  View, Text, ActivityIndicator, FlatList, TouchableOpacity,
+  StyleSheet, Platform, Alert
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { API_URL } from '@env';
@@ -14,6 +13,7 @@ const FollowingScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const [following, setFollowing] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const { userId } = route.params;
 
@@ -21,26 +21,50 @@ const FollowingScreen = () => {
     return await AsyncStorage.getItem("token");
   };
 
-  useEffect(() => {
-    const fetchFollowing = async () => {
-      try {
-        const token = await getToken();
-        const response = await axios.get(`${API_URL}/users/${userId}/following`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (response.data?.data) {
-          setFollowing(response.data.data);
-        }
-      } catch (error) {
-        console.error("Error fetching following:", error);
-      } finally {
-        setLoading(false);
+  const fetchCurrentUser = async () => {
+    try {
+      const token = await getToken();
+      const response = await axios.get(`${API_URL}/account`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.user) {
+        setCurrentUserId(response.data.user._id);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching current user:", error);
+    }
+  };
 
+  const fetchFollowing = async () => {
+    try {
+      const token = await getToken();
+      const response = await axios.get(`${API_URL}/users/${userId}/following`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data?.data) {
+        setFollowing(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching following:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCurrentUser();
     fetchFollowing();
   }, [userId]);
+
+  const handleUserPress = (user) => {
+    if (user._id === currentUserId) {
+      // Navigate to Main stack which contains our tabs, then to Account tab
+      navigation.navigate('Main', { screen: 'Account' });
+    } else {
+      navigation.navigate("OtherAccount", { item: user });
+    }
+  };
 
   if (loading) {
     return (
@@ -70,7 +94,7 @@ const FollowingScreen = () => {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.itemContainer}
-              onPress={() => navigation.navigate("OtherAccount", { item })}
+              onPress={() => handleUserPress(item)}
             >
               <Text style={styles.nameText}>{item.firstname || "User"} {item.lastname || ""}</Text>
               <Text style={styles.usernameText}>@{item.username || "username"}</Text>
@@ -84,7 +108,6 @@ const FollowingScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  // Same styles as FollowerScreen
   container: {
     flex: 1,
     backgroundColor: "#F8F8F8",
