@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
-  View, Button, Text, TouchableOpacity, Modal, TextInput,
+  View, Text, TouchableOpacity, Modal, TextInput,
   Image, Dimensions, SafeAreaView, StyleSheet, FlatList,
   TouchableWithoutFeedback, Keyboard, Platform, ActivityIndicator
 } from "react-native";
@@ -15,6 +15,7 @@ import { API_URL } from "@env";
 
 
 export default function ExploreFeedScreen({navigation}) {
+  const [visibleComments, setVisibleComments] = useState({});
   const [polishData, setPolishData] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
@@ -25,11 +26,13 @@ export default function ExploreFeedScreen({navigation}) {
   const [selectedPolish, setSelectedPolish] = useState(null);
   const [isSelectedImageVisible, setIsSelectedImageVisible] = useState(false);
 
-
   const [showFollowingPosts, setShowFollowingPosts] = useState(false);
   const [loadingFollowing, setLoadingFollowing] = useState(false);
   const flatListRef = useRef(null);
   const exploreFlatListRef = useRef(null);
+  const [likesModalVisible, setLikesModalVisible] = useState(false);
+  const [selectedLikes, setSelectedLikes] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [postData, setPostData] = useState({
     caption: "",
     nailColor: "",
@@ -57,6 +60,7 @@ export default function ExploreFeedScreen({navigation}) {
       // Fetch fresh data
       fetchPosts(1);
       fetchPolishes(1);
+      fetchCurrentUserId();
       fetchFollowingIds();
      
       // Optional: Scroll to top
@@ -106,7 +110,7 @@ export default function ExploreFeedScreen({navigation}) {
         console.error("Token is missing.");
         return;
       }
- 
+  
       console.log(`📡 Fetching polishes... Page: ${pageNum}`);
       const response = await axios.get(`${API_URL}/polishes`, {
         params: { page: pageNum, limit },
@@ -114,6 +118,7 @@ export default function ExploreFeedScreen({navigation}) {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
+        
       });
  
       if (response.data && Array.isArray(response.data.data)) {
@@ -131,8 +136,8 @@ export default function ExploreFeedScreen({navigation}) {
     } finally {
       setLoading(false);
     }
+    
   };
-
 
   const polishLookup = polishData.reduce((acc, polish) => {
     acc[polish._id] = polish;
@@ -184,9 +189,6 @@ export default function ExploreFeedScreen({navigation}) {
       [searchQuery, polishData]
     );
 
-
-
-
     const fetchPosts = async (pageNum = 1, limit = 10) => {
       if (loading || !hasMorePosts) return;
    
@@ -227,7 +229,6 @@ export default function ExploreFeedScreen({navigation}) {
         setLoading(false);
       }
     };
-
 
   const resizeImage = async (uri) => {
     const { width: screenWidth } = Dimensions.get("window");
@@ -387,10 +388,45 @@ export default function ExploreFeedScreen({navigation}) {
   };
 
 
+  const toggleComments = (postId) => {
+    setVisibleComments((prev) => ({
+      ...prev,
+      [postId]: !prev[postId],
+    }));
+  };
 
-
-
-
+  const submitComment = async (postId, commentText) => {
+    if (!commentText || commentText.trim() === "") return;
+  
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const response = await axios.post(
+        `${API_URL}/posts/${postId}/comments`,
+        { text: commentText },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+  
+      const newComment = response.data;
+      setPosts((prevPosts) =>
+        prevPosts.map((post) =>
+          post._id === postId
+            ? {
+                ...post,
+                comments: [...(post.comments || []), newComment],
+                newComment: "",
+              }
+            : post
+        )
+      );
+    } catch (err) {
+      console.error("Failed to post comment:", err);
+      alert("Comment failed to post.");
+    }
+  };
   const handleImagePress = (post) => {
     const now = Date.now();
     const DOUBLE_PRESS_DELAY = 300;  
@@ -405,8 +441,6 @@ export default function ExploreFeedScreen({navigation}) {
       setLastTap(now);
     }
   };
-
-
   const toggleFollowingPosts = async () => {
     const newShowFollowing = !showFollowingPosts;
     setShowFollowingPosts(newShowFollowing);
@@ -420,17 +454,63 @@ export default function ExploreFeedScreen({navigation}) {
       exploreFlatListRef.current.scrollToOffset({ offset: 0, animated: true });
     }
   };
+
+  const fetchCurrentUserId = async () => {
+    const token = await AsyncStorage.getItem("token");
+    const res = await axios.get(`${API_URL}/account`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.data?.user) setCurrentUserId(res.data.user._id);
+  }; 
+
+  const toggleLike = async (postId) => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      await axios.post(`${API_URL}/posts/${postId}/like`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+  
+      // Optimistic update
+      setPosts(prev =>
+        prev.map(post =>
+          post._id === postId
+            ? {
+                ...post,
+                likes: post.likes?.includes(currentUserId)
+                  ? post.likes.filter(id => id !== currentUserId)
+                  : [...(post.likes || []), currentUserId],
+              }
+            : post
+        )
+      );
+    } catch (err) {
+      console.error("Like failed:", err.response?.data || err.message);
+    }
+  };
+ 
+  const showLikesModal = async (postId) => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const res = await axios.get(`${API_URL}/posts/${postId}/likes`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSelectedLikes(res.data.users || []);
+      setLikesModalVisible(true);
+    } catch (err) {
+      console.error("Failed to load likes:", err.response?.data || err.message);
+    }
+  };
   return (
+
+    
     <SafeAreaView style={styles.container}>
        {/* Search Button in the Top-Right Corner */}
-       <TouchableOpacity
+       <TouchableOpacity 
         onPress={() => navigation.navigate("SearchUser")}
         style={styles.searchButton}
       >
         <Ionicons name="search-outline" size={30} color="purple" />
       </TouchableOpacity>
-
-
       <TouchableOpacity
         onPress={toggleFollowingPosts}
         style={[
@@ -440,7 +520,7 @@ export default function ExploreFeedScreen({navigation}) {
       >
         <Ionicons name="people-outline" size={50} color="#6A5ACD" />
       </TouchableOpacity>
-   
+    
       {/* Add Button */}
       <TouchableOpacity
         style={styles.addButton}
@@ -452,19 +532,17 @@ export default function ExploreFeedScreen({navigation}) {
       <Text style={styles.title}>Explore Feed</Text>
  
       {/* Posts List */}
-     
+      
       <FlatList
-      ref={exploreFlatListRef}
+  ref={exploreFlatListRef}
   data={filterPosts()}
-  // Add this to your FlatList props:
-refreshing={loading}
-onRefresh={() => {
-  setPosts([]);
-  setPage(1);
-  setHasMorePosts(true);
-  fetchPosts(1);
-}}
-  keyExtractor={(item) => item._id || Math.random().toString()}
+  refreshing={loading}
+  onRefresh={() => {
+    setPosts([]);
+    setPage(1);
+    setHasMorePosts(true);
+    fetchPosts(1);
+  }}
   ListEmptyComponent={
     showFollowingPosts ? (
       <Text style={styles.noPostsText}>
@@ -479,13 +557,14 @@ onRefresh={() => {
       fetchPosts(page);
     }
   }}
+  keyExtractor={(item) => item._id || Math.random().toString()}
   renderItem={({ item }) => (
     <View style={{ position: "relative", alignItems: "center" }}>
       {/* Post Card */}
       <View style={styles.postCard}>
         {/* Username */}
         <Text style={styles.username}>@{item.username}</Text>
- 
+
         {/* Post Image */}
         <TouchableWithoutFeedback onPress={() => handleImagePress(item)}>
           {item.photoUri ? (
@@ -494,271 +573,300 @@ onRefresh={() => {
             <Text>No Image Available</Text>
           )}
         </TouchableWithoutFeedback>
- 
+
         {/* Caption */}
         <Text style={styles.postCaption}>{item.caption}</Text>
- 
+<View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
+<TouchableOpacity onPress={() => toggleLike(item._id)}>
+<Ionicons
+name={item.likes?.includes(currentUserId) ? "heart" : "heart-outline"}
+size={24}
+color={item.likes?.includes(currentUserId) ? "red" : "gray"}
+style={{ marginRight: 8 }}
+/>
+</TouchableOpacity>
+
+<TouchableOpacity onPress={() => showLikesModal(item._id)}>
+<Text style={{ color: "#333" }}>
+{item.likes?.length || 0} {item.likes?.length === 1 ? "Like" : "Likes"}
+</Text>
+</TouchableOpacity>
+</View>
+
         {/* Nail Polish Details */}
         <View style={styles.polishDetailsContainer}>
-          {/* Color Circle */}
           <View
             style={[
               styles.colorCircle,
               { backgroundColor: polishLookup[item.polishId]?.hex || "#ccc" },
             ]}
           />
- 
-          {/* Nail Polish Name and Location */}
           <TouchableOpacity onPress={() => handlePolishNamePress(item.polishId)}>
             <Text style={styles.postDetails}>
               {polishLookup[item.polishId]?.brand || ""}: {polishLookup[item.polishId]?.name || "Unknown Polish"}
             </Text>
           </TouchableOpacity>
- 
           <Text> | 📍 {item.nailLocation}</Text>
         </View>
-      </View>
-    </View>
-  )}/>
-  <Modal visible={modalVisible} transparent animationType="none">
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Create a Post</Text>
- 
-              {/* Image Selection Buttons */}
-              <View style={styles.imageButtonContainer}>
-                <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("camera")}>
-                  <Ionicons name="camera-outline" size={24} color="#fff" />
-                  <Text style={styles.imageButtonText}>Camera</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("cameraRoll")}>
-                  <Ionicons name="image-outline" size={24} color="#fff" />
-                  <Text style={styles.imageButtonText}>Gallery</Text>
-                </TouchableOpacity>
-              </View>
- 
-              {postData.photoUri && (
-                <Image source={{ uri: postData.photoUri }} style={styles.imagePreview} />
-              )}
- 
-              {/* Caption Input */}
-              <TextInput
-                style={styles.input}
-                placeholder="Enter caption..."
-                placeholderTextColor="#aaa"
-                value={postData.caption}
-                onChangeText={(text) => setPostData((prev) => ({ ...prev, caption: text }))}
-              />
- 
-              {/* Nail Location Input */}
-              <TextInput
-                style={styles.input}
-                placeholder="Enter nail location..."
-                placeholderTextColor="#aaa"
-                value={postData.nailLocation}
-                onChangeText={(text) => setPostData((prev) => ({ ...prev, nailLocation: text }))}
-              />
- 
-              {/* Add Nail Polish Button */}
-              <TouchableOpacity
-                style={styles.addPolishButton}
-                onPress={handleAddPolishPress}
-              >
-                <Text style={styles.addPolishText}>
-                  {postData.polishName ? `Selected: ${postData.polishName}` : "Add Nail Polish"}
+
+        {/* Comment Toggle Button */}
+        <TouchableOpacity onPress={() => toggleComments(item._id)} style={{ marginTop: 10 }}>
+          <Text style={{ color: "#6A5ACD", fontWeight: "bold" }}>
+             {visibleComments[item._id] ? "Hide Comments" : "Show Comments"}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Comments Section */}
+        {visibleComments[item._id] && (
+          <View style={{ marginTop: 10 }}>
+            {/* Display Comments */}
+            {item.comments && item.comments.length > 0 ? (
+              item.comments.map((comment, idx) => (
+                <Text key={idx} style={{ marginBottom: 4 }}>
+                  <Text style={{ fontWeight: "bold" }}>{comment.username}: </Text>
+                  {comment.text}
                 </Text>
-              </TouchableOpacity>
- 
-              {/* Action Buttons */}
-              <View style={styles.buttonRow}>
-                <TouchableOpacity onPress={handlePostCancel} style={styles.cancelButton}>
-                  <Text style={styles.buttonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={submitPost} style={styles.submitButton}>
-                  <Text style={styles.buttonText}>Post</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
- 
-      {/* Create Post Modal */}
-      <Modal visible={modalVisible} transparent animationType="none">
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Create a Post</Text>
- 
-              {/* Image Selection Buttons */}
-              <View style={styles.imageButtonContainer}>
-                <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("camera")}>
-                  <Ionicons name="camera-outline" size={24} color="#fff" />
-                  <Text style={styles.imageButtonText}>Camera</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("cameraRoll")}>
-                  <Ionicons name="image-outline" size={24} color="#fff" />
-                  <Text style={styles.imageButtonText}>Gallery</Text>
-                </TouchableOpacity>
-              </View>
- 
-              {postData.photoUri && (
-                <Image source={{ uri: postData.photoUri }} style={styles.imagePreview} />
-              )}
- 
-              {/* Caption Input */}
+              ))
+            ) : (
+              <Text style={{ color: "#999" }}>No comments yet.</Text>
+            )}
+
+            {/* New Comment Input */}
+            <View style={{ flexDirection: "row", marginTop: 8 }}>
               <TextInput
-                style={styles.input}
-                placeholder="Enter caption..."
-                placeholderTextColor="#aaa"
-                value={postData.caption}
-                onChangeText={(text) => setPostData((prev) => ({ ...prev, caption: text }))}
+                style={{
+                  flex: 1,
+                  borderWidth: 1,
+                  borderColor: "#ccc",
+                  borderRadius: 10,
+                  padding: 8,
+                  backgroundColor: "#f0f0f0",
+                }}
+                placeholder="Write a comment..."
+                value={item.newComment || ""}
+                onChangeText={(text) => {
+                  setPosts((prevPosts) =>
+                    prevPosts.map((post) =>
+                      post._id === item._id ? { ...post, newComment: text } : post
+                    )
+                  );
+                }}
               />
- 
-              {/* Nail Location Input */}
-              <TextInput
-                style={styles.input}
-                placeholder="Enter nail location..."
-                placeholderTextColor="#aaa"
-                value={postData.nailLocation}
-                onChangeText={(text) => setPostData((prev) => ({ ...prev, nailLocation: text }))}
-              />
- 
-              {/* Add Nail Polish Button */}
               <TouchableOpacity
-                style={styles.addPolishButton}
-                onPress={handleAddPolishPress}
-              >
-                <Text style={styles.addPolishText}>
-                  {postData.polishName ? `Selected: ${postData.polishName}` : "Add Nail Polish"}
-                </Text>
-              </TouchableOpacity>
- 
-              {/* Action Buttons */}
-              <View style={styles.buttonRow}>
-                <TouchableOpacity onPress={handlePostCancel} style={styles.cancelButton}>
-                  <Text style={styles.buttonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={submitPost} style={styles.submitButton}>
-                  <Text style={styles.buttonText}>Post</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-
-
- 
-      {/* Polish Modal */}
-      <Modal
-  transparent={true}
-  visible={polishModalVisible}
-  onRequestClose={() => setPolishModalVisible(false)}
->
-  <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-    <View style={styles.modalOverlay}>
-      <View style={styles.polishModalContainer}>
-        <Text style={styles.modalTitle}>Select a Nail Polish</Text>
-
-
-        {/* Search Bar */}
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search nail polish..."
-          placeholderTextColor="#888"
-          onChangeText={handleSearch}
-          value={searchQuery}
-        />
-
-
-        {/* List of Nail Polishes */}
-        <View style={styles.polishListContainer}>
-        <FlatList
-            ref={flatListRef}
-            data={filteredPolishData.slice(0, currentPage * itemsPerPage)}
-            keyExtractor={(item, index) => item._id ? item._id.toString() : index.toString()}
-            numColumns={1} // One polish per row
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.polishItem}
-                onPress={() => {
-                  setPostData((prev) => ({
-                    ...prev,
-                    polishId: item._id,
-                    polishName: item.name,
-                  }));
-                  setPolishModalVisible(false);
-                  setModalVisible(true);
+                onPress={() => submitComment(item._id, item.newComment)}
+                style={{
+                  marginLeft: 8,
+                  backgroundColor: "#6A5ACD",
+                  borderRadius: 10,
+                  paddingHorizontal: 12,
+                  justifyContent: "center",
                 }}
               >
-                <Image source={{ uri: item.picture }} style={styles.polishImage} />
-                <Text style={styles.polishName}>{item.name}</Text>
+                <Text style={{ color: "white", fontWeight: "bold" }}>Post</Text>
               </TouchableOpacity>
-            )}
-            onEndReached={() => {
-              if (!loading && filteredPolishData.length > currentPage * itemsPerPage) {
-                setCurrentPage((prev) => prev + 1); // Load more polishes
-              }
-            }}
-            onEndReachedThreshold={0.5}
-            ListFooterComponent={loading && <ActivityIndicator size="small" color="purple" />}
-          />
-        </View>
-
-
-        {/* Close Button */}
-        <TouchableOpacity
-          style={styles.closeButton}
-          onPress={() => {setPolishModalVisible(false);
-            setModalVisible(true);}}
-        >
-          <Text style={styles.closeButtonText}>Close</Text>
-        </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </View>
     </View>
-  </TouchableWithoutFeedback>
+  )}
+/>
+<Modal
+visible={likesModalVisible}
+transparent={true}
+animationType="slide"
+onRequestClose={() => setLikesModalVisible(false)}
+>
+<View style={styles.modalBackground}>
+<View style={[styles.modalContainer, { maxHeight: 400 }]}>
+<Text style={styles.modalTitle}>Liked By</Text>
+{selectedLikes.length === 0 ? (
+  <Text>No likes yet</Text>
+) : (
+  selectedLikes.map((user, idx) => (
+    <Text key={idx} style={styles.likerName}>@{user.username}</Text>
+  ))
+)}
+<TouchableOpacity
+  style={styles.closeButton}
+  onPress={() => setLikesModalVisible(false)}
+>
+  <Text style={styles.closeButtonText}>Close</Text>
+</TouchableOpacity>
+</View>
+</View>
 </Modal>
 
+{/* Create Post Modal */}
+<Modal visible={modalVisible} transparent animationType="none">
+<TouchableWithoutFeedback
+onPress={() => {
+if (Platform.OS !== "web") Keyboard.dismiss();
+}}
+>
+<View style={styles.modalOverlay}>
+<View style={styles.modalContainer}>
+  <Text style={styles.modalTitle}>Create a Post</Text>
 
-      {selectedImage && selectedImage.photoUri && (
-        <Modal
-          visible={isSelectedImageVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setSelectedImage(null)}
-        >
-          <TouchableWithoutFeedback onPress={() => setSelectedImage(null)}>
-            <View style={styles.modalImageContainer}>
-              <View style={styles.modalImageContent}>
-                <Image
-                  source={{ uri: selectedImage.photoUri }}
-                  style={styles.fullScreenImage}
-                  resizeMode="contain"
-                />
-                <Text style={styles.fullScreenCaption}>{selectedImage.caption}</Text>
-                <Text style={styles.fullScreenDetails}>
-  {/* Clickable Polish Name */}
-  <TouchableOpacity onPress={() => handlePolishNamePress(selectedImage.polishId)}>
-    <Text style={styles.clickableText}>
-      {polishLookup[selectedImage.polishId]?.brand || ""}: {polishLookup[selectedImage.polishId]?.name || "Unknown Polish"}
+  {/* Image Selection Buttons */}
+  <View style={styles.imageButtonContainer}>
+    <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("camera")}>
+      <Ionicons name="camera-outline" size={24} color="#fff" />
+      <Text style={styles.imageButtonText}>Camera</Text>
+    </TouchableOpacity>
+    <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("cameraRoll")}>
+      <Ionicons name="image-outline" size={24} color="#fff" />
+      <Text style={styles.imageButtonText}>Gallery</Text>
+    </TouchableOpacity>
+  </View>
+
+  {postData.photoUri && (
+    <Image source={{ uri: postData.photoUri }} style={styles.imagePreview} />
+  )}
+
+  {/* Caption Input */}
+  <TextInput
+    style={styles.input}
+    placeholder="Enter caption..."
+    placeholderTextColor="#aaa"
+    value={postData.caption}
+    onChangeText={(text) => setPostData((prev) => ({ ...prev, caption: text }))}
+  />
+
+  {/* Nail Location Input */}
+  <TextInput
+    style={styles.input}
+    placeholder="Enter nail location..."
+    placeholderTextColor="#aaa"
+    value={postData.nailLocation}
+    onChangeText={(text) => setPostData((prev) => ({ ...prev, nailLocation: text }))}
+  />
+
+  {/* Add Nail Polish Button */}
+  <TouchableOpacity
+    style={styles.addPolishButton}
+    onPress={handleAddPolishPress}
+  >
+    <Text style={styles.addPolishText}>
+      {postData.polishName ? `Selected: ${postData.polishName}` : "Add Nail Polish"}
     </Text>
   </TouchableOpacity>
 
+  {/* Action Buttons */}
+  <View style={styles.buttonRow}>
+    <TouchableOpacity onPress={handlePostCancel} style={styles.cancelButton}>
+      <Text style={styles.buttonText}>Cancel</Text>
+    </TouchableOpacity>
+    <TouchableOpacity onPress={submitPost} style={styles.submitButton}>
+      <Text style={styles.buttonText}>Post</Text>
+    </TouchableOpacity>
+  </View>
+</View>
+</View>
+</TouchableWithoutFeedback>
+</Modal>
 
-  {/* Non-clickable Separator and Location */}
-  <Text> | 📍 {selectedImage.nailLocation}</Text>
-</Text>
+{/* Polish Picker Modal */}
+<Modal
+transparent={true}
+visible={polishModalVisible}
+onRequestClose={() => setPolishModalVisible(false)}
+>
+<TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+<View style={styles.modalOverlay}>
+<View style={styles.polishModalContainer}>
+  <Text style={styles.modalTitle}>Select a Nail Polish</Text>
 
+  {/* Search Bar */}
+  <TextInput
+    style={styles.searchInput}
+    placeholder="Search nail polish..."
+    placeholderTextColor="#888"
+    onChangeText={handleSearch}
+    value={searchQuery}
+  />
 
-              </View>
-            </View>
-          </TouchableWithoutFeedback>
-        </Modal>
+  {/* List of Nail Polishes */}
+  <View style={styles.polishListContainer}>
+    <FlatList
+      ref={flatListRef}
+      data={filteredPolishData.slice(0, currentPage * itemsPerPage)}
+      keyExtractor={(item, index) => item._id || index.toString()}
+      renderItem={({ item }) => (
+        <TouchableOpacity
+          style={styles.polishItem}
+          onPress={() => {
+            setPostData((prev) => ({
+              ...prev,
+              polishId: item._id,
+              polishName: item.name,
+            }));
+            setPolishModalVisible(false);
+            setModalVisible(true);
+          }}
+        >
+          <Image source={{ uri: item.picture }} style={styles.polishImage} />
+          <Text style={styles.polishName}>{item.name}</Text>
+        </TouchableOpacity>
       )}
-    </SafeAreaView>
-  );
+      onEndReached={() => {
+        if (!loading && filteredPolishData.length > currentPage * itemsPerPage) {
+          setCurrentPage((prev) => prev + 1);
+        }
+      }}
+      onEndReachedThreshold={0.5}
+      ListFooterComponent={loading && <ActivityIndicator size="small" color="purple" />}
+    />
+  </View>
+
+  {/* Close Button */}
+  <TouchableOpacity
+    style={styles.closeButton}
+    onPress={() => {
+      setPolishModalVisible(false);
+      setModalVisible(true);
+    }}
+  >
+    <Text style={styles.closeButtonText}>Close</Text>
+  </TouchableOpacity>
+</View>
+</View>
+</TouchableWithoutFeedback>
+</Modal>
+
+{/* Image Zoom Modal */}
+{selectedImage && selectedImage.photoUri && (
+<Modal
+visible={isSelectedImageVisible}
+transparent
+animationType="fade"
+onRequestClose={() => setSelectedImage(null)}
+>
+<TouchableWithoutFeedback onPress={() => setSelectedImage(null)}>
+<View style={styles.modalImageContainer}>
+  <View style={styles.modalImageContent}>
+    <Image
+      source={{ uri: selectedImage.photoUri }}
+      style={styles.fullScreenImage}
+      resizeMode="contain"
+    />
+    <Text style={styles.fullScreenCaption}>{selectedImage.caption}</Text>
+    <Text style={styles.fullScreenDetails}>
+      <TouchableOpacity onPress={() => handlePolishNamePress(selectedImage.polishId)}>
+        <Text style={styles.clickableText}>
+          {polishLookup[selectedImage.polishId]?.brand || ""}:{" "}
+          {polishLookup[selectedImage.polishId]?.name || "Unknown Polish"}
+        </Text>
+      </TouchableOpacity>
+      <Text> | 📍 {selectedImage.nailLocation}</Text>
+    </Text>
+  </View>
+</View>
+</TouchableWithoutFeedback>
+</Modal>
+)}
+</SafeAreaView>
+);
 };
 const styles = StyleSheet.create({
   container: {
@@ -810,9 +918,14 @@ const styles = StyleSheet.create({
   postDetails: {
     fontSize: 16, // Larger font size
     color: "#666",
-    flex: 1,
+    flex: 1, 
   },
- 
+  likerName: {
+    fontSize: 16,
+    paddingVertical: 6,
+    textAlign: "center",
+    color: "#555",
+  },  
   imageButtonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
