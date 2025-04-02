@@ -1391,5 +1391,108 @@ app.get('/users/:userId', async (req, res) => {
       });
     }
   });
+  app.post("/posts/:postId/comments", async (req, res) => {
+    try {
+      const token = req.headers.authorization?.split(" ")[1];
+      if (!token) return res.status(403).json({ error: "No token provided" });
+  
+      const decoded = jwt.verify(token, jwtSecret);
+      const { postId } = req.params;
+      const { text } = req.body;
+  
+      if (!text || text.trim() === "") {
+        return res.status(400).json({ error: "Comment text is required." });
+      }
+  
+      const usersCollection = db.collection("User");
+      const user = await usersCollection.findOne({ _id: new ObjectId(decoded.userId) });
+      if (!user) return res.status(404).json({ error: "User not found" });
+  
+      const comment = {
+        userId: new ObjectId(decoded.userId),
+        username: user.username,
+        text: text.trim(),
+        createdAt: new Date(),
+      };
+  
+      const postsCollection = db.collection("posts");
+      const result = await postsCollection.updateOne(
+        { _id: new ObjectId(postId) },
+        { $push: { comments: comment } }
+      );
+  
+      if (result.modifiedCount > 0) {
+        res.json(comment);
+      } else {
+        res.status(404).json({ error: "Post not found or comment not added" });
+      }
+    } catch (err) {
+      console.error("❌ Error adding comment:", err);
+      res.status(500).json({ error: "Server error" });
+    }
+  });
+  
+  // LIKE POST ROUTE 
+
+  app.post("/posts/:postId/like", async (req, res) => {
+    try {
+      const token = req.headers.authorization?.split(" ")[1];
+      if (!token) return res.status(403).json({ error: "No token provided" });
+  
+      const decoded = jwt.verify(token, jwtSecret);
+      const userId = new ObjectId(decoded.userId);
+      const postId = new ObjectId(req.params.postId);
+  
+      const postsCollection = db.collection("posts");
+  
+      const post = await postsCollection.findOne({ _id: postId });
+      if (!post) return res.status(404).json({ error: "Post not found" });
+  
+      const alreadyLiked = (post.likes || []).some(id => id.toString() === userId.toString());
+  
+      let update;
+      if (alreadyLiked) {
+        update = { $pull: { likes: userId } };
+      } else {
+        update = { $addToSet: { likes: userId } };
+      }
+  
+      await postsCollection.updateOne({ _id: postId }, update);
+      res.json({ message: alreadyLiked ? "Unliked" : "Liked" });
+    } catch (error) {
+      console.error("Error toggling like:", error);
+      res.status(500).json({ error: "Server error" });
+    }
+  });
+
+  // VIEW LIKES ON POST 
+  app.get("/posts/:postId/likes", async (req, res) => {
+    try {
+      const token = req.headers.authorization?.split(" ")[1];
+      if (!token) return res.status(403).json({ error: "No token provided" });
+  
+      const decoded = jwt.verify(token, jwtSecret);
+      const postId = new ObjectId(req.params.postId);
+  
+      const postsCollection = db.collection("posts");
+      const usersCollection = db.collection("User");
+  
+      const post = await postsCollection.findOne({ _id: postId });
+      if (!post || !post.likes || post.likes.length === 0) {
+        return res.json({ users: [] });
+      }
+  
+      const likers = await usersCollection
+        .find({ _id: { $in: post.likes } })
+        .project({ username: 1, firstname: 1, lastname: 1 })
+        .toArray();
+  
+      res.json({ users: likers });
+    } catch (error) {
+      console.error("Error fetching likes:", error);
+      res.status(500).json({ error: "Server error" });
+    }
+  });
+  
   
 app.listen(5000, () => console.log("🚀 Backend API running on port 5000"));

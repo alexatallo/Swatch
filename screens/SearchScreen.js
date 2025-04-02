@@ -82,7 +82,6 @@ const PolishItem = React.memo(({ item, navigation }) => {
       style={styles.itemContainer}
       onPress={() => navigation.navigate("PolishScreen", { item })}
     >
-      // In your PolishItem component:
 <Image 
   source={{ 
     uri: item.picture,

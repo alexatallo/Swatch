@@ -1,19 +1,19 @@
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View, Text, ActivityIndicator, FlatList, Image, TouchableOpacity,
-  RefreshControl, Modal, StyleSheet, TouchableWithoutFeedback, Platform
+  View, Text, ActivityIndicator, FlatList, TouchableOpacity,
+  StyleSheet, Platform, Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { API_URL } from '@env';
-
 
 const FollowerScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const [followers, setFollowers] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const { userId } = route.params;
 
@@ -21,26 +21,50 @@ const FollowerScreen = () => {
     return await AsyncStorage.getItem("token");
   };
 
-  useEffect(() => {
-    const fetchFollowers = async () => {
-      try {
-        const token = await getToken();
-        const response = await axios.get(`${API_URL}/users/${userId}/followers`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        if (response.data?.data) {
-          setFollowers(response.data.data);
-        }
-      } catch (error) {
-        console.error("Error fetching followers:", error);
-      } finally {
-        setLoading(false);
+  const fetchCurrentUser = async () => {
+    try {
+      const token = await getToken();
+      const response = await axios.get(`${API_URL}/account`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.user) {
+        setCurrentUserId(response.data.user._id);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching current user:", error);
+    }
+  };
 
+  const fetchFollowers = async () => {
+    try {
+      const token = await getToken();
+      const response = await axios.get(`${API_URL}/users/${userId}/followers`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data?.data) {
+        setFollowers(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching followers:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCurrentUser();
     fetchFollowers();
   }, [userId]);
+
+  const handleUserPress = (user) => {
+    if (user._id === currentUserId) {
+      // Navigate to Main stack which contains our tabs, then to Account tab
+      navigation.navigate('Main', { screen: 'Account' });
+    } else {
+      navigation.navigate("OtherAccount", { item: user });
+    }
+  };
 
   if (loading) {
     return (
@@ -70,7 +94,7 @@ const FollowerScreen = () => {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.itemContainer}
-              onPress={() => navigation.navigate("OtherAccount", { item })}
+              onPress={() => handleUserPress(item)}
             >
               <Text style={styles.nameText}>{item.firstname || "User"} {item.lastname || ""}</Text>
               <Text style={styles.usernameText}>@{item.username || "username"}</Text>
@@ -82,6 +106,7 @@ const FollowerScreen = () => {
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
