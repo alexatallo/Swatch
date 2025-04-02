@@ -4,6 +4,7 @@ import {
   Image, Dimensions, SafeAreaView, StyleSheet, FlatList,
   TouchableWithoutFeedback, Keyboard, Platform, ActivityIndicator
 } from "react-native";
+import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from "react-native-vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -11,6 +12,7 @@ import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system";
 import axios from "axios";
 import { API_URL } from "@env";
+
 
 export default function ExploreFeedScreen({navigation}) {
   const [polishData, setPolishData] = useState([]);
@@ -22,7 +24,12 @@ export default function ExploreFeedScreen({navigation}) {
   const [filteredPolishData, setFilteredPolishData] = useState([]);
   const [selectedPolish, setSelectedPolish] = useState(null);
   const [isSelectedImageVisible, setIsSelectedImageVisible] = useState(false);
+
+
+  const [showFollowingPosts, setShowFollowingPosts] = useState(false);
+  const [loadingFollowing, setLoadingFollowing] = useState(false);
   const flatListRef = useRef(null);
+  const exploreFlatListRef = useRef(null);
   const [postData, setPostData] = useState({
     caption: "",
     nailColor: "",
@@ -38,14 +45,60 @@ export default function ExploreFeedScreen({navigation}) {
   const [loading, setLoading] = useState(false);
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [followingIds, setFollowingIds] = useState([]);
   const itemsPerPage = 4;
-  useEffect(() => {
-    fetchPosts();
-    fetchPolishes();
-  }, [navigation]);
+  useFocusEffect(
+    useCallback(() => {
+      // Reset states when screen comes into focus
+      setPosts([]);
+      setPage(1);
+      setHasMorePosts(true);
+     
+      // Fetch fresh data
+      fetchPosts(1);
+      fetchPolishes(1);
+      fetchFollowingIds();
+     
+      // Optional: Scroll to top
+      if (exploreFlatListRef.current) {
+        exploreFlatListRef.current.scrollToOffset({ offset: 0, animated: true });
+      }
+    }, [])
+  );
+  const fetchFollowingIds = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) return;
+ 
+      const response = await axios.get(`${API_URL}/account`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+     
+      if (response.data?.user?.following) {
+        setFollowingIds(response.data.user.following);
+        console.log("Following list: ", response.data.user.following);
+      }
+    } catch (error) {
+      console.error("Error fetching following list:", error);
+    }
+  };
+
+
+  const filterPosts = useCallback(() => {
+    if (showFollowingPosts) {
+      if (followingIds.length === 0) {
+        return []; // Return empty array if not following anyone
+      }
+      return posts.filter(post =>
+        followingIds.includes(post.userId.toString())
+      );
+    }
+    exploreFlatListRef.current?.scrollToOffset({ animated: true, offset: 0 });
+    return posts; // Return all posts when not filtering
+  }, [showFollowingPosts, followingIds, posts]);
   const fetchPolishes = async (pageNum = 1, limit = 10) => {
     if (loading || !hasMorePolishes) return;
-  
+ 
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem("token");
@@ -53,7 +106,7 @@ export default function ExploreFeedScreen({navigation}) {
         console.error("Token is missing.");
         return;
       }
-  
+ 
       console.log(`📡 Fetching polishes... Page: ${pageNum}`);
       const response = await axios.get(`${API_URL}/polishes`, {
         params: { page: pageNum, limit },
@@ -62,11 +115,11 @@ export default function ExploreFeedScreen({navigation}) {
           "Content-Type": "application/json",
         },
       });
-  
+ 
       if (response.data && Array.isArray(response.data.data)) {
         setPolishData((prev) => [...prev, ...response.data.data]);
         setFilteredPolishData((prev) => [...prev, ...response.data.data]);
-  
+ 
         if (response.data.data.length < limit) {
           setHasMorePolishes(false); // No more pages to load
         }
@@ -80,24 +133,27 @@ export default function ExploreFeedScreen({navigation}) {
     }
   };
 
+
   const polishLookup = polishData.reduce((acc, polish) => {
     acc[polish._id] = polish;
     return acc;
   }, {});
-  
+ 
   const handleSearch = (text) => {
     setSearchQuery(text);
     setCurrentPage(1); // Reset pagination
     applyFilters(text); // Filter the data
   };
 
+
   const handleAddPolishPress = () => {
     setModalVisible(false); // Close the first modal
     setPolishModalVisible(true); // Open the second modal
   };
 
+
   const handlePolishNamePress = (polishId) => {
-    
+   
     setIsSelectedImageVisible(false);
     const item = polishLookup[polishId];
     if (item) {
@@ -107,6 +163,7 @@ export default function ExploreFeedScreen({navigation}) {
     }
   };
 
+
   const applyFilters = useCallback(
       (search = searchQuery) => {
         // If no color and no search, show full list
@@ -115,7 +172,7 @@ export default function ExploreFeedScreen({navigation}) {
           return;
         }
         let filtered = polishData;
-        
+       
         if (search) {
           filtered = filtered.filter((item) =>
             item.name.toLowerCase().includes(search.toLowerCase())
@@ -128,52 +185,48 @@ export default function ExploreFeedScreen({navigation}) {
     );
 
 
-  const fetchPosts = async (pageNum = 1, limit = 10) => {
-    if (loading || !hasMorePosts) return;
-
-    setLoading(true);
-    try {
-      const storedToken = await AsyncStorage.getItem("token");
-      if (!storedToken) {
-        alert("Please log in to continue.");
-        return;
-      }
 
 
-      const response = await axios.get(`${API_URL}/posts`, {
-        params: { page: pageNum, limit },
-        headers: {
-          Authorization: `Bearer ${storedToken}`,
-        },
-      });
-
-
-      if (response.data && response.data.data) {
-        if (pageNum === 1) {
-          setPosts(response.data.data);  
+    const fetchPosts = async (pageNum = 1, limit = 10) => {
+      if (loading || !hasMorePosts) return;
+   
+      setLoading(true);
+      try {
+        const storedToken = await AsyncStorage.getItem("token");
+        if (!storedToken) {
+          alert("Please log in to continue.");
+          return;
+        }
+   
+        const response = await axios.get(`${API_URL}/posts`, {
+          params: { page: pageNum, limit },
+          headers: {
+            Authorization: `Bearer ${storedToken}`,
+          },
+        });
+   
+        if (response.data && response.data.data) {
+          // Always replace posts when pageNum is 1 (fresh load)
+          if (pageNum === 1) {
+            setPosts(response.data.data);
+          } else {
+            setPosts(prevPosts => [...prevPosts, ...response.data.data]);
+          }
+   
+          if (response.data.data.length < limit) {
+            setHasMorePosts(false);
+          }
+   
+          setPage(pageNum + 1);
         } else {
-          setPosts(prevPosts => {
-            const newPosts = response.data.data.filter(
-              post => !prevPosts.some(p => p._id === post._id)
-            );
-            return [...prevPosts, ...newPosts];
-          });
+          console.error("❌ Unexpected API response:", response.data);
         }
-
-        if (response.data.data.length < limit) {
-          setHasMorePosts(false);
-        }
-
-
-        setPage(pageNum + 1);
-      } else {
-        console.error("❌ Unexpected API response:", response.data);
+      } catch (error) {
+        console.error("❌ Error fetching posts:", error.response ? error.response.data : error.message);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("❌ Error fetching posts:", error.response ? error.response.data : error.message);
-    }
-    setLoading(false);
-  };
+    };
 
 
   const resizeImage = async (uri) => {
@@ -187,27 +240,28 @@ export default function ExploreFeedScreen({navigation}) {
     return manipulatedImage.uri;
   };
 
+
   const openCameraRoll = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       alert("Permission to access the camera roll is required.");
       return;
     }
-  
+ 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
     });
-  
+ 
     if (!result.canceled) {
       let selectedImage = result.assets[0].uri;
       const resizedUri = await resizeImage(selectedImage);
       setPostData((prevData) => ({ ...prevData, photoUri: resizedUri }));
     }
-  }; 
-  
+  };
+ 
   const openCamera = async (source) => {
     if (source === "camera") {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -215,13 +269,13 @@ export default function ExploreFeedScreen({navigation}) {
         alert("Camera access is required to take a photo.");
         return;
       }
-  
+ 
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [4, 3],
         quality: 1,
       });
-  
+ 
       if (!result.canceled) {
         let selectedImage = result.assets[0].uri;
         const resizedUri = await resizeImage(selectedImage);
@@ -233,14 +287,14 @@ export default function ExploreFeedScreen({navigation}) {
         alert("Permission to access the camera roll is required.");
         return;
       }
-  
+ 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 3],
         quality: 1,
       });
-  
+ 
       if (!result.canceled) {
         let selectedImage = result.assets[0].uri;
         const resizedUri = await resizeImage(selectedImage);
@@ -248,6 +302,8 @@ export default function ExploreFeedScreen({navigation}) {
       }
     }
   };
+
+
 
 
   const blobToBase64 = (blob) => {
@@ -259,6 +315,8 @@ export default function ExploreFeedScreen({navigation}) {
   };
 
 
+
+
   const submitPost = async () => {
     try {
         const token = await AsyncStorage.getItem("token");
@@ -266,6 +324,7 @@ export default function ExploreFeedScreen({navigation}) {
             alert("Authentication token missing.");
             return;
         }
+
 
         let base64Image = null;
         if (postData.photoUri) {
@@ -281,13 +340,14 @@ export default function ExploreFeedScreen({navigation}) {
             }
         }
 
+
         const response = await axios.post(
             `${API_URL}/posts`,
             {
                 caption: postData.caption,
                 polishId: postData.polishId,
                 nailLocation: postData.nailLocation,
-                photoUri: base64Image || postData.photoUri, 
+                photoUri: base64Image || postData.photoUri,
             },
             {
                 headers: {
@@ -297,12 +357,14 @@ export default function ExploreFeedScreen({navigation}) {
             }
         );
 
+
         if (response.data) {
             alert("Post created successfully!");
             setModalVisible(false);
             setSelectedPolish(null);
             setPostData({ caption: "", polishId: null, nailLocation: "", photoUri: null });
             setPosts(prevPosts => [response.data, ...prevPosts]);
+
 
         } else {
             throw new Error("Failed to create post");
@@ -315,11 +377,17 @@ export default function ExploreFeedScreen({navigation}) {
 
 
 
+
+
+
   const handlePostCancel = () => {
     setModalVisible(false);
     setSelectedPolish(null)
     setPostData({ caption: "", polishId: null, nailLocation: "", photoUri: null });
   };
+
+
+
 
 
 
@@ -338,16 +406,41 @@ export default function ExploreFeedScreen({navigation}) {
     }
   };
 
+
+  const toggleFollowingPosts = async () => {
+    const newShowFollowing = !showFollowingPosts;
+    setShowFollowingPosts(newShowFollowing);
+   
+    // Refresh following IDs if needed
+    if (newShowFollowing) {
+      await fetchFollowingIds();
+    }
+   
+    if (exploreFlatListRef.current) {
+      exploreFlatListRef.current.scrollToOffset({ offset: 0, animated: true });
+    }
+  };
   return (
     <SafeAreaView style={styles.container}>
        {/* Search Button in the Top-Right Corner */}
-       <TouchableOpacity 
+       <TouchableOpacity
         onPress={() => navigation.navigate("SearchUser")}
         style={styles.searchButton}
       >
         <Ionicons name="search-outline" size={30} color="purple" />
       </TouchableOpacity>
-    
+
+
+      <TouchableOpacity
+        onPress={toggleFollowingPosts}
+        style={[
+          styles.followingFilterButton,
+          showFollowingPosts && styles.followingFilterButtonActive
+        ]}
+      >
+        <Ionicons name="people-outline" size={50} color="#6A5ACD" />
+      </TouchableOpacity>
+   
       {/* Add Button */}
       <TouchableOpacity
         style={styles.addButton}
@@ -355,21 +448,44 @@ export default function ExploreFeedScreen({navigation}) {
       >
         <Ionicons name="add-circle" size={50} color="#6A5ACD" />
       </TouchableOpacity>
-  
+ 
       <Text style={styles.title}>Explore Feed</Text>
-  
+ 
       {/* Posts List */}
-      
+     
       <FlatList
-  data={posts}
+      ref={exploreFlatListRef}
+  data={filterPosts()}
+  // Add this to your FlatList props:
+refreshing={loading}
+onRefresh={() => {
+  setPosts([]);
+  setPage(1);
+  setHasMorePosts(true);
+  fetchPosts(1);
+}}
   keyExtractor={(item) => item._id || Math.random().toString()}
+  ListEmptyComponent={
+    showFollowingPosts ? (
+      <Text style={styles.noPostsText}>
+        {followingIds.length === 0
+          ? "You're not following anyone yet! Follow some users to see their posts here."
+          : "No posts from users you follow yet"}
+      </Text>
+    ) : null
+  }
+  onEndReached={() => {
+    if (!showFollowingPosts && !loading && hasMorePosts) {
+      fetchPosts(page);
+    }
+  }}
   renderItem={({ item }) => (
     <View style={{ position: "relative", alignItems: "center" }}>
       {/* Post Card */}
       <View style={styles.postCard}>
         {/* Username */}
         <Text style={styles.username}>@{item.username}</Text>
-  
+ 
         {/* Post Image */}
         <TouchableWithoutFeedback onPress={() => handleImagePress(item)}>
           {item.photoUri ? (
@@ -378,10 +494,10 @@ export default function ExploreFeedScreen({navigation}) {
             <Text>No Image Available</Text>
           )}
         </TouchableWithoutFeedback>
-  
+ 
         {/* Caption */}
         <Text style={styles.postCaption}>{item.caption}</Text>
-  
+ 
         {/* Nail Polish Details */}
         <View style={styles.polishDetailsContainer}>
           {/* Color Circle */}
@@ -391,14 +507,14 @@ export default function ExploreFeedScreen({navigation}) {
               { backgroundColor: polishLookup[item.polishId]?.hex || "#ccc" },
             ]}
           />
-  
+ 
           {/* Nail Polish Name and Location */}
           <TouchableOpacity onPress={() => handlePolishNamePress(item.polishId)}>
             <Text style={styles.postDetails}>
               {polishLookup[item.polishId]?.brand || ""}: {polishLookup[item.polishId]?.name || "Unknown Polish"}
             </Text>
           </TouchableOpacity>
-  
+ 
           <Text> | 📍 {item.nailLocation}</Text>
         </View>
       </View>
@@ -409,7 +525,7 @@ export default function ExploreFeedScreen({navigation}) {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
               <Text style={styles.modalTitle}>Create a Post</Text>
-  
+ 
               {/* Image Selection Buttons */}
               <View style={styles.imageButtonContainer}>
                 <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("camera")}>
@@ -421,11 +537,11 @@ export default function ExploreFeedScreen({navigation}) {
                   <Text style={styles.imageButtonText}>Gallery</Text>
                 </TouchableOpacity>
               </View>
-  
+ 
               {postData.photoUri && (
                 <Image source={{ uri: postData.photoUri }} style={styles.imagePreview} />
               )}
-  
+ 
               {/* Caption Input */}
               <TextInput
                 style={styles.input}
@@ -434,7 +550,7 @@ export default function ExploreFeedScreen({navigation}) {
                 value={postData.caption}
                 onChangeText={(text) => setPostData((prev) => ({ ...prev, caption: text }))}
               />
-  
+ 
               {/* Nail Location Input */}
               <TextInput
                 style={styles.input}
@@ -443,7 +559,7 @@ export default function ExploreFeedScreen({navigation}) {
                 value={postData.nailLocation}
                 onChangeText={(text) => setPostData((prev) => ({ ...prev, nailLocation: text }))}
               />
-  
+ 
               {/* Add Nail Polish Button */}
               <TouchableOpacity
                 style={styles.addPolishButton}
@@ -453,7 +569,7 @@ export default function ExploreFeedScreen({navigation}) {
                   {postData.polishName ? `Selected: ${postData.polishName}` : "Add Nail Polish"}
                 </Text>
               </TouchableOpacity>
-  
+ 
               {/* Action Buttons */}
               <View style={styles.buttonRow}>
                 <TouchableOpacity onPress={handlePostCancel} style={styles.cancelButton}>
@@ -467,14 +583,14 @@ export default function ExploreFeedScreen({navigation}) {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-  
+ 
       {/* Create Post Modal */}
       <Modal visible={modalVisible} transparent animationType="none">
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
               <Text style={styles.modalTitle}>Create a Post</Text>
-  
+ 
               {/* Image Selection Buttons */}
               <View style={styles.imageButtonContainer}>
                 <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("camera")}>
@@ -486,11 +602,11 @@ export default function ExploreFeedScreen({navigation}) {
                   <Text style={styles.imageButtonText}>Gallery</Text>
                 </TouchableOpacity>
               </View>
-  
+ 
               {postData.photoUri && (
                 <Image source={{ uri: postData.photoUri }} style={styles.imagePreview} />
               )}
-  
+ 
               {/* Caption Input */}
               <TextInput
                 style={styles.input}
@@ -499,7 +615,7 @@ export default function ExploreFeedScreen({navigation}) {
                 value={postData.caption}
                 onChangeText={(text) => setPostData((prev) => ({ ...prev, caption: text }))}
               />
-  
+ 
               {/* Nail Location Input */}
               <TextInput
                 style={styles.input}
@@ -508,7 +624,7 @@ export default function ExploreFeedScreen({navigation}) {
                 value={postData.nailLocation}
                 onChangeText={(text) => setPostData((prev) => ({ ...prev, nailLocation: text }))}
               />
-  
+ 
               {/* Add Nail Polish Button */}
               <TouchableOpacity
                 style={styles.addPolishButton}
@@ -518,7 +634,7 @@ export default function ExploreFeedScreen({navigation}) {
                   {postData.polishName ? `Selected: ${postData.polishName}` : "Add Nail Polish"}
                 </Text>
               </TouchableOpacity>
-  
+ 
               {/* Action Buttons */}
               <View style={styles.buttonRow}>
                 <TouchableOpacity onPress={handlePostCancel} style={styles.cancelButton}>
@@ -533,7 +649,8 @@ export default function ExploreFeedScreen({navigation}) {
         </TouchableWithoutFeedback>
       </Modal>
 
-  
+
+ 
       {/* Polish Modal */}
       <Modal
   transparent={true}
@@ -545,6 +662,7 @@ export default function ExploreFeedScreen({navigation}) {
       <View style={styles.polishModalContainer}>
         <Text style={styles.modalTitle}>Select a Nail Polish</Text>
 
+
         {/* Search Bar */}
         <TextInput
           style={styles.searchInput}
@@ -553,6 +671,7 @@ export default function ExploreFeedScreen({navigation}) {
           onChangeText={handleSearch}
           value={searchQuery}
         />
+
 
         {/* List of Nail Polishes */}
         <View style={styles.polishListContainer}>
@@ -588,6 +707,7 @@ export default function ExploreFeedScreen({navigation}) {
           />
         </View>
 
+
         {/* Close Button */}
         <TouchableOpacity
           style={styles.closeButton}
@@ -600,6 +720,7 @@ export default function ExploreFeedScreen({navigation}) {
     </View>
   </TouchableWithoutFeedback>
 </Modal>
+
 
       {selectedImage && selectedImage.photoUri && (
         <Modal
@@ -625,9 +746,11 @@ export default function ExploreFeedScreen({navigation}) {
     </Text>
   </TouchableOpacity>
 
+
   {/* Non-clickable Separator and Location */}
   <Text> | 📍 {selectedImage.nailLocation}</Text>
 </Text>
+
 
               </View>
             </View>
@@ -687,9 +810,9 @@ const styles = StyleSheet.create({
   postDetails: {
     fontSize: 16, // Larger font size
     color: "#666",
-    flex: 1, 
+    flex: 1,
   },
-  
+ 
   imageButtonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -777,15 +900,15 @@ const styles = StyleSheet.create({
   username: {
     position: "absolute",
     top: 10,    
-    left: 10,   
+    left: 10,  
     fontSize: 16,
     fontWeight: "bold",
     color: "#6A5ACD",
-    backgroundColor: "rgba(255, 255, 255, 0.7)", 
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 10,
-    zIndex: 10,   
+    zIndex: 10,  
   },
     modalOverlay: {
       flex: 1,
@@ -827,7 +950,7 @@ const styles = StyleSheet.create({
     },
     polishListContainer: {
       flex: 1, // Take up remaining space
-    marginBottom: 10, 
+    marginBottom: 10,
     },
     polishItem: {
       flexDirection: 'row',
@@ -901,5 +1024,18 @@ const styles = StyleSheet.create({
       right: 20, // Distance from right
       zIndex: 10, // Make sure it's on top of other elements
     },
+    followingFilterButtonActive: {
+      backgroundColor: "#F0E8FF",
+      borderRadius: 20,
+    },
+    followingFilterButton: {
+      marginLeft: 10,
+      padding: 5,
+    },
+    noPostsText: {
+      textAlign: 'center',
+      marginTop: 20,
+      fontSize: 16,
+      color: '#666',
+    },
 });
-

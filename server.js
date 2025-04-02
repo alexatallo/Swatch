@@ -6,8 +6,6 @@ const cors = require("cors");
 const { MongoClient, ObjectId } = require("mongodb");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-
-
 const mongoUri = process.env.MONGO_URI;
 const jwtSecret = process.env.JWT_SECRET;
 
@@ -1254,6 +1252,144 @@ app.get("/users/:userId/followers", async (req, res) => {
       res.status(500).json({ message: "Server error" });
     }
   });
+  app.get('/api/polishes/:polishId/businesses', async (req, res) => {
+    try {
+        const { polishId } = req.params;
+        
+        // Validate ObjectId
+        if (!ObjectId.isValid(polishId)) {
+            return res.status(400).json({ 
+                status: "error",
+                message: "Invalid polish ID format" 
+            });
+        }
+        const polishObjectId = new ObjectId(polishId);
+
+        // 1. Find collections containing this polish
+        const matchingCollections = await db.collection("Collection").find({
+            "polishes": polishObjectId
+        }).toArray();
+
+        if (matchingCollections.length === 0) {
+            return res.json({ status: "okay", data: [] });
+        }
+
+        // 2. Get unique user IDs (already strings)
+        const userIds = [...new Set(matchingCollections.map(c => c.userId))];
+
+        // 3. Find business users with their original string userIds
+        const result = await db.collection("User").aggregate([
+            {
+                $match: { 
+                    _id: { $in: userIds }, // Directly use string IDs
+                    isBusiness: true 
+                }
+            },
+            {
+                $lookup: {
+                    from: "Business",
+                    localField: "_id", // Assuming _id matches userId in Business
+                    foreignField: "userId",
+                    as: "businessInfo"
+                }
+            },
+            {
+                $unwind: {
+                    path: "$businessInfo",
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+            {
+                $addFields: {
+                    // Preserve the original string userId
+                    userId: "$_id"
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    userId: 1, // Already a string
+                    username: 1,
+                    businessName: "$businessInfo.businessName"
+                }
+            }
+        ]).toArray();
+
+        res.json({ status: "okay", data: result });
+
+    } catch (err) {
+        console.error("SERVER ERROR:", err);
+        res.status(500).json({ 
+            status: "error",
+            message: "Internal server error",
+            error: err.message 
+        });
+    }
+});
+app.get('/users/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
   
+      // Validate ObjectId
+      if (!ObjectId.isValid(userId)) {
+        return res.status(400).json({ error: "Invalid user ID format" });
+      }
+  
+      // Find user in database
+      const user = await db.collection('User').findOne({
+        _id: new ObjectId(userId)
+      });
+  
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+  
+      // Return user without sensitive data
+      const { password, ...safeUser } = user;
+      res.json(safeUser);
+  
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get('/businesses/by-user/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+  
+      if (!ObjectId.isValid(userId)) {
+        return res.status(400).json({ error: "Invalid user ID format" });
+      }
+  
+      const business = await db.collection('Business').findOne({
+        userId: new ObjectId(userId)
+      });
+  
+      if (!business) {
+        return res.status(404).json({ 
+          error: "No business found for this user",
+          code: "BUSINESS_NOT_FOUND"
+        });
+      }
+  
+      // Return only the specified fields
+      res.json({
+        id: business._id,
+        userId: business.userId,
+        businessName: business.businessName,
+        businessLocation: business.businessLocation,
+        website: business.website,
+        createdAt: business.createdAt
+      });
+  
+    } catch (error) {
+      console.error("Server error:", error);
+      res.status(500).json({ 
+        error: "Internal server error",
+        details: error.message 
+      });
+    }
+  });
   
 app.listen(5000, () => console.log("🚀 Backend API running on port 5000"));
