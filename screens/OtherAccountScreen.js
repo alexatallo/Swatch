@@ -1,185 +1,239 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
-  View, Text, Platform, ActivityIndicator, StyleSheet, FlatList, Image, 
-  TouchableOpacity, TouchableWithoutFeedback, RefreshControl, Alert
+  View, Text, Button, Modal, Platform, ActivityIndicator, StyleSheet, FlatList, Image,
+  TouchableOpacity, TouchableWithoutFeedback, RefreshControl, Alert, Linking
 } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { API_URL } from '@env';
-
 const getToken = async () => {
   return await AsyncStorage.getItem("token");
 };
-
-const OtherAccountScreen = ({route}) => {
-  const { item } = route.params || {};
-  const navigation = useNavigation();
-  const [hasMorePolishes, setHasMorePolishes] = useState(true);
-  const [user, setUser] = useState(null);
-  const [databasePosts, setDatabasePosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [followLoading, setFollowLoading] = useState(false);
-  const [loadingFollowers, setLoadingFollowers] = useState(false);
-  const [polishData, setPolishData] = useState([]);
-  const isMounted = useRef(true);
-    
-      // 1. Memoized polish lookup
-      const polishLookup = useMemo(() => {
-        const lookup = {};
-        polishData.forEach(polish => {
-          if (polish?._id) {
-            lookup[polish._id] = polish;
-          }
-        });
-        return lookup;
-      }, [polishData]);
-    
-      // 2. Fetch polishes - load once
-      const fetchPolishes = useCallback(async () => {
-        try {
-          const token = await getToken();
-          if (!token) return;
-    
-          const response = await axios.get(`${API_URL}/polishes`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-    
-          if (isMounted.current) {
-            setPolishData(response.data?.data || []);
-          }
-        } catch (error) {
-          console.error('Failed to fetch polishes:', error);
-        }
-      }, []);
-    
-      // 3. Fetch posts - can refresh
-      const fetchPosts = useCallback(async () => {
-        try {
-          const token = await getToken();
-          if (!token) {
-            console.error("Token is missing.");
-            setLoading(false);
-            return;
-          }
-    
-          if (route.params?.item) {
-            setUser(route.params.item);
-            await checkFollowingStatus();
-          }
-    
-          const postsResponse = await axios.get(`${API_URL}/posts/user/${item._id}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-    
-          if (!isMounted.current) return;
-          setDatabasePosts(postsResponse.data?.data || []);
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-        } finally {
-          setLoading(false);
-          setRefreshing(false);
-        }
-      }, [route.params, checkFollowingStatus, item?._id]);
-    
-      // 4. Initial load - runs once on mount
-      useEffect(() => {
-        isMounted.current = true;
-        const loadInitialData = async () => {
-          setLoading(true);
-          await fetchPolishes(); // Load polishes once
-          await fetchPosts();    // Load initial posts
-        };
-        loadInitialData();
-    
-        return () => {
-          isMounted.current = false;
-        };
-      }, []); // Empty dependency array = runs once
-    
-      // 5. Refresh posts when screen comes into focus
-      useFocusEffect(
-        useCallback(() => {
-          if (isMounted.current) {
-            fetchPosts(); // Only refresh posts, not polishes
-          }
-        }, [fetchPosts])
-      );
-    
-      // 6. Render item with polish data
-      const renderItem = ({item}) => (
-        <View style={{ position: "relative", alignItems: "center" }}>
-        {/* Post Card */}
-        <View style={styles.postCard}>
-    
-          {/* Post Image */}
-          <TouchableWithoutFeedback onPress={() => handleImagePress(item)}>
-            {item.photoUri ? (
-              <Image 
-                source={{ uri: item.photoUri }} 
-                style={styles.postImage} 
-                resizeMode="cover"
-              />
-            ) : (
-                <Text>No Image Available</Text>
-            
-            )}
-          </TouchableWithoutFeedback>
-    
-          {/* Caption */}
-          <Text style={styles.postCaption}>{item.caption}</Text>
-    
-          {/* Nail Polish Details */}
-          <View style={styles.polishDetailsContainer}>
-            {/* Color Circle */}
-            <View
-              style={[
-                styles.colorCircle,
-                { backgroundColor: polishLookup[item.polishId]?.hex || "#ccc" },
-              ]}
-            />
-    
-            {/* Nail Polish Name and Location */}
-            <TouchableOpacity 
-              onPress={() => handlePolishNamePress(item.polishId)}
-              disabled={!polishLookup[item.polishId]}
-            >
-              <Text style={styles.postDetails}>
-                {polishLookup[item.polishId]?.brand || "Brand"}: 
-                {polishLookup[item.polishId]?.name || "Polish Name"}
-              </Text>
-            </TouchableOpacity>
-    
-            <Text> | 📍 {item.nailLocation}</Text>
-          </View>
-        </View>
-      </View>
-    );  
+const calculateDistance = (userLat, userLng, businessLat, businessLng) => {
+  // Calculate distance (in km) between the two points
+  const radian = Math.PI / 180;
+  const R = 6371; // Radius of Earth in km
   
-  const checkFollowingStatus = useCallback(async () => {
+  const dLat = (businessLat - userLat) * radian;
+  const dLng = (businessLng - userLng) * radian;
+
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(userLat * radian) * Math.cos(businessLat * radian) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // Distance in km
+};
+
+const geocodeAddress = async (address) => {
+  try {
+    console.log('🗺️ Geocoding address:', address);
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=MY_API_KEY`;
+    const response = await fetch(url);
+    const data = await response.json();
+    if (data.results && data.results.length > 0) {
+      return data.results[0].geometry.location;
+    }
+    throw new Error('Address not found');
+  } catch (error) {
+    console.error('🔴 Geocoding failed:', error.message);
+    throw error;
+  }
+};
+
+
+const OtherAccountScreen = () => {
+  const route = useRoute();
+  const navigation = useNavigation();
+  const isMounted = useRef(true);
+  const { item: routeItem } = route.params || {};
+  const [userLocation, setUserLocation] = useState(null);
+const [businessLocation, setBusinessLocation] = useState(null);
+const [distance, setDistance] = useState(null);
+
+  // State management
+  const [state, setState] = useState({
+    loading: true,
+    refreshing: false,
+    followLoading: false,
+    distanceLoading: false,
+    accountData: null,
+    user: routeItem,
+    distance: null,
+    databasePosts: [],
+    polishData: [],
+    isFollowing: false
+  });
+
+  // Memoized values
+  const polishLookup = useMemo(() => {
+    const lookup = {};
+    state.polishData.forEach(polish => {
+      if (polish?._id) lookup[polish._id] = polish;
+    });
+    return lookup;
+  }, [state.polishData]);
+
+
+  // Helper functions
+  
+
+  const updateState = (newState) => {
+    if (isMounted.current) {
+      setState(prev => ({ ...prev, ...newState }));
+    }
+  };
+
+  const fetchAccountData = async () => {
     try {
       const token = await getToken();
-      if (!token || !item?._id) return;
-
-      const response = await axios.get(`${API_URL}/users/is-following/${item._id}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      if (!token) return null;
+      
+      const response = await axios.get(`${API_URL}/account`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       
-      if (isMounted.current && response.data?.isFollowing !== undefined) {
-        setIsFollowing(response.data.isFollowing);
+      console.log('🔐 Account API response:', {
+        status: response.status,
+        data: response.data?.user // Log full user data
+      });
+      
+      // Ensure location exists in response
+      if (!response.data?.user?.location) {
+        console.warn('Location missing in account response');
+      }
+      
+      return response.data?.user;
+    } catch (error) {
+      console.error('Account fetch error:', error);
+      return null;
+    }
+  };
+  
+  const fetchBusinessData = async (userId) => {
+    try {
+      const token = await getToken();
+      const response = await axios.get(
+        `${API_URL}/businesses/by-user/${userId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      console.log('🏢 Business API response:', {
+        status: response.status,
+        hasLocation: !!response.data?.businessLocation
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Business fetch error:', error);
+      throw error;
+    }
+  };
+
+  const fetchPolishes = async () => {
+    try {
+      const token = await getToken();
+      if (!token) return;
+      
+      const response = await axios.get(`${API_URL}/polishes`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      updateState({ polishData: response.data?.data || [] });
+    } catch (error) {
+      console.error('Polishes fetch error:', error);
+    }
+  };
+
+  const fetchPosts = async () => {
+    try {
+      const token = await getToken();
+      if (!token || !state.user?._id) return;
+      
+      const response = await axios.get(`${API_URL}/posts/user/${state.user._id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      updateState({ databasePosts: response.data?.data || [] });
+    } catch (error) {
+      console.error("Posts fetch error:", error);
+    } finally {
+      updateState({ loading: false, refreshing: false });
+    }
+  };
+
+  const checkFollowingStatus = async () => {
+    try {
+      const token = await getToken();
+      if (!token || !state.user?._id) return;
+      
+      const response = await axios.get(`${API_URL}/users/is-following/${state.user._id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data?.isFollowing !== undefined) {
+        updateState({ isFollowing: response.data.isFollowing });
       }
     } catch (error) {
-      console.error("Error checking follow status:", error);
+      console.error("Follow status error:", error);
     }
-  }, [item?._id]);
+  };
+  const calculateRealDistance = async (userLocation, businessLocation) => {
+    if (userLocation && businessLocation) {
+      const dist = calculateDistance(
+        userLocation.lat,
+        userLocation.lng,
+        businessLocation.lat,
+        businessLocation.lng
+      );
+      setDistance(dist);
+    }
+  };
+  useEffect(() => {
+    const loadAllData = async () => {
+      try {
+        const accountData = await fetchAccountData();
+        const userAddress = accountData?.location;
+        if (state.user?.isBusiness) {
+          const business = await fetchBusinessData(state.user._id);
+          const businessAddress = business?.businessLocation;
+
+          if (userAddress && businessAddress) {
+            const userLoc = await geocodeAddress(userAddress);
+            const businessLoc = await geocodeAddress(businessAddress);
+
+            setUserLocation(userLoc);
+            setBusinessLocation(businessLoc);
+          }
+        }
+
+        updateState({ accountData, loading: false });
+
+        await Promise.all([fetchPolishes(), fetchPosts()]);
+      } catch (error) {
+        console.error('Load error:', error);
+      }
+    };
+    loadAllData();
+  }, [state.user]);
+  useEffect(() => {
+    if (userLocation && businessLocation) {
+      calculateRealDistance(userLocation, businessLocation);
+    }
+  }, [userLocation, businessLocation]);
+  
+
+  // Handlers
+  const handleRefresh = () => {
+    updateState({ refreshing: true });
+    fetchPosts();
+  };
 
   const toggleFollow = async () => {
-    if (!item?._id || followLoading) return;
+    if (!state.user?._id || state.followLoading) return;
   
-    setFollowLoading(true);
+    updateState({ followLoading: true });
     try {
       const token = await getToken();
       if (!token) {
@@ -187,49 +241,89 @@ const OtherAccountScreen = ({route}) => {
         return;
       }
   
-      const endpoint = isFollowing ? 'unfollow' : 'follow';
+      const endpoint = state.isFollowing ? 'unfollow' : 'follow';
       await axios.post(
-        `${API_URL}/users/${item._id}/${endpoint}`,
+        `${API_URL}/users/${state.user._id}/${endpoint}`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
   
-      setIsFollowing(!isFollowing);
+      updateState({ isFollowing: !state.isFollowing });
     } catch (error) {
       console.error("Follow error:", error);
       Alert.alert("Error", "Something went wrong. Please try again.");
     } finally {
-      setFollowLoading(false);
+      updateState({ followLoading: false });
+    }
+  };
+
+  const handlePolishNamePress = (polishId) => {
+    const item = polishLookup[polishId];
+    if (item) {
+      navigation.navigate("PolishScreen", { item });
     }
   };
 
   const handleViewFollowers = () => {
-    navigation.navigate("Followers", { userId: item._id });
+    navigation.navigate("Followers", { userId: state.user._id });
   };
 
-
-  const handlePolishNamePress = (polishId) => {
-    
-    const item = polishLookup[polishId];
-    if (item) {
-      navigation.navigate("PolishScreen", { item });
-    } else {
-      console.error("Polish not found:", polishId);
-    }
+  const handleViewFollowing = () => {
+    navigation.navigate("Following", { userId: state.user._id });
   };
 
-  if (loading) {
+  // Render functions
+  const renderItem = ({ item }) => (
+    <View style={styles.postCard}>
+      {item.photoUri ? (
+        <TouchableWithoutFeedback onPress={() => navigation.navigate('PostDetail', { postId: item._id })}>
+          <Image 
+            source={{ uri: item.photoUri }} 
+            style={styles.postImage} 
+            resizeMode="cover"
+          />
+        </TouchableWithoutFeedback>
+      ) : (
+        <View style={styles.noImagePlaceholder}>
+          <Text>No Image Available</Text>
+        </View>
+      )}
+
+      <Text style={styles.postCaption}>{item.caption}</Text>
+
+      <View style={styles.polishDetailsContainer}>
+        <View style={[styles.colorCircle, { backgroundColor: polishLookup[item.polishId]?.hex || "#ccc" }]} />
+        <TouchableOpacity onPress={() => handlePolishNamePress(item.polishId)}>
+          <Text style={styles.postDetails}>
+            {polishLookup[item.polishId]?.brand || "Brand"}: {polishLookup[item.polishId]?.name || "Polish Name"}
+          </Text>
+        </TouchableOpacity>
+        <Text> | 📍 {item.nailLocation}</Text>
+      </View>
+    </View>
+  );
+
+  if (state.loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#A020F0" />
       </View>
     );
   }
-  
+
+  if (!state.user) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text>No user data available</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
+      
       <View style={styles.headerContainer}>
+        
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={28} color="#333" />
         </TouchableOpacity>
@@ -238,90 +332,75 @@ const OtherAccountScreen = ({route}) => {
 
       <View style={styles.profileSection}>
         <View style={styles.profileInfo}>
-          <Text style={styles.username}>@{item?.username}</Text>
+          <Text style={styles.username}>@{state.user.username}</Text>
           <Text style={styles.userType}>
-            {user?.isBusiness ? "Business Account" : "Personal Account"}
+            {state.user.isBusiness ? "Business Account" : "Personal Account"}
           </Text>
+          <Text>
+  {distance !== null && distance !== undefined ? (distance * 0.621371).toFixed(2) : 'N/A'} miles
+</Text>
+
         </View>
+        
 
         <TouchableOpacity
           style={[
             styles.followButton,
-            isFollowing ? styles.followingButton : styles.followButton
+            state.isFollowing && styles.followingButton
           ]}
           onPress={toggleFollow}
-          disabled={followLoading}
+          disabled={state.followLoading}
         >
-          {followLoading ? (
-            <ActivityIndicator size="small" color={isFollowing ? "#555" : "#fff"} />
+          {state.followLoading ? (
+            <ActivityIndicator size="small" color={state.isFollowing ? "#555" : "#fff"} />
           ) : (
             <Text style={[
               styles.followButtonText,
-              isFollowing ? styles.followingButtonText : null
+              state.isFollowing && styles.followingButtonText
             ]}>
-              {isFollowing ? 'Following' : 'Follow'}
+              {state.isFollowing ? 'Following' : 'Follow'}
             </Text>
           )}
         </TouchableOpacity>
       </View>
 
-      <View style={{ paddingHorizontal: 20 }}>
+      <View style={styles.followButtonsContainer}>
         <TouchableOpacity
-          style={[
-            styles.followButton, 
-            { 
-              marginTop: 10, 
-              backgroundColor: '#ccc',
-              opacity: loadingFollowers ? 0.7 : 1
-            }
-          ]}
+          style={styles.secondaryButton}
           onPress={handleViewFollowers}
-          disabled={loadingFollowers}
+          disabled={state.loading}
         >
-          {loadingFollowers ? (
-            <ActivityIndicator size="small" color="#333" />
-          ) : (
-            <Text style={{ color: '#333', fontWeight: 'bold' }}>View Followers</Text>
-          )}
+          <Text style={styles.secondaryButtonText}>View Followers</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={handleViewFollowing}
+          disabled={state.loading}
+        >
+          <Text style={styles.secondaryButtonText}>View Following</Text>
         </TouchableOpacity>
       </View>
-      <TouchableOpacity
-  style={[
-    styles.followButton,
-    { marginTop: 10, backgroundColor: '#ccc', opacity: loadingFollowers ? 0.7 : 1 }
-  ]}
-  onPress={() => navigation.navigate("Following", { userId: item._id })}
-  disabled={loadingFollowers}
->
-  {loadingFollowers ? (
-    <ActivityIndicator size="small" color="#333" />
-  ) : (
-    <Text style={{ color: '#333', fontWeight: 'bold' }}>View Following</Text>
-  )}
-</TouchableOpacity>
-
 
       <Text style={styles.sectionTitle}>
-        {user?.isBusiness ? "Business Posts" : "Posts"}
+        {state.user.isBusiness ? "Business Posts" : "Posts"}
       </Text>
 
-      {databasePosts.length === 0 ? (
+      {state.databasePosts.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>No posts yet.</Text>
         </View>
       ) : (
         <FlatList
-        style={styles.flatlist}
-          data={databasePosts}
+          data={state.databasePosts}
           keyExtractor={(item) => item._id}
           renderItem={renderItem}
+          contentContainerStyle={styles.flatListContent}
+          style={styles.flatList}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true);
-                fetchPosts();
-              }}
+              refreshing={state.refreshing}
+              onRefresh={handleRefresh}
               tintColor="#A020F0"
             />
           }
@@ -342,15 +421,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
-  },
-  flatlist: {
-    height: Platform.OS == 'web' ? '70vh' : undefined,
   },
   backButton: {
     marginRight: 10,
@@ -380,6 +461,13 @@ const styles = StyleSheet.create({
   userType: {
     fontSize: 16,
     color: '#666',
+    marginBottom: 5,
+  },
+  followButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingHorizontal: 20,
+    marginTop: 10,
   },
   followButton: {
     backgroundColor: '#A020F0',
@@ -403,19 +491,35 @@ const styles = StyleSheet.create({
   followingButtonText: {
     color: '#555',
   },
+  secondaryButton: {
+    backgroundColor: '#ddd',
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+  },
+  secondaryButtonText: {
+    color: '#333',
+    fontWeight: 'bold',
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     padding: 20,
     paddingBottom: 10,
   },
-  postContainer: {
-    backgroundColor: '#fff',
-    marginHorizontal: 15,
-    marginBottom: 15,
-    borderRadius: 10,
+  flatList: {
+    flex: 1,
+  },
+  flatListContent: {
+    paddingBottom: 20,
+  },
+  postCard: {
+    backgroundColor: "#fff",
     padding: 15,
-    shadowColor: '#000',
+    borderRadius: 15,
+    marginVertical: 10,
+    marginHorizontal: 20,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -427,13 +531,35 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 10,
   },
-  caption: {
-    fontSize: 16,
-    marginBottom: 5,
+  noImagePlaceholder: {
+    width: '100%',
+    height: 300,
+    borderRadius: 8,
+    marginBottom: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#eee',
   },
-  polishText: {
+  postCaption: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  polishDetailsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  colorCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    marginRight: 10,
+  },
+  postDetails: {
     fontSize: 14,
     color: '#666',
+    marginRight: 10,
   },
   emptyContainer: {
     flex: 1,
@@ -444,42 +570,6 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: '#888',
-  },
-  postCaption: {
-    fontSize: 18, // Larger font size
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  postCard: {
-    backgroundColor: "#f9f9f9",
-    padding: 15,
-    borderRadius: 15,
-    marginVertical: 10,
-    width: "90%",
-    alignSelf: "center",
-    borderWidth: 1, // Adds a border
-    borderColor: "#ccc", // Light gray border color
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  polishDetailsContainer: {
-    flexDirection: "row", // Align color circle and text horizontally
-    alignItems: "center", // Center items vertically
-    marginTop: 10,
-  },
-  colorCircle: {
-    width: 20, // Size of the circle
-    height: 20,
-    borderRadius: 10, // Make it circular
-    marginRight: 10, // Space between circle and text
-  },
-  postDetails: {
-    fontSize: 16, // Larger font size
-    color: "#666",
-    flex: 1, 
   },
 });
 

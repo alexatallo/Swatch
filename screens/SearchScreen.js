@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   View,
   Modal,
@@ -19,8 +19,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "@env";
 import Slider from "@react-native-community/slider";
 import * as ImagePicker from "expo-image-picker";
-import * as ImageManipulator from "expo-image-manipulator";
+import { manipulateAsync } from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
+import { Buffer } from 'buffer';
+import { Camera } from 'expo-camera';
+global.Buffer = Buffer; // Make Buffer available globally
 
 const { width, height } = Dimensions.get("window");
 const colorPickerSize = Platform.OS === "web" ? Math.min(width * 0.4, 250) : width * 0.8;
@@ -55,160 +58,156 @@ export default function SearchScreen({ navigation, route }) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showColorExtractor, setShowColorExtractor] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [pickedColor, setPickedColor] = useState("");
-
-
-  //color extractor tools
-  const [image, setImage] = useState(null); // Store selected image URI
-  const [imageSize, setImageSize] = useState(null); // Store original image size
-  const [displaySize, setDisplaySize] = useState({ width: 300, height: 300 }); // Displayed image size
-  const [tapLocation, setTapLocation] = useState(null); // Store tap coordinates
+  const [image, setImage] = useState(null);
   const [hasCameraPermission, setHasCameraPermission] = useState(null);
-  const [hasMediaLibraryPermission, setHasMediaLibraryPermission] = useState(null);
-
+  const [cameraRef, setCameraRef] = useState(null);
+  const [cameraVisible, setCameraVisible] = useState(false);
+    const [hexColor, setHexColor] = useState('#FFFFFF');
+  const [pickedColor, setPickedColor] = useState("");
+  const [page, setPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const flatListRef = useRef(null);
-
-
-  // Request permissions
   useEffect(() => {
     (async () => {
-      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
-      const mediaLibraryPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      setHasCameraPermission(cameraPermission.status === "granted");
-      setHasMediaLibraryPermission(mediaLibraryPermission.status === "granted");
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasCameraPermission(status === 'granted');
     })();
   }, []);
 
+  // Memoize the PolishItem component
+const PolishItem = React.memo(({ item, navigation }) => {
+  return (
+    <TouchableOpacity
+      style={styles.itemContainer}
+      onPress={() => navigation.navigate("PolishScreen", { item })}
+    >
+      // In your PolishItem component:
+<Image 
+  source={{ 
+    uri: item.picture,
+    cache: 'force-cache'
+  }} 
+  style={styles.image}
+  resizeMode="contain"
+  fadeDuration={0}
+/>
+      <Text style={styles.nameText} numberOfLines={1}>{item.name || "No name"}</Text>
+      <Text style={styles.brandText} numberOfLines={1}>{item.brand || "Unknown brand"}</Text>
+    </TouchableOpacity>
+  );
+});
 
-  // Pick image from gallery
-  const openImagePicker = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({ quality: 1 });
-
-
-    if (!result.canceled) {
-      const imageUri = result.assets[0].uri;
-      setImage(imageUri);
-      setTapLocation(null);
-      setPickedColor(null);
-
-
-      // Get the original size of the image
-      const imageInfo = await ImageManipulator.manipulateAsync(imageUri, [], { base64: false });
-      setImageSize({ width: imageInfo.width, height: imageInfo.height });
-    }
-  };
-
-
-  // Open camera
-  const openCamera = async () => {
-    let result = await ImagePicker.launchCameraAsync({ quality: 1 });
-
-
-    if (!result.canceled) {
-      const imageUri = result.assets[0].uri;
-      setImage(imageUri);
-      setTapLocation(null);
-      setPickedColor(null);
-
-
-      // Get the original size of the image
-      const imageInfo = await ImageManipulator.manipulateAsync(imageUri, [], { base64: false });
-      setImageSize({ width: imageInfo.width, height: imageInfo.height });
-    }
-  };
-
-
-  // Convert tap location to actual image coordinates
-  const handleImageTap = async (event) => {
-    if (!image || !imageSize) return;
-
-
-    const { locationX, locationY } = event.nativeEvent;
-
-
-    // Scale tap coordinates to match the original image size
-    const actualX = Math.round((locationX / displaySize.width) * imageSize.width);
-    const actualY = Math.round((locationY / displaySize.height) * imageSize.height);
-
-
-    setTapLocation({ x: actualX, y: actualY });
-
-
-    console.log(`Tapped at Display: X=${locationX}, Y=${locationY}`);
-    console.log(`Mapped to Original Image: X=${actualX}, Y=${actualY}`);
-
-
-    try {
-      // Crop the image at the corrected tap point (1x1 pixel)
-      const croppedImage = await ImageManipulator.manipulateAsync(
-        image,
-        [{ crop: { originX: actualX, originY: actualY, width: 1, height: 1 } }],
-        { format: ImageManipulator.SaveFormat.PNG }
-      );
-
-
-      console.log("Cropped Image URI:", croppedImage.uri);
-
-
-   
-    setPickedColor(uriToHex(croppedImage.uri));
-   
-   
-    } catch (error) {
-      console.error("Error extracting color:", error);
-    }
-  };
-
-async function uriToHex(fileUri) {
-  // Extract the file path from the URI
-  const filePath = fileUri.replace('file://', '');
-
-  // Read the file content using expo-file-system
-  const fileBase64 = await FileSystem.readAsStringAsync(filePath, {
-    encoding: FileSystem.EncodingType.Base64,
+const openImagePicker = async (useCamera = false) => {
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: false,
+    quality: 1,
+    ...(useCamera && {
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsEditing: false,
+      quality: 1,
+      cameraType: ImagePicker.CameraType.back,
+    })
   });
 
-  // Convert the base64 string to a buffer
-  const buffer = Buffer.from(fileBase64, 'base64');
-
-  // Convert the buffer to a hexadecimal string
-  let hexString = '';
-  for (const byte of buffer) {
-    hexString += byte.toString(16).padStart(2, '0');
+  if (!result.canceled) {
+    setImage(result.assets[0].uri);
   }
-
-  return hexString;
-}
-
-  useEffect(() => {
-    const fetchPolishes = async () => {
-      try {
-        const token = await AsyncStorage.getItem("token");
-        if (!token) {
-          console.error("Token is missing.");
-          setLoading(false);
-          return;
-        }
-        console.log("📡 Fetching polishes...");
-        const response = await axios.get(`${API_URL}/polishes`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        if (response.data && Array.isArray(response.data.data)) {
-          setPolishData(response.data.data);
-          setFilteredData(response.data.data);
-        } else {
-          console.error("Unexpected response format:", response.data);
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setLoading(false);
+};
+  
+    // Request camera permissions
+    const requestCameraPermission = async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      return status === 'granted';
+    };
+  
+    // Pick image from gallery
+    const pickImage = async () => {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 1,
+      });
+      if (!result.canceled) {
+        setImage(result.assets[0].uri);
       }
     };
+  
+    // Take photo with camera
+    const takePhoto = async () => {
+      const hasPermission = await requestCameraPermission();
+      if (!hasPermission) return;
+      
+      setCameraVisible(true);
+    };
+  
+    const takePicture = async () => {
+      if (cameraRef) {
+        try {
+          const photo = await cameraRef.takePictureAsync({ quality: 1 });
+          setImage(photo.uri);
+          setCameraVisible(false);
+        } catch (error) {
+          console.error("Error taking picture:", error);
+        }
+      }
+    };
+  
+    // Extract color from tapped position
+    const handleImageTap = async (event) => {
+      if (!image) return;
+      
+      const { locationX, locationY } = event.nativeEvent;
+  
+      try {
+        // Crop 1x1 pixel at tapped location
+        const manipResult = await manipulateAsync(
+          image,
+          [{
+            crop: {
+              originX: Math.round(locationX),
+              originY: Math.round(locationY),
+              width: 1,
+              height: 1,
+            },
+          }],
+          { format: 'png', base64: true }
+        );
+  
+        // Simple color extraction from base64
+        const hex = manipResult.base64.slice(-8).replace(/=+$/, '');
+        setHexColor(`#${hex.slice(0, 6)}`);
+        
+      } catch (error) {
+        console.error("Error extracting color:", error);
+        setHexColor('#000000'); // Fallback color
+      }
+    }
+
+  useEffect(() => {
+    // In your fetchPolishes function:
+const fetchPolishes = async () => {
+  try {
+    const token = await AsyncStorage.getItem("token");
+    const response = await axios.get(`${API_URL}/polishes`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    // Pre-process the data with RGB values
+    const processedData = response.data.data.map(item => ({
+      ...item,
+      rgb: item.hex ? hexToRgb(item.hex) : null,
+      searchName: item.name.toLowerCase(),
+    }));
+    
+    setPolishData(processedData);
+    setFilteredData(processedData);
+  } catch (error) {
+    console.error("Error fetching data:", error);
+  } finally {
+    setLoading(false);
+  }
+};
     fetchPolishes();
   }, [navigation]);
 
@@ -305,24 +304,24 @@ async function uriToHex(fileUri) {
 
       {/* Polish List */}
       <FlatList
-        ref={flatListRef}
-        data={filteredData}
-        keyExtractor={(item, index) =>
-          item._id ? item._id.toString() : index.toString()
-        }
-        numColumns={2}
-        columnWrapperStyle={styles.row}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.itemContainer}
-            onPress={() => navigation.navigate("PolishScreen", { item })}
-          >
-            <Image source={{ uri: item.picture }} style={styles.image} />
-            <Text style={styles.nameText}>{item.name || "No name"}</Text>
-            <Text style={styles.brandText}>{item.brand || "Unknown brand"}</Text>
-          </TouchableOpacity>
-        )}
-      />
+  ref={flatListRef}
+  data={filteredData}
+  keyExtractor={(item) => item._id.toString()} // Ensure this is stable
+  numColumns={2}
+  columnWrapperStyle={styles.row}
+  renderItem={({ item }) => (
+    <PolishItem item={item} navigation={navigation} />
+  )}
+  // Add these critical performance props:
+  initialNumToRender={12} // Enough to fill 1.5 screens
+  maxToRenderPerBatch={12}
+  windowSize={5} // Reduced from default 21
+  removeClippedSubviews={true}
+  updateCellsBatchingPeriod={50}
+  getItemLayout={(data, index) => (
+    {length: 180, offset: 180 * Math.floor(index/2), index} // Adjust based on your item height
+  )}
+/>
 
 
       <View style={[styles.colorPreview, { backgroundColor: selectedColor }]} />
@@ -385,86 +384,66 @@ async function uriToHex(fileUri) {
 
     {/*color extractor modal*/}
     <Modal
-        transparent={true}
-        visible={showColorExtractor}
-        animationType="slide"
-        onRequestClose={() => setShowColorExtractor(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Pick Color from Image</Text>
-
-
-            <Button title="Pick an Image from Gallery" onPress={openImagePicker} />
-            <Button title="Open Camera" onPress={openCamera} />
-            {image && (
-        <View style={{ position: "relative", marginTop: 20 }}>
-          <TouchableOpacity onPress={handleImageTap} activeOpacity={1}>
-            <Image
-              source={{ uri: image }}
-              style={{ width: displaySize.width, height: displaySize.height }}
-              onLayout={(event) => {
-                const { width, height } = event.nativeEvent.layout;
-                setDisplaySize({ width, height });
-              }}
-            />
-          </TouchableOpacity>
-
-
-          {/* Display tap location indicator */}
-          {tapLocation && (
-            <View
-              style={{
-                position: "absolute",
-                left: (tapLocation.x / imageSize.width) * displaySize.width - 5,
-                top: (tapLocation.y / imageSize.height) * displaySize.height - 5,
-                width: 10,
-                height: 10,
-                backgroundColor: "red",
-                borderRadius: 5,
-              }}
-            />
-          )}
-        </View>
-      )}
-
-
-      {/* Display mapped tap coordinates */}
-      {tapLocation && (
-        <Text style={{ marginTop: 10 }}>
-          Original Image Tapped at: X: {tapLocation.x}, Y: {tapLocation.y}
-        </Text>
-      )}
-
-
-      {/* Display extracted color */}
-      {pickedColor && (
-        <View style={{ marginTop: 20, alignItems: "center" }}>
-          <Text>Picked Color:</Text>
-          <Image
-            style={{
-              width: 50,
-              height: 50,
-              borderRadius: 25,
-              borderWidth: 2,
-              borderColor: "black",
-              backgroundColor: pickedColor,
-            }}
+  transparent={true}
+  visible={showColorExtractor}
+  animationType="slide"
+  onRequestClose={() => setShowColorExtractor(false)}
+>
+  <View style={styles.modalOverlay}>
+    <View style={styles.modalContainer}>
+      {cameraVisible ? (
+        <View style={styles.cameraContainer}>
+          <Camera
+            style={styles.camera}
+            type={Camera.Constants.Type.back}
+            ref={ref => setCameraRef(ref)}
           />
+          <View style={styles.cameraButtons}>
+            <Button title="Capture" onPress={takePicture} />
+            <Button title="Cancel" onPress={() => setCameraVisible(false)} />
+          </View>
         </View>
+      ) : (
+        <>
+          <Text style={styles.modalTitle}>Extract Color from Image</Text>
+          <View style={styles.buttonRow}>
+            <Button 
+              title="Take Photo" 
+              onPress={() => setCameraVisible(true)} 
+            />
+            <Button 
+              title="Pick from Gallery" 
+              onPress={() => openImagePicker(false)} 
+            />
+          </View>
+
+          {image && (
+            <TouchableOpacity onPress={handleImageTap} activeOpacity={1}>
+              <Image 
+                source={{ uri: image }} 
+                style={styles.modalImage} 
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          )}
+
+          <View style={[styles.colorBox, { backgroundColor: selectedColor }]} />
+          <Text style={styles.colorText}>{selectedColor}</Text>
+
+          <TouchableOpacity
+            style={[styles.modalButton, { backgroundColor: "#5D3FD3" }]}
+            onPress={() => {
+              setShowColorExtractor(false);
+              applyFilters(selectedColor);
+            }}
+          >
+            <Text style={[styles.buttonText, { color: "#fff" }]}>Use This Color</Text>
+          </TouchableOpacity>
+        </>
       )}
-      <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: "#5D3FD3" }]}
-                onPress={() => {
-                  setShowColorExtractor(false);
-                  applyFilters(pickedColor); // Call another function
-                }}
-              >
-                <Text style={[styles.buttonText, { color: "#fff" }]}>Confirm</Text>
-              </TouchableOpacity>
     </View>
-    </View>
-      </Modal>
+  </View>
+</Modal>
     </View>
   );
 }
@@ -642,6 +621,43 @@ const styles = StyleSheet.create({
     color: "#333",
     fontSize: 14,
     fontWeight: "bold",
+  },
+  modalImage: {
+    width: 300, 
+    height: 300,
+    marginVertical: 20
+  },
+  buttonRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-around',
+    width: '100%',
+    marginBottom: 20
+  },
+  colorBox: {
+    width: 100,
+    height: 100,
+    marginVertical: 20,
+    borderRadius: 10,
+    alignSelf: 'center'
+  },
+  colorText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center'
+  },
+  cameraContainer: {
+    flex: 1,
+    width: '100%'
+  },
+  camera: {
+    flex: 1
+  },
+  cameraButtons: {
+    position: 'absolute',
+    bottom: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%'
   },
 });
 
