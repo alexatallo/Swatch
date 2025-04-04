@@ -653,115 +653,62 @@ app.get("/account", async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 });
-
 app.get("/polishes", async (req, res) => {
-    console.log("✅ Endpoint /polishes hit"); // Check if this logs
+    console.log("✅ Endpoint /polishes hit");
+    console.log("✅ Query Parameters:", req.query); // Log all query params
 
     try {
-        console.log("✅ Headers:", req.headers); // Log headers to confirm request is received
-        console.log("✅ Checking token...");
+        // ... (keep existing auth code) ...
 
-        const authHeader = req.headers.authorization;
-        const token = authHeader ? authHeader.split(" ")[1] : null;
-
-        if (!token) {
-            console.log("❌ No token received");
-            return res.status(403).json({ message: "No token provided" });
-        }
-
-        console.log("✅ Token received:", token);
-
-        let decoded;
-        try {
-            decoded = jwt.verify(token, process.env.JWT_SECRET);
-            console.log("✅ Token Verified:", decoded);
-        } catch (err) {
-            console.error("❌ JWT Verification Failed:", err.message);
-            return res.status(401).json({ message: "Invalid or expired token" });
-        }
-
-        console.log("✅ Connecting to database...");
         await client.connect();
         const db = client.db("Swatch");
         const polishCollection = db.collection("Polish");
 
-        // Check for collection query parameter
-        const { collection } = req.query;
-        if (collection) {
-            console.log("✅ Collection received:", collection);
-
-            console.log("✅ Fetching polishes for collection:", collection);
-            // Filter by collection name
-            const polishesInCollection = await polishCollection.find({ collection }).toArray();
-
-            if (polishesInCollection.length === 0) {
-                console.log("❌ No polishes found for this collection");
-                return res.status(404).json({ message: "No polishes found for this collection" });
-            }
-
-            console.log("✅ Backend Data:", polishesInCollection.length, "entries found");
-            return res.json({ status: "okay", data: polishesInCollection });
+        // Build filter object based on query params
+        const filter = {};
+        
+        // Collection filter (existing)
+        if (req.query.collection) {
+            filter.collection = req.query.collection;
         }
 
-        console.log("✅ Fetching all polishes...");
-        const allPolishes = await polishCollection.find().toArray();
-
-        if (!allPolishes.length) {
-            console.log("❌ No polishes found.");
-            return res.status(404).json({ message: "No polishes found" });
+        // NEW FILTERS - add these
+        if (req.query.colorFamily) {
+            filter["color family"] = {  // Use bracket notation for field names with spaces
+                $in: req.query.colorFamily.split(',').map(c => new RegExp(c, 'i')) 
+            };
         }
 
-        console.log("✅ Backend Data:", allPolishes.length, "entries found");
-        res.json({ status: "okay", data: allPolishes });
-
-    } catch (error) {
-        console.error("❌ Server Error:", error);
-        return res.status(500).json({ message: "Server error" });
-    }
-});
-
-//orginal polish route i was scared to delete when adding stuff
-app.get("/pppolishes", async (req, res) => {
-    console.log("✅ Endpoint /polishes hit"); // Check if this logs
-
-    try {
-        console.log("✅ Headers:", req.headers); // Log headers to confirm request is received
-        console.log("✅ Checking token...");
-
-        const authHeader = req.headers.authorization;
-        const token = authHeader ? authHeader.split(" ")[1] : null;
-
-        if (!token) {
-            console.log("❌ No token received");
-            return res.status(403).json({ message: "No token provided" });
+        if (req.query.finish) {
+            filter.finish = { 
+                $in: req.query.finish.split(',').map(f => new RegExp(f, 'i')) 
+            };
         }
 
-        console.log("✅ Token received:", token);
-
-        let decoded;
-        try {
-            decoded = jwt.verify(token, process.env.JWT_SECRET);
-            console.log("✅ Token Verified:", decoded);
-        } catch (err) {
-            console.error("❌ JWT Verification Failed:", err.message);
-            return res.status(401).json({ message: "Invalid or expired token" });
+        if (req.query.brand) {
+            filter.brand = { 
+                $in: req.query.brand.split(',').map(b => new RegExp(b, 'i')) 
+            };
         }
 
-        console.log("✅ Connecting to database...");
-        await client.connect();
-        const db = client.db("Swatch");
-        const polishCollection = db.collection("Polish");
-
-        console.log("✅ Fetching all polishes...");
-        const allPolishes = await polishCollection.find().toArray();
-
-        if (!allPolishes.length) {
-            console.log("❌ No polishes found.");
-            return res.status(404).json({ message: "No polishes found" });
+        if (req.query.type) {
+            filter.type = { 
+                $in: req.query.type.split(',').map(t => new RegExp(t, 'i')) 
+            };
         }
 
-        console.log("✅ Backend Data:", allPolishes.length, "entries found");
-        res.json({ status: "okay", data: allPolishes });
+        console.log("✅ Final filter object:", filter);
+
+        // Apply filters to query
+        const filteredPolishes = await polishCollection.find(filter).toArray();
+
+        if (!filteredPolishes.length) {
+            console.log("❌ No polishes found with these filters");
+            return res.status(404).json({ message: "No polishes match these filters" });
+        }
+
+        console.log("✅ Filtered results:", filteredPolishes.length);
+        res.json({ status: "okay", data: filteredPolishes });
 
     } catch (error) {
         console.error("❌ Server Error:", error);
@@ -1353,6 +1300,19 @@ app.get('/users/:userId', async (req, res) => {
       res.status(500).json({ error: "Internal server error" });
     }
   });
+  app.get("/businesses", async (req, res) => {
+    try {
+        const businessesCollection = db.collection("Business");
+        const businesses = await businessesCollection.find().toArray();  // returns an array of businesses
+
+        console.log("Fetched businesses:", businesses); // Log the data to check
+        res.json({ businesses });  // Wrap the response in an object with a "businesses" key
+    } catch (error) {
+        console.error("Error fetching businesses:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+  
 
   app.get('/businesses/by-user/:userId', async (req, res) => {
     try {
@@ -1493,6 +1453,8 @@ app.get('/users/:userId', async (req, res) => {
       res.status(500).json({ error: "Server error" });
     }
   });
+
+
   
   
 app.listen(5000, () => console.log("🚀 Backend API running on port 5000"));

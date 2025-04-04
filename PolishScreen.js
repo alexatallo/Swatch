@@ -249,44 +249,89 @@ export default function PolishScreen({ route }) {
   const handleSaveToCollection = async () => {
     if (loading) return;
     setLoading(true);
-
+  
     try {
       const token = await getToken();
       if (!token) {
         Alert.alert("Error", "Please log in to continue.");
         return;
       }
-
-      let collectionIdToUse = selectedCollectionId;
-
-      if (isCreatingCollection && collectionName.trim()) {
-        const createResponse = await axios.post(
-          `${API_URL}/collections`,
-          { collectionName: collectionName.trim() },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        collectionIdToUse = createResponse.data._id;
-      }
-
-      if (collectionIdToUse) {
-        await axios.post(
-          `${API_URL}/collections/${collectionIdToUse}/polishes`,
+  
+      // CASE 1: Adding to existing collection
+      if (selectedCollectionId) {
+        const response = await axios.post(
+          `${API_URL}/collections/${selectedCollectionId}/polishes`,
           { polishId: item._id },
-          { headers: { Authorization: `Bearer ${token}` } }
+          { 
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
         );
         Alert.alert("Success", "Polish saved to collection!");
         setModalVisible(false);
-        fetchCollections();
-      } else {
-        Alert.alert("Error", "Please select or create a collection.");
+        return;
       }
+  
+      // CASE 2: Creating new collection
+      if (collectionName.trim()) {
+        // 1. First create the collection
+        const createResponse = await axios.post(
+          `${API_URL}/collections`,
+          { 
+            name: collectionName.trim(),
+            polishes: [] // Initialize with empty array
+          },
+          { 
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+  
+        // 2. Then add the polish to the new collection
+        const newCollectionId = createResponse.data._id;
+        await axios.post(
+          `${API_URL}/collections/${newCollectionId}/polishes`,
+          { polishId: item._id },
+          { 
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+  
+        Alert.alert("Success", `Created "${collectionName}" and added polish!`);
+        setModalVisible(false);
+        setCollectionName("");
+        fetchCollections(); // Refresh the collections list
+        return;
+      }
+  
+      Alert.alert("Error", "Please select or create a collection");
+  
     } catch (error) {
-      Alert.alert("Error", "Failed to save polish to collection.");
+      console.error("Save error details:", {
+        message: error.message,
+        response: error.response?.data,
+        config: error.config
+      });
+      
+      let errorMessage = "Failed to save. Please try again.";
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message.includes("400")) {
+        errorMessage = "Invalid request. Please check your input.";
+      }
+  
+      Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }
   };
-
   // Effects
   useEffect(() => {
     fetchCollections();
@@ -384,59 +429,58 @@ export default function PolishScreen({ route }) {
       </View>
 
       {/* Collection Modal */}
-      <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalContainer}>
+      {/* Modal */}
+      <Modal visible={modalVisible} animationType="fade" transparent={true}>
+        <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Save to Collection</Text>
-            
+
             <TextInput
-              style={styles.modalInput}
-              placeholder="New collection name"
-              placeholderTextColor="#999"
+              style={styles.input}
+              placeholder="Create new collection"
               value={collectionName}
-              onChangeText={setCollectionName}
+              onChangeText={(text) => {
+                setCollectionName(text);
+                setIsCreatingCollection(text.trim().length > 0);
+                setSelectedCollectionId(null);
+              }}
             />
 
-            <ScrollView style={styles.collectionsList}>
-              {userCollections.map((collection) => (
-                <TouchableOpacity
-                  key={collection._id}
-                  style={[
-                    styles.collectionItem,
-                    collection._id === selectedCollectionId && styles.selectedCollectionItem,
-                  ]}
-                  onPress={() => setSelectedCollectionId(collection._id)}
-                >
-                  <MaterialIcons 
-                    name={collection._id === selectedCollectionId ? "check-box" : "check-box-outline-blank"} 
-                    size={24} 
-                    color={collection._id === selectedCollectionId ? "#6C63FF" : "#ccc"} 
-                  />
-                  <Text style={styles.collectionName}>{collection.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            {userCollections.length > 0 && (
+              <>
+                <Text style={styles.sectionTitle}>Existing Collections</Text>
+                <ScrollView style={styles.collectionList}>
+                  {userCollections.map((collection) => (
+                    <TouchableOpacity
+                      key={collection._id}
+                      style={[
+                        styles.collectionItem,
+                        collection._id === selectedCollectionId && styles.selectedCollection,
+                      ]}
+                      onPress={() => {
+                        setSelectedCollectionId(collection._id);
+                        setCollectionName("");
+                        setIsCreatingCollection(false);
+                      }}
+                    >
+                      <Text style={styles.collectionName}>{collection.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </>
+            )}
 
-            <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.modalButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.confirmButton]}
-                onPress={handleSaveToCollection}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.modalButtonText}>Save</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={handleSaveToCollection}
+              disabled={loading}
+            >
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalButtonText}>Save</Text>}
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -445,6 +489,7 @@ export default function PolishScreen({ route }) {
 };
 
 const styles = StyleSheet.create({
+  cancelText: { fontSize: 18, marginTop: 15, color: "#007BFF" },
   container: {
     flex: 1,
     backgroundColor: "#F8F9FA",
@@ -591,13 +636,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.5)",
   },
-  modalContent: {
-    backgroundColor: "#fff",
-    marginHorizontal: 20,
-    borderRadius: 15,
-    maxHeight: "80%",
-    padding: 20,
-  },
+  modalOverlay: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" },
+  modalContent: { backgroundColor: "#fff", padding: 25, borderRadius: 15, width: 320, alignItems: "center" },
+  modalTitle: { fontSize: 22, fontWeight: "bold", marginBottom: 15 },
+  input: { width: "100%", borderColor: "#ddd", borderWidth: 1, padding: 10, borderRadius: 5, marginBottom: 15 },
+  
   modalTitle: {
     fontSize: 20,
     fontWeight: "bold",
@@ -613,35 +656,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     fontSize: 16,
   },
-  collectionsList: {
-    maxHeight: 200,
-    marginBottom: 20,
-  },
-  collectionItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  selectedCollectionItem: {
-    backgroundColor: "#F5F5FF",
-  },
+  collectionList: { width: "100%", maxHeight: 200 },
+  collectionItem: { padding: 12, borderRadius: 8, marginBottom: 8, backgroundColor: "#f1f1f1" },
+  selectedCollection: { backgroundColor: "#A020F0" },
   collectionName: {
     marginLeft: 10,
     fontSize: 16,
     color: "#555",
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  modalButton: {
-    flex: 1,
-    padding: 15,
-    borderRadius: 10,
-    alignItems: "center",
-    marginHorizontal: 5,
   },
   cancelButton: {
     backgroundColor: "#f0f0f0",
@@ -649,8 +670,7 @@ const styles = StyleSheet.create({
   confirmButton: {
     backgroundColor: "#6C63FF",
   },
-  modalButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
+  modalButton: { backgroundColor: "#5D3FD3", padding: 12, borderRadius: 8, width: "100%", alignItems: "center" },
+  modalButtonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
+  cancelText: { fontSize: 18, marginTop: 15, color: "#007BFF" },
 });
