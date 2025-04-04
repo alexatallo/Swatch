@@ -50,6 +50,8 @@ const OtherAccountScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const isMounted = useRef(true);
+  const [isFollowing, setIsFollowing] = useState(false);
+const [followLoading, setFollowLoading] = useState(false);
   const { item: routeItem } = route.params || {};
   const [userLocation, setUserLocation] = useState(null);
 const [businessLocation, setBusinessLocation] = useState(null);
