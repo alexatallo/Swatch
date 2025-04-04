@@ -858,50 +858,44 @@ app.post("/collections", async (req, res) => {
             return res.status(403).json({ message: "No token provided" });
         }
 
-
-        let decoded;
-        try {
-            decoded = jwt.verify(token, process.env.JWT_SECRET);
-        } catch (err) {
-            return res.status(403).json({ message: "Invalid or expired token" });
-        }
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const userId = decoded.userId;
 
-
-        const { collectionName } = req.body;
-        if (!collectionName) {
+        const { name, polishes = [] } = req.body; // Changed from collectionName to name
+        if (!name) {
             return res.status(400).json({ message: "Collection name is required." });
         }
 
-
         const collectionsCollection = db.collection("Collection");
 
-
         // Check if the collection already exists for the user
-        let existingCollection = await collectionsCollection.findOne({ userId: new ObjectId(userId), name: collectionName });
-
+        const existingCollection = await collectionsCollection.findOne({ 
+            userId: new ObjectId(userId), 
+            name: name 
+        });
 
         if (existingCollection) {
             return res.status(400).json({ message: "Collection already exists." });
         }
 
-
-        // Create a new collection
+        // Create new collection with polishes
         const result = await collectionsCollection.insertOne({
             userId: new ObjectId(userId),
-            name: collectionName,
-            polishes: []  // Empty polish array initially
+            name: name,
+            polishes: polishes.map(id => new ObjectId(id)) // Convert all polish IDs to ObjectId
         });
 
+        return res.status(201).json({ 
+            _id: result.insertedId, 
+            message: "Collection created successfully." 
+        });
 
-        if (result.insertedId) {
-            return res.json({ _id: result.insertedId, message: "Collection created successfully." });
-        } else {
-            return res.status(500).json({ message: "Failed to create the collection." });
-        }
     } catch (error) {
         console.error("Error creating collection:", error);
-        return res.status(500).json({ message: "Internal server error", error: error.message });
+        return res.status(500).json({ 
+            message: "Internal server error", 
+            error: error.message 
+        });
     }
 });
 
@@ -1453,8 +1447,5 @@ app.get('/users/:userId', async (req, res) => {
       res.status(500).json({ error: "Server error" });
     }
   });
-
-
-  
   
 app.listen(5000, () => console.log("🚀 Backend API running on port 5000"));

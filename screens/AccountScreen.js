@@ -12,7 +12,17 @@ import axios from 'axios';
 import { API_URL } from '@env';
 
 const getToken = async () => {
-  return await AsyncStorage.getItem("token");
+  try {
+    const token = await AsyncStorage.getItem("token");
+    if (!token) {
+      console.log("No token found in AsyncStorage");
+      return null;
+    }
+    return token;
+  } catch (error) {
+    console.error("Error getting token:", error);
+    return null;
+  }
 };
 
 const LOCAL_POSTS_KEY = "user_posts";

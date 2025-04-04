@@ -276,26 +276,13 @@ export default function PolishScreen({ route }) {
   
       // CASE 2: Creating new collection
       if (collectionName.trim()) {
-        // 1. First create the collection
+        // Create collection and add polish in one step
         const createResponse = await axios.post(
           `${API_URL}/collections`,
           { 
             name: collectionName.trim(),
-            polishes: [] // Initialize with empty array
+            polishes: [item._id] // Add the polish immediately
           },
-          { 
-            headers: { 
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-  
-        // 2. Then add the polish to the new collection
-        const newCollectionId = createResponse.data._id;
-        await axios.post(
-          `${API_URL}/collections/${newCollectionId}/polishes`,
-          { polishId: item._id },
           { 
             headers: { 
               Authorization: `Bearer ${token}`,
@@ -347,7 +334,10 @@ export default function PolishScreen({ route }) {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+  style={styles.container}
+  contentContainerStyle={{ flexGrow: 1 }}
+> 
       {/* Header with back button */}
       <View style={styles.header}>
         <TouchableOpacity 
@@ -360,7 +350,7 @@ export default function PolishScreen({ route }) {
       </View>
 
       {/* Main content */}
-      <View style={styles.content}>
+      <View style={[styles.content, styles.contentContainer]}>
         {/* Polish image with shadow */}
         <View style={styles.imageContainer}>
           <Image 
@@ -493,6 +483,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F8F9FA",
+    overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch',
+  },
+  contentContainer: {
+    flex: 1,
+    minHeight: Dimensions.get('window').height,
   },
   header: {
     flexDirection: "row",
