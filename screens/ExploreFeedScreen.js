@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
-  View, Button, Text, TouchableOpacity, Modal, TextInput,
-  Image, Dimensions, SafeAreaView, StyleSheet, FlatList,
-  TouchableWithoutFeedback, Keyboard, Platform, ActivityIndicator
+  View, Button, Text, TouchableOpacity, Modal, TextInput, ScrollView,
+  Image, Dimensions, SafeAreaView, StyleSheet, FlatList, LayoutAnimation,
+  TouchableWithoutFeedback, Keyboard, Platform, KeyboardAvoidingView, ActivityIndicator
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
@@ -29,7 +29,6 @@ export default function ExploreFeedScreen({ navigation }) {
   const [filteredBusinessData, setFilteredBusinessData] = useState(businessData);
   const [isSelectedImageVisible, setIsSelectedImageVisible] = useState(false);
   const flatListRef = useRef(null);
-  const exploreFlatListRef = useRef(null);
   const [likesModalVisible, setLikesModalVisible] = useState(false);
   const [selectedLikes, setSelectedLikes] = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -52,6 +51,7 @@ export default function ExploreFeedScreen({ navigation }) {
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const [followingIds, setFollowingIds] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [listKey, setListKey] = useState(0);
   const itemsPerPage = 4;
   useFocusEffect(
     useCallback(() => {
@@ -66,11 +66,6 @@ export default function ExploreFeedScreen({ navigation }) {
       fetchBusinesses(1);
       fetchCurrentUserId();
       fetchFollowingIds();
-
-      // Optional: Scroll to top
-      if (exploreFlatListRef.current) {
-        exploreFlatListRef.current.scrollToOffset({ offset: 0, animated: true });
-      }
     }, [])
   );
   const fetchFollowingIds = async () => {
@@ -101,7 +96,6 @@ export default function ExploreFeedScreen({ navigation }) {
         followingIds.includes(post.userId.toString())
       );
     }
-    exploreFlatListRef.current?.scrollToOffset({ animated: true, offset: 0 });
     return posts; // Return all posts when not filtering
   }, [showFollowingPosts, followingIds, posts]);
 
@@ -539,18 +533,18 @@ export default function ExploreFeedScreen({ navigation }) {
     }
   };
   const toggleFollowingPosts = async () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    
     const newShowFollowing = !showFollowingPosts;
     setShowFollowingPosts(newShowFollowing);
-
-    // Refresh following IDs if needed
+    
     if (newShowFollowing) {
       await fetchFollowingIds();
     }
-
-    if (exploreFlatListRef.current) {
-      exploreFlatListRef.current.scrollToOffset({ offset: 0, animated: true });
-    }
+    
+    setListKey(prev => prev + 1);
   };
+  
 
   const fetchCurrentUserId = async () => {
     const token = await AsyncStorage.getItem("token");
@@ -566,17 +560,18 @@ export default function ExploreFeedScreen({ navigation }) {
       await axios.post(`${API_URL}/posts/${postId}/like`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
-      // Optimistic update
-      setPosts(prev =>
-        prev.map(post =>
+  
+      // Use functional update to minimize re-renders
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
           post._id === postId
             ? {
-              ...post,
-              likes: post.likes?.includes(currentUserId)
-                ? post.likes.filter(id => id !== currentUserId)
-                : [...(post.likes || []), currentUserId],
-            }
+                ...post,
+                likes: post.likes?.includes(currentUserId)
+                  ? post.likes.filter(id => id !== currentUserId)
+                  : [...(post.likes || []), currentUserId],
+                _version: (post._version || 0) + 1 // Add version tracking
+              }
             : post
         )
       );
@@ -597,7 +592,6 @@ export default function ExploreFeedScreen({ navigation }) {
       console.error("Failed to load likes:", err.response?.data || err.message);
     }
   };
-
   return (
 
 
@@ -631,8 +625,12 @@ export default function ExploreFeedScreen({ navigation }) {
 
       {/* Posts List */}
 
+      <KeyboardAvoidingView
+  behavior={Platform.OS === "ios" ? "padding" : "height"}
+  style={{ flex: 1 }}
+>
       <FlatList
-        ref={exploreFlatListRef}
+  key={`list-${listKey}`}
         data={filterPosts()}
         refreshing={loading}
         onRefresh={() => {
@@ -785,6 +783,7 @@ export default function ExploreFeedScreen({ navigation }) {
           </View>
         )}
       />
+      </KeyboardAvoidingView>
       <Modal
         visible={likesModalVisible}
         transparent={true}
@@ -1456,4 +1455,3 @@ const styles = StyleSheet.create({
     marginRight: 15,
   },
 });
-
