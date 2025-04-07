@@ -378,16 +378,33 @@ app.post("/posts", async (req, res) => {
         if (!token) return res.status(403).json({ error: "No token provided" });
 
         const decoded = jwt.verify(token, jwtSecret);
-        const { caption, polishId, businessId, photoUri } = req.body;
+        const { caption, polishIds, businessId, photoUri } = req.body;
 
         // Validate required fields
-        if (!caption || !polishId || !businessId) {
+        if (!caption || !polishIds || !businessId) {
             return res.status(400).json({ error: "Missing required fields." });
         }
 
-        // Validate ObjectId format for polishId
-        if (!ObjectId.isValid(polishId)) {
-            return res.status(400).json({ error: "Invalid polishId format." });
+        // Validate polishIds is an array with at least one item
+        if (!Array.isArray(polishIds)) {
+            return res.status(400).json({ error: "polishIds must be an array." });
+        }
+
+        if (polishIds.length === 0) {
+            return res.status(400).json({ error: "At least one polish ID is required." });
+        }
+
+        // Validate ObjectId format for all polish IDs
+        const invalidPolishes = polishIds.filter(id => !ObjectId.isValid(id));
+        if (invalidPolishes.length > 0) {
+            return res.status(400).json({ 
+                error: `Invalid polishId format: ${invalidPolishes.join(', ')}`
+            });
+        }
+
+        // Validate businessId format
+        if (!ObjectId.isValid(businessId)) {
+            return res.status(400).json({ error: "Invalid businessId format." });
         }
 
         // Fetch user details
@@ -401,26 +418,23 @@ app.post("/posts", async (req, res) => {
         const postsCollection = db.collection("posts");
         const newPost = {
             userId: new ObjectId(decoded.userId),
-            username: user.username, // Include username
+            username: user.username,
             caption,
-            polishId: new ObjectId(polishId),
+            polishIds: polishIds.map(id => new ObjectId(id)), // Array of ObjectIds
             businessId: new ObjectId(businessId),
-            photoUri: photoUri || null, // Allow photoUri to be optional
+            photoUri: photoUri || null,
             createdAt: new Date(),
         };
 
         const result = await postsCollection.insertOne(newPost);
         newPost._id = result.insertedId;
 
-        res.json(newPost); // Send full post back with username
+        res.json(newPost);
     } catch (error) {
         console.error("❌ Error creating post:", error);
         res.status(500).json({ error: "Internal server error" });
     }
 });
-
-
-
 
 app.get("/posts", async (req, res) => {
     try {

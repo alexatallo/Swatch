@@ -32,14 +32,14 @@ export default function ExploreFeedScreen({ navigation }) {
   const [likesModalVisible, setLikesModalVisible] = useState(false);
   const [selectedLikes, setSelectedLikes] = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null);
-  const [postData, setPostData] = useState({
-    caption: "",
-    nailColor: "",
-    businessId: "", //changed from nailLocation to businessId
-    polishId: null,  // Store the polishId
-    polishName: "",  // Store polish name
-    photoUri: null,
-  });
+  // Change from polishId: null to:
+const [postData, setPostData] = useState({
+  caption: "",
+  nailColor: "",
+  businessId: "",
+  polishArray: [],  
+  photoUri: null,
+});
   const [posts, setPosts] = useState([]);
   const [page, setPage] = useState(1);
   const [showFollowingPosts, setShowFollowingPosts] = useState(false);
@@ -74,7 +74,7 @@ export default function ExploreFeedScreen({ navigation }) {
       const token = await AsyncStorage.getItem("token");
       if (!token) return;
 
-      const response = await axios.get(`${API_URL}/account`, {
+      const response = await axios.get(`http://35.50.84.107:5000/account`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -112,7 +112,7 @@ export default function ExploreFeedScreen({ navigation }) {
       }
 
       console.log(`📡 Fetching polishes... Page: ${pageNum}`);
-      const response = await axios.get(`${API_URL}/polishes`, {
+      const response = await axios.get(`http://35.50.84.107:5000/polishes`, {
         params: { page: pageNum, limit },
         headers: {
           Authorization: `Bearer ${token}`,
@@ -203,7 +203,7 @@ export default function ExploreFeedScreen({ navigation }) {
         return;
       }
 
-      const response = await axios.get(`${API_URL}/businesses`, {
+      const response = await axios.get(`http://35.50.84.107:5000/businesses`, {
         params: { page: pageNum, limit },
         headers: {
           Authorization: `Bearer ${token}`,
@@ -296,7 +296,7 @@ export default function ExploreFeedScreen({ navigation }) {
         return;
       }
 
-      const response = await axios.get(`${API_URL}/posts`, {
+      const response = await axios.get(`http://35.50.84.107:5000/posts`, {
         params: { page: pageNum, limit },
         headers: {
           Authorization: `Bearer ${storedToken}`,
@@ -433,11 +433,11 @@ export default function ExploreFeedScreen({ navigation }) {
 
 
       const response = await axios.post(
-        `${API_URL}/posts`,
+        `http://35.50.84.107:5000/posts`,
         {
           caption: postData.caption,
-          polishId: postData.polishId,
-          businessId: postData.businessId, // Updated from nailLocation to businessId
+          polishIds: postData.polishArray, // Changed field name
+          businessId: postData.businessId,
           photoUri: base64Image || postData.photoUri,
         },
         {
@@ -452,7 +452,12 @@ export default function ExploreFeedScreen({ navigation }) {
         alert("Post created successfully!");
         setModalVisible(false);
         setSelectedPolish(null);
-        setPostData({ caption: "", polishId: null, businessId: null, photoUri: null }); // Updated reset state
+        setPostData({ 
+          caption: "", 
+          polishArray: [], 
+          businessId: "", 
+          photoUri: null 
+        });
         setPosts(prevPosts => [response.data, ...prevPosts]);
 
       } else {
@@ -466,8 +471,12 @@ export default function ExploreFeedScreen({ navigation }) {
 
   const handlePostCancel = () => {
     setModalVisible(false);
-    setSelectedPolish(null)
-    setPostData({ caption: "", polishId: null, businessId: "", photoUri: null });
+    setPostData({ 
+      caption: "", 
+      polishArray: [], // Reset to empty array
+      businessId: "", 
+      photoUri: null 
+    });
   };
 
 
@@ -484,7 +493,7 @@ export default function ExploreFeedScreen({ navigation }) {
     try {
       const token = await AsyncStorage.getItem("token");
       const response = await axios.post(
-        `${API_URL}/posts/${postId}/comments`,
+        `http://35.50.84.107:5000/posts/${postId}/comments`,
         { text: commentText },
         {
           headers: {
@@ -541,7 +550,7 @@ export default function ExploreFeedScreen({ navigation }) {
 
   const fetchCurrentUserId = async () => {
     const token = await AsyncStorage.getItem("token");
-    const res = await axios.get(`${API_URL}/account`, {
+    const res = await axios.get(`http://35.50.84.107:5000/account`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (res.data?.user) setCurrentUserId(res.data.user._id);
@@ -550,7 +559,7 @@ export default function ExploreFeedScreen({ navigation }) {
   const toggleLike = async (postId) => {
     try {
       const token = await AsyncStorage.getItem("token");
-      await axios.post(`${API_URL}/posts/${postId}/like`, {}, {
+      await axios.post(`http://35.50.84.107:5000/posts/${postId}/like`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
   
@@ -576,7 +585,7 @@ export default function ExploreFeedScreen({ navigation }) {
   const showLikesModal = async (postId) => {
     try {
       const token = await AsyncStorage.getItem("token");
-      const res = await axios.get(`${API_URL}/posts/${postId}/likes`, {
+      const res = await axios.get(`http://35.50.84.107:5000/posts/${postId}/likes`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSelectedLikes(res.data.users || []);
@@ -720,22 +729,23 @@ export default function ExploreFeedScreen({ navigation }) {
   
               {/* Polish & Business Details */}
               <View style={styles.detailsContainer}>
-                {item.polishId && (
-                  <TouchableOpacity 
-                    onPress={() => handlePolishNamePress(item.polishId)}
-                    style={styles.detailItem}
-                  >
-                    <View
-                      style={[
-                        styles.colorCircle,
-                        { backgroundColor: polishLookup[item.polishId]?.hex || "#ccc" },
-                      ]}
-                    />
-                    <Text style={styles.detailText} numberOfLines={1}>
-                      {polishLookup[item.polishId]?.brand || "Unknown"}: {polishLookup[item.polishId]?.name || "Polish"}
-                    </Text>
-                  </TouchableOpacity>
-                )}
+              {item.polishIds && item.polishIds.map(polishId => (
+  <TouchableOpacity 
+    key={polishId}
+    onPress={() => handlePolishNamePress(polishId)}
+    style={styles.detailItem}
+  >
+    <View
+      style={[
+        styles.colorCircle,
+        { backgroundColor: polishLookup[polishId]?.hex || "#ccc" },
+      ]}
+    />
+    <Text style={styles.detailText} numberOfLines={1}>
+      {polishLookup[polishId]?.brand || "Unknown"}: {polishLookup[polishId]?.name || "Polish"}
+    </Text>
+  </TouchableOpacity>
+))}
   
                 {item.businessId && (
                   <TouchableOpacity 
@@ -901,25 +911,29 @@ export default function ExploreFeedScreen({ navigation }) {
         </TouchableOpacity>
 
         {/* Nail Polish Selection */}
-        <TouchableOpacity
-          style={styles.tagButton}
-          onPress={handleAddPolishPress}
-        >
-          <Ionicons name="color-palette-outline" size={18} color="#555" />
-          <Text style={styles.tagButtonText}>
-            {postData.polishName || "Add nail polish"}
-          </Text>
-          <Ionicons name="chevron-forward" size={16} color="#999" />
-        </TouchableOpacity>
+<TouchableOpacity
+  style={styles.tagButton}
+  onPress={handleAddPolishPress}
+>
+  <Ionicons name="color-palette-outline" size={18} color="#555" />
+  <Text style={styles.tagButtonText}>
+    {postData.polishArray.length > 0
+      ? `${postData.polishArray.length} polishes selected`
+      : "Add nail polishes"}
+  </Text>
+  <Ionicons name="chevron-forward" size={16} color="#999" />
+</TouchableOpacity>
 
         {/* Submit Button */}
         <TouchableOpacity 
           onPress={submitPost} 
           style={[
             styles.submitButton,
-            { opacity: postData.photoUri ? 1 : 0.5 }
+            { 
+              opacity: postData.photoUri && postData.polishArray.length > 0 ? 1 : 0.5
+            }
           ]}
-          disabled={!postData.photoUri}
+          disabled={!postData.photoUri || postData.polishArray.length === 0}
         >
           <Text style={styles.submitButtonText}>Share Post</Text>
         </TouchableOpacity>
@@ -970,21 +984,39 @@ export default function ExploreFeedScreen({ navigation }) {
               {/* Polish List */}
               <FlatList
                 ref={flatListRef}
+                contentContainerStyle={{ flexGrow: 1 }}
+  ListFooterComponent={
+    <>
+      {loading && <ActivityIndicator size="small" color="#6A5ACD" />}
+      {/* Add spacing before Done button */}
+      <View style={{ height: 16 }} />
+    </>
+  }
                 data={filteredPolishData.slice(0, currentPage * itemsPerPage)}
                 keyExtractor={(item, index) => item._id || index.toString()}
                 renderItem={({ item }) => (
                   <TouchableOpacity
-                    style={styles.polishItem}
-                    onPress={() => {
-                      setPostData((prev) => ({
-                        ...prev,
-                        polishId: item._id,
-                        polishName: `${item.brand}: ${item.name}`,
-                      }));
-                      setPolishModalVisible(false);
-                      setModalVisible(true);
-                    }}
+                  style={[
+                    styles.polishItem,
+                    postData.polishArray.includes(item._id) && styles.selectedPolishItem
+                  ]}
+                  onPress={() => {
+                    setPostData((prev) => {
+                      const newArray = prev.polishArray.includes(item._id)
+                        ? prev.polishArray.filter(id => id !== item._id)
+                        : [...prev.polishArray, item._id];
+                      return { ...prev, polishArray: newArray };
+                    });
+                  }}
                   >
+                    {postData.polishArray.includes(item._id) && (
+      <Ionicons 
+        name="checkmark-circle" 
+        size={24} 
+        color="#6A5ACD" 
+        style={styles.checkIcon}
+      />
+    )}
                     {item.picture ? (
                       <Image 
                         source={{ uri: item.picture }} 
@@ -1019,10 +1051,16 @@ export default function ExploreFeedScreen({ navigation }) {
                     </Text>
                   </View>
                 }
-                ListFooterComponent={
-                  loading && <ActivityIndicator size="small" color="#6A5ACD" />
-                }
               />
+              <TouchableOpacity 
+          style={styles.doneButton}
+          onPress={() => {
+            setPolishModalVisible(false);
+            setModalVisible(true);
+          }}
+        >
+          <Text style={styles.doneButtonText}>Done Selecting</Text>
+        </TouchableOpacity>
             </View>
           </View>
         </TouchableWithoutFeedback>
@@ -1401,6 +1439,7 @@ export default function ExploreFeedScreen({ navigation }) {
       borderRadius: 16,
       width: '90%',
       maxHeight: '80%',
+      justifyContent: 'space-between', // Add this
     },
     modalHeader: {
       flexDirection: 'row',
@@ -1676,4 +1715,25 @@ export default function ExploreFeedScreen({ navigation }) {
     fontSize: 14,
     color: '#666',
   },
-  });
+  selectedPolishItem: {
+    backgroundColor: '#f0f0ff',
+  },
+  checkIcon: {
+    position: 'absolute',
+    right: 16,
+    top: '50%',
+    marginTop: -12,
+  },
+  doneButton: {
+    backgroundColor: '#6A5ACD',
+    padding: 16,
+    alignItems: 'center',
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+  },
+  doneButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+});
