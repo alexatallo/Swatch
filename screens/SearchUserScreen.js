@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F8F8F8",
-    paddingTop: Platform.OS === "web" ? 20 : 40,
+    paddingTop: Platform.OS === "ios" ? 60 : 40, // Increased padding for iOS
     paddingHorizontal: Platform.OS === "web" ? 20 : 10,
   },
   loadingContainer: {
@@ -276,6 +276,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 10,
     paddingHorizontal: 20,
+    marginTop: Platform.OS === "ios" ? 10 : 0,  
   },
   backButton: {
     marginRight: 10,
@@ -285,7 +286,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#333",
     flex: 1,
-    textAlign: 'center'
+    textAlign: 'center',
+    marginRight: 34,
   },
   searchContainer: {
     flexDirection: "row",

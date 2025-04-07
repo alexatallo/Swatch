@@ -53,6 +53,7 @@ export default function ExploreFeedScreen({ navigation }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [listKey, setListKey] = useState(0);
   const itemsPerPage = 4;
+  const [isFollowing, setIsFollowing] = useState(false);
   useFocusEffect(
     useCallback(() => {
       // Reset states when screen comes into focus
@@ -228,7 +229,6 @@ export default function ExploreFeedScreen({ navigation }) {
     }
   };
 
-  // Update your businessLookup creation
   const businessLookup = businessData.reduce((acc, business) => {
     acc[business._id] = {
       name: business.businessName || business.name,
@@ -401,7 +401,6 @@ export default function ExploreFeedScreen({ navigation }) {
     }
   };
 
-
   const blobToBase64 = (blob) => {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -409,7 +408,6 @@ export default function ExploreFeedScreen({ navigation }) {
       reader.readAsDataURL(blob);
     });
   };
-
 
   const submitPost = async () => {
     try {
@@ -466,11 +464,6 @@ export default function ExploreFeedScreen({ navigation }) {
       alert(error.response?.data?.error || "Error creating post");
     }
   };
-
-
-
-
-
 
   const handlePostCancel = () => {
     setModalVisible(false);
@@ -533,6 +526,7 @@ export default function ExploreFeedScreen({ navigation }) {
     }
   };
   const toggleFollowingPosts = async () => {
+    setIsFollowing(!isFollowing)
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     
     const newShowFollowing = !showFollowingPosts;
@@ -592,169 +586,192 @@ export default function ExploreFeedScreen({ navigation }) {
       console.error("Failed to load likes:", err.response?.data || err.message);
     }
   };
+
   return (
-
-
     <SafeAreaView style={styles.container}>
-      {/* Search Button in the Top-Right Corner */}
-      <TouchableOpacity
-        onPress={() => navigation.navigate("SearchUser")}
-        style={styles.searchButton}
-      >
-        <Ionicons name="search-outline" size={30} color="purple" />
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={toggleFollowingPosts}
-        style={[
-          styles.followingFilterButton,
-          showFollowingPosts && styles.followingFilterButtonActive
-        ]}
-      >
-        <Ionicons name="people-outline" size={50} color="#6A5ACD" />
-      </TouchableOpacity>
-
-      {/* Add Button */}
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => setModalVisible(true)}
-      >
-        <Ionicons name="add-circle" size={50} color="#6A5ACD" />
-      </TouchableOpacity>
-
-      <Text style={styles.title}>Explore Feed</Text>
-
+      {/* Header with title and search button */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Explore Feed</Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate("SearchUser")}
+          style={styles.searchButton}
+        >
+          <Ionicons name="search-outline" size={24} color="#6A5ACD" />
+        </TouchableOpacity>
+      </View>
+  
+     {/* Following filter toggle */}
+<View style={styles.filterContainer}>
+  <TouchableOpacity
+    onPress={toggleFollowingPosts}
+    style={[
+      styles.filterButton,
+      showFollowingPosts && styles.filterButtonActive
+    ]}
+  >
+    <Ionicons 
+      name="people-outline" 
+      size={20} 
+      color={showFollowingPosts ? "#6A5ACD" : "#999"} 
+    />
+    <Text style={[
+      styles.filterText,
+      showFollowingPosts && styles.filterTextActive
+    ]}>
+      {showFollowingPosts ? 'Following Feed' : 'Explore Feed'}
+    </Text>
+  </TouchableOpacity>
+</View>
+  
       {/* Posts List */}
-
       <KeyboardAvoidingView
-  behavior={Platform.OS === "ios" ? "padding" : "height"}
-  style={{ flex: 1 }}
->
-      <FlatList
-  key={`list-${listKey}`}
-        data={filterPosts()}
-        refreshing={loading}
-        onRefresh={() => {
-          setPosts([]);
-          setPage(1);
-          setHasMorePosts(true);
-          fetchPosts(1);
-        }}
-        ListEmptyComponent={
-          showFollowingPosts ? (
-            <Text style={styles.noPostsText}>
-              {followingIds.length === 0
-                ? "You're not following anyone yet! Follow some users to see their posts here."
-                : "No posts from users you follow yet"}
-            </Text>
-          ) : null
-        }
-        onEndReached={() => {
-          if (!showFollowingPosts && !loading && hasMorePosts) {
-            fetchPosts(page);
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <FlatList
+          key={`list-${listKey}`}
+          data={filterPosts()}
+          refreshing={loading}
+          onRefresh={() => {
+            setPosts([]);
+            setPage(1);
+            setHasMorePosts(true);
+            fetchPosts(1);
+          }}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            showFollowingPosts ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="people-outline" size={48} color="#ccc" />
+                <Text style={styles.emptyText}>
+                  {followingIds.length === 0
+                    ? "You're not following anyone yet!"
+                    : "No posts from users you follow yet"}
+                </Text>
+              </View>
+            ) : null
           }
-        }}
-        keyExtractor={(item) => item._id}
-        renderItem={({ item }) => (
-          <View style={{ position: "relative", alignItems: "center" }}>
-            {/* Post Card */}
-            <View style={styles.postCard}>
-              {/* Username */}
-              <Text style={styles.username}>@{item.username}</Text>
-
+          onEndReached={() => {
+            if (!showFollowingPosts && !loading && hasMorePosts) {
+              fetchPosts(page);
+            }
+          }}
+          keyExtractor={(item) => item._id}
+          renderItem={({ item }) => (
+            <View style={styles.postContainer}>
+              {/* Post Header */}
+              <View style={styles.postHeader}>
+                <Text style={styles.username}>@{item.username}</Text>
+              </View>
+  
               {/* Post Image */}
               <TouchableWithoutFeedback onPress={() => handleImagePress(item)}>
                 {item.photoUri ? (
-                  <Image source={{ uri: item.photoUri }} style={styles.postImage} />
+                  <Image 
+                    source={{ uri: item.photoUri }} 
+                    style={styles.postImage} 
+                  />
                 ) : (
-                  <Text>No Image Available</Text>
-                )}
-              </TouchableWithoutFeedback>
-
-              {/* Caption */}
-              <Text style={styles.postCaption}>{item.caption}</Text>
-              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
-                <TouchableOpacity onPress={() => toggleLike(item._id)}>
-                  <Ionicons
-                    name={item.likes?.includes(currentUserId) ? "heart" : "heart-outline"}
-                    size={24}
-                    color={item.likes?.includes(currentUserId) ? "red" : "gray"}
-                    style={{ marginRight: 8 }}
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => showLikesModal(item._id)}>
-                  <Text style={{ color: "#333" }}>
-                    {item.likes?.length || 0} {item.likes?.length === 1 ? "Like" : "Likes"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Nail Polish & Business Details */}
-              <View style={styles.polishDetailsContainer}>
-                {/* Nail Polish Section */}
-                <View style={styles.detailItem}>
-                  <View
-                    style={[
-                      styles.colorCircle,
-                      { backgroundColor: polishLookup[item.polishId]?.hex || "#ccc" },
-                    ]}
-                  />
-                  <TouchableOpacity onPress={() => handlePolishNamePress(item.polishId)}>
-                    <Text style={styles.postDetails}>
-                      {polishLookup[item.polishId]?.brand || ""}: {polishLookup[item.polishId]?.name || "Unknown Polish"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Business Section */}
-                {item.businessId && (
-                  <View style={styles.detailItem}>
-                    <View style={styles.businessIcon}>
-                      <Ionicons name="business-outline" size={16} color="#6A5ACD" />
-                    </View>
-                    <TouchableOpacity onPress={() => handleBusinessNamePress(item.businessId)}>
-                      <Text style={styles.postDetails}>
-                        {businessLookup[item.businessId]?.name || "Unknown Business"}
-                      </Text>
-                    </TouchableOpacity>
+                  <View style={styles.imagePlaceholder}>
+                    <Ionicons name="image-outline" size={48} color="#ccc" />
                   </View>
                 )}
+              </TouchableWithoutFeedback>
+  
+              {/* Post Actions */}
+<View style={styles.postActions}>
+  {/* Like Button with Count */}
+  <TouchableOpacity 
+    onPress={() => toggleLike(item._id)} 
+    style={styles.likeButton}
+  >
+    <Ionicons
+      name={item.likes?.includes(currentUserId) ? "heart" : "heart-outline"}
+      size={24}
+      color={item.likes?.includes(currentUserId) ? "#FF3B30" : "#333"}
+    />
+    </TouchableOpacity>
+    <TouchableOpacity onPress={() => showLikesModal(item._id)}>
+    <Text style={styles.actionCount}>
+      {item.likes?.length || 0} {item.likes?.length === 1 ? "like" : "likes"}
+    </Text>
+    </TouchableOpacity>
+
+  {/* Comment Button with Count */}
+  <TouchableOpacity 
+    onPress={() => toggleComments(item._id)} 
+    style={[styles.commentButton, styles.commentButton]}
+  >
+    <Ionicons
+      name="chatbubble-outline"
+      size={22}
+      color="#333"
+    />
+    <Text style={styles.actionCount}>
+      {item.comments?.length || 0} {item.comments?.length === 1 ? "comment" : "comments"}
+    </Text>
+  </TouchableOpacity>
+</View>
+              
+  
+              {/* Caption */}
+              {item.caption && (
+                <Text style={styles.caption}>{item.caption}</Text>
+              )}
+  
+              {/* Polish & Business Details */}
+              <View style={styles.detailsContainer}>
+                {item.polishId && (
+                  <TouchableOpacity 
+                    onPress={() => handlePolishNamePress(item.polishId)}
+                    style={styles.detailItem}
+                  >
+                    <View
+                      style={[
+                        styles.colorCircle,
+                        { backgroundColor: polishLookup[item.polishId]?.hex || "#ccc" },
+                      ]}
+                    />
+                    <Text style={styles.detailText} numberOfLines={1}>
+                      {polishLookup[item.polishId]?.brand || "Unknown"}: {polishLookup[item.polishId]?.name || "Polish"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+  
+                {item.businessId && (
+                  <TouchableOpacity 
+                    onPress={() => handleBusinessNamePress(item.businessId)}
+                    style={styles.detailItem}
+                  >
+                    <Ionicons name="business-outline" size={16} color="#6A5ACD" />
+                    <Text style={styles.detailText} numberOfLines={1}>
+                      {businessLookup[item.businessId]?.name || "Unknown Business"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
-
-              {/* Comment Toggle Button */}
-              <TouchableOpacity onPress={() => toggleComments(item._id)} style={{ marginTop: 10 }}>
-                <Text style={{ color: "#6A5ACD", fontWeight: "bold" }}>
-                  {visibleComments[item._id] ? "Hide Comments" : "Show Comments"}
-                </Text>
-              </TouchableOpacity>
-
+  
               {/* Comments Section */}
               {visibleComments[item._id] && (
-                <View style={{ marginTop: 10 }}>
-                  {/* Display Comments */}
+                <View style={styles.commentsContainer}>
+                  {/* Existing Comments */}
                   {item.comments && item.comments.length > 0 ? (
                     item.comments.map((comment, idx) => (
-                      <Text key={idx} style={{ marginBottom: 4 }}>
-                        <Text style={{ fontWeight: "bold" }}>{comment.username}: </Text>
-                        {comment.text}
-                      </Text>
+                      <View key={idx} style={styles.comment}>
+                        <Text style={styles.commentUsername}>{comment.username}: </Text>
+                        <Text style={styles.commentText}>{comment.text}</Text>
+                      </View>
                     ))
                   ) : (
-                    <Text style={{ color: "#999" }}>No comments yet.</Text>
+                    <Text style={styles.noComments}>No comments yet</Text>
                   )}
-
+  
                   {/* New Comment Input */}
-                  <View style={{ flexDirection: "row", marginTop: 8 }}>
+                  <View style={styles.commentInputContainer}>
                     <TextInput
-                      style={{
-                        flex: 1,
-                        borderWidth: 1,
-                        borderColor: "#ccc",
-                        borderRadius: 10,
-                        padding: 8,
-                        backgroundColor: "#f0f0f0",
-                      }}
+                      style={styles.commentInput}
                       placeholder="Write a comment..."
+                      placeholderTextColor="#999"
                       value={item.newComment || ""}
                       onChangeText={(text) => {
                         setPosts((prevPosts) =>
@@ -766,120 +783,152 @@ export default function ExploreFeedScreen({ navigation }) {
                     />
                     <TouchableOpacity
                       onPress={() => submitComment(item._id, item.newComment)}
-                      style={{
-                        marginLeft: 8,
-                        backgroundColor: "#6A5ACD",
-                        borderRadius: 10,
-                        paddingHorizontal: 12,
-                        justifyContent: "center",
-                      }}
+                      style={styles.commentSubmit}
+                      disabled={!item.newComment}
                     >
-                      <Text style={{ color: "white", fontWeight: "bold" }}>Post</Text>
+                      <Text style={styles.commentSubmitText}>Post</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               )}
             </View>
-          </View>
-        )}
-      />
+          )}
+        />
       </KeyboardAvoidingView>
+  
+      {/* Floating Add Button */}
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={() => setModalVisible(true)}
+      >
+        <Ionicons name="add" size={28} color="white" />
+      </TouchableOpacity>
+  
+      {/* Likes Modal */}
       <Modal
         visible={likesModalVisible}
         transparent={true}
         animationType="slide"
         onRequestClose={() => setLikesModalVisible(false)}
       >
-        <View style={styles.modalBackground}>
-          <View style={[styles.modalContainer, { maxHeight: 400 }]}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Liked By</Text>
-            {selectedLikes.length === 0 ? (
-              <Text>No likes yet</Text>
-            ) : (
-              selectedLikes.map((user, idx) => (
-                <Text key={idx} style={styles.likerName}>@{user.username}</Text>
-              ))
-            )}
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setLikesModalVisible(false)}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
+            <FlatList
+              data={selectedLikes}
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={({ item }) => (
+                <View style={styles.likerItem}>
+                  <Text style={styles.likerName}>@{item.username}</Text>
+                </View>
+              )}
+              ListEmptyComponent={
+                <Text style={styles.noLikes}>No likes yet</Text>
+              }
+            />
+            <TouchableOpacity 
+                  onPress={() => setLikesModalVisible(false)}
+                  style={styles.modalClose}
+                >
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
           </View>
         </View>
       </Modal>
-
+  
       {/* Create Post Modal */}
-      <Modal visible={modalVisible} transparent animationType="none">
-        <TouchableWithoutFeedback
-          onPress={() => {
-            if (Platform.OS !== "web") Keyboard.dismiss();
-          }}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Create a Post</Text>
-
-              {/* Image Selection Buttons */}
-              <View style={styles.imageButtonContainer}>
-                <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("camera")}>
-                  <Ionicons name="camera-outline" size={24} color="#fff" />
-                  <Text style={styles.imageButtonText}>Camera</Text>
+<Modal visible={modalVisible} transparent animationType="fade">
+  <TouchableWithoutFeedback
+    onPress={() => {
+      if (Platform.OS !== "web") Keyboard.dismiss();
+    }}
+  >
+    <View style={styles.postModalOverlay}>
+      <View style={styles.postModalContainer}>
+        <View style={styles.postModalHeader}>
+          <Text style={styles.modalTitle}>Create Post</Text>
+          <TouchableOpacity 
+                  onPress={handlePostCancel}
+                  style={styles.modalClose}
+                >
+                  <Ionicons name="close" size={24} color="#666" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("cameraRoll")}>
-                  <Ionicons name="image-outline" size={24} color="#fff" />
-                  <Text style={styles.imageButtonText}>Gallery</Text>
-                </TouchableOpacity>
-              </View>
+        </View>
 
-              {postData.photoUri && (
-                <Image source={{ uri: postData.photoUri }} style={styles.imagePreview} />
-              )}
-
-              {/* Caption Input */}
-              <TextInput
-                style={styles.input}
-                placeholder="Enter caption..."
-                placeholderTextColor="#aaa"
-                value={postData.caption}
-                onChangeText={(text) => setPostData((prev) => ({ ...prev, caption: text }))}
-              />
-
-              {/* Replace the current business selection button with this: */}
-              <TouchableOpacity
-                style={styles.addPolishButton} // Reuse the same style as polish button
-                onPress={handleAddBusinessPress}
-              >
-                <Text style={styles.addPolishText}>
-                  {postData.businessName ? `📍 ${postData.businessName}` : "Select a Business"}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Add Nail Polish Button */}
-              <TouchableOpacity
-                style={styles.addPolishButton}
-                onPress={handleAddPolishPress}
-              >
-                <Text style={styles.addPolishText}>
-                  {postData.polishName ? `Selected: ${postData.polishName}` : "Add Nail Polish"}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Action Buttons */}
-              <View style={styles.buttonRow}>
-                <TouchableOpacity onPress={handlePostCancel} style={styles.cancelButton}>
-                  <Text style={styles.buttonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={submitPost} style={styles.submitButton}>
-                  <Text style={styles.buttonText}>Post</Text>
-                </TouchableOpacity>
-              </View>
+        {/* Image Selection and Preview */}
+        <View style={styles.mediaSection}>
+          {postData.photoUri ? (
+            <Image source={{ uri: postData.photoUri }} style={styles.imagePreview} />
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <Ionicons name="images" size={48} color="#ddd" />
+              <Text style={styles.placeholderText}>Add a photo</Text>
             </View>
+          )}
+          
+          <View style={styles.imageButtonContainer}>
+            <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("camera")}>
+              <Ionicons name="camera-outline" size={20} color="#fff" />
+              <Text style={styles.imageButtonText}>Camera</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.imageButton} onPress={() => openCamera("cameraRoll")}>
+              <Ionicons name="image-outline" size={20} color="#fff" />
+              <Text style={styles.imageButtonText}>Gallery</Text>
+            </TouchableOpacity>
           </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+        </View>
 
+        {/* Caption Input */}
+        <TextInput
+          style={styles.input}
+          placeholder="Add Caption"
+          placeholderTextColor="#999"
+          multiline
+          numberOfLines={3}
+          value={postData.caption}
+          onChangeText={(text) => setPostData((prev) => ({ ...prev, caption: text }))}
+        />
+
+        {/* Business Selection */}
+        <TouchableOpacity
+          style={styles.tagButton}
+          onPress={handleAddBusinessPress}
+        >
+          <Ionicons name="business-outline" size={18} color="#555" />
+          <Text style={styles.tagButtonText}>
+            {postData.businessName || "Tag a business"}
+          </Text>
+          <Ionicons name="chevron-forward" size={16} color="#999" />
+        </TouchableOpacity>
+
+        {/* Nail Polish Selection */}
+        <TouchableOpacity
+          style={styles.tagButton}
+          onPress={handleAddPolishPress}
+        >
+          <Ionicons name="color-palette-outline" size={18} color="#555" />
+          <Text style={styles.tagButtonText}>
+            {postData.polishName || "Add nail polish"}
+          </Text>
+          <Ionicons name="chevron-forward" size={16} color="#999" />
+        </TouchableOpacity>
+
+        {/* Submit Button */}
+        <TouchableOpacity 
+          onPress={submitPost} 
+          style={[
+            styles.submitButton,
+            { opacity: postData.photoUri ? 1 : 0.5 }
+          ]}
+          disabled={!postData.photoUri}
+        >
+          <Text style={styles.submitButtonText}>Share Post</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </TouchableWithoutFeedback>
+</Modal>
+  
       {/* Polish Picker Modal */}
       <Modal
         transparent={true}
@@ -888,67 +937,98 @@ export default function ExploreFeedScreen({ navigation }) {
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.modalOverlay}>
-            <View style={styles.polishModalContainer}>
-              <Text style={styles.modalTitle}>Select a Nail Polish</Text>
-
-              {/* Search Bar */}
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search nail polish..."
-                placeholderTextColor="#888"
-                onChangeText={handleSearch}
-                value={searchQuery}
-              />
-
-              {/* List of Nail Polishes */}
-              <View style={styles.polishListContainer}>
-                <FlatList
-                  ref={flatListRef}
-                  data={filteredPolishData.slice(0, currentPage * itemsPerPage)}
-                  keyExtractor={(item, index) => item._id || index.toString()}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={styles.polishItem}
-                      onPress={() => {
-                        setPostData((prev) => ({
-                          ...prev,
-                          polishId: item._id,
-                          polishName: item.name,
-                        }));
-                        setPolishModalVisible(false);
-                        setModalVisible(true);
-                      }}
-                    >
-                      <Image source={{ uri: item.picture }} style={styles.polishImage} />
-                      <Text style={styles.polishName}>{item.name}</Text>
-                    </TouchableOpacity>
-                  )}
-                  onEndReached={() => {
-                    if (!loading && filteredPolishData.length > currentPage * itemsPerPage) {
-                      setCurrentPage((prev) => prev + 1);
-                    }
+            <View style={styles.pickerModalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Polish</Text>
+                <TouchableOpacity 
+                  onPress={() => {
+                    setPolishModalVisible(false);
+                    setModalVisible(true);
                   }}
-                  onEndReachedThreshold={0.5}
-                  ListFooterComponent={loading && <ActivityIndicator size="small" color="purple" />}
-                />
+                  style={styles.modalClose}
+                >
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
               </View>
-
-              {/* Close Button */}
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => {
-                  setPolishModalVisible(false);
-                  setModalVisible(true);
+  
+              {/* Search Bar */}
+              <View style={styles.searchBar}>
+                <Ionicons name="search-outline" size={18} color="#999" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search polishes..."
+                  placeholderTextColor="#999"
+                  onChangeText={handleSearch}
+                  value={searchQuery}
+                />
+                {searchQuery ? (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <Ionicons name="close-circle" size={18} color="#999" />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+  
+              {/* Polish List */}
+              <FlatList
+                ref={flatListRef}
+                data={filteredPolishData.slice(0, currentPage * itemsPerPage)}
+                keyExtractor={(item, index) => item._id || index.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.polishItem}
+                    onPress={() => {
+                      setPostData((prev) => ({
+                        ...prev,
+                        polishId: item._id,
+                        polishName: `${item.brand}: ${item.name}`,
+                      }));
+                      setPolishModalVisible(false);
+                      setModalVisible(true);
+                    }}
+                  >
+                    {item.picture ? (
+                      <Image 
+                        source={{ uri: item.picture }} 
+                        style={styles.polishImage} 
+                      />
+                    ) : (
+                      <View style={styles.polishImagePlaceholder}>
+                        <Ionicons name="color-palette-outline" size={24} color="#ccc" />
+                      </View>
+                    )}
+                    <View style={styles.polishInfo}>
+                      <Text style={styles.polishName} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      <Text style={styles.polishBrand} numberOfLines={1}>
+                        {item.brand}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+                onEndReached={() => {
+                  if (!loading && filteredPolishData.length > currentPage * itemsPerPage) {
+                    setCurrentPage((prev) => prev + 1);
+                  }
                 }}
-              >
-                <Text style={styles.closeButtonText}>Close</Text>
-              </TouchableOpacity>
+                onEndReachedThreshold={0.5}
+                ListEmptyComponent={
+                  <View style={styles.emptyResults}>
+                    <Ionicons name="color-palette-outline" size={48} color="#ccc" />
+                    <Text style={styles.emptyResultsText}>
+                      {searchQuery ? "No matching polishes" : "No polishes available"}
+                    </Text>
+                  </View>
+                }
+                ListFooterComponent={
+                  loading && <ActivityIndicator size="small" color="#6A5ACD" />
+                }
+              />
             </View>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-
-
+  
       {/* Business Picker Modal */}
       <Modal
         transparent={true}
@@ -958,33 +1038,34 @@ export default function ExploreFeedScreen({ navigation }) {
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.modalOverlay}>
-            <View style={styles.businessModalContainer}>
-              <Text style={styles.modalTitle}>Select a Business</Text>
-
+            <View style={styles.pickerModalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Business</Text>
+                <TouchableOpacity 
+                  onPress={() => setBusinessModalVisible(false)}
+                  style={styles.modalClose}
+                >
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+  
               {/* Search Bar */}
-              <View style={styles.searchContainer}>
-                <Ionicons name="search-outline" size={20} color="#888" style={styles.searchIcon} />
+              <View style={styles.searchBar}>
+                <Ionicons name="search-outline" size={18} color="#999" />
                 <TextInput
                   style={styles.searchInput}
                   placeholder="Search businesses..."
-                  placeholderTextColor="#888"
+                  placeholderTextColor="#999"
                   onChangeText={handleBusinessSearch}
                   value={businessSearchQuery}
-                  autoFocus={true}
                 />
                 {businessSearchQuery ? (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setBusinessSearchQuery('');
-                      setFilteredBusinessData(businessData);
-                    }}
-                    style={styles.clearSearchButton}
-                  >
-                    <Ionicons name="close-circle" size={20} color="#888" />
+                  <TouchableOpacity onPress={() => setBusinessSearchQuery('')}>
+                    <Ionicons name="close-circle" size={18} color="#999" />
                   </TouchableOpacity>
                 ) : null}
               </View>
-
+  
               {/* Business List */}
               <FlatList
                 data={filteredBusinessData}
@@ -1002,456 +1083,598 @@ export default function ExploreFeedScreen({ navigation }) {
                       setModalVisible(true);
                     }}
                   >
-                    <View style={styles.businessInfoContainer}>
-                      <Text style={styles.businessName}>
+                    <View style={styles.businessIcon}>
+                      <Ionicons name="business-outline" size={24} color="#6A5ACD" />
+                    </View>
+                    <View style={styles.businessInfo}>
+                      <Text style={styles.businessName} numberOfLines={1}>
                         {item.businessName || item.name}
                       </Text>
                       {item.businessLocation && (
-                        <Text style={styles.businessLocation}>
-                          <Ionicons name="location-outline" size={14} /> {item.businessLocation}
+                        <Text style={styles.businessLocation} numberOfLines={1}>
+                          {item.businessLocation}
                         </Text>
                       )}
                     </View>
-                    <Ionicons name="business-outline" size={24} color="#6A5ACD" />
+                    <Ionicons name="chevron-forward" size={18} color="#ccc" />
                   </TouchableOpacity>
                 )}
                 ListEmptyComponent={
-                  <View style={styles.noResultsContainer}>
-                    <Ionicons name="business-outline" size={40} color="#ccc" />
-                    <Text style={styles.noResultsText}>
-                      {businessSearchQuery
-                        ? "No businesses match your search"
-                        : "No businesses available"}
+                  <View style={styles.emptyResults}>
+                    <Ionicons name="business-outline" size={48} color="#ccc" />
+                    <Text style={styles.emptyResultsText}>
+                      {businessSearchQuery ? "No matching businesses" : "No businesses available"}
                     </Text>
                   </View>
                 }
               />
-
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setBusinessModalVisible(false)}
-              >
-                <Text style={styles.closeButtonText}>Close</Text>
-              </TouchableOpacity>
             </View>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-
+  
       {/* Image Zoom Modal */}
       {selectedImage && selectedImage.photoUri && (
-        <Modal
-          visible={isSelectedImageVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setSelectedImage(null)}
-        >
-          <TouchableWithoutFeedback onPress={() => setSelectedImage(null)}>
-            <View style={styles.modalImageContainer}>
-              <View style={styles.modalImageContent}>
-                <Image
-                  source={{ uri: selectedImage.photoUri }}
-                  style={styles.fullScreenImage}
-                  resizeMode="contain"
-                />
-                <Text style={styles.fullScreenCaption}>{selectedImage.caption}</Text>
-                <Text style={styles.fullScreenDetails}>
-                  <TouchableOpacity onPress={() => handlePolishNamePress(selectedImage.polishId)}>
-                    <Text style={styles.clickableText}>
-                      {polishLookup[selectedImage.polishId]?.brand || ""}:{" "}
-                      {polishLookup[selectedImage.polishId]?.name || "Unknown Polish"}
-                    </Text>
-                  </TouchableOpacity>
-                  <Text> | 📍 {selectedImage.nailLocation}</Text>
+  <Modal
+    visible={isSelectedImageVisible}
+    transparent
+    animationType="fade"
+    onRequestClose={() => setSelectedImage(null)}
+  >
+    <TouchableWithoutFeedback onPress={() => setSelectedImage(null)}>
+      <View style={styles.imageModalOverlay}>
+        <View style={styles.imageModalContainer}>
+          <TouchableOpacity 
+            onPress={() => setSelectedImage(null)}
+            style={styles.imageModalClose}
+          >
+            <Ionicons name="close" size={24} color="#666" />
+          </TouchableOpacity>
+          
+          <Image
+            source={{ uri: selectedImage.photoUri }}
+            style={styles.imageModalImage}
+            resizeMode="contain"
+          />
+          
+          <View style={styles.imageModalFooter}>
+            <Text style={styles.imageModalCaption}>{selectedImage.caption}</Text>
+            <View style={styles.imageModalDetails}>
+              <TouchableOpacity onPress={() => handlePolishNamePress(selectedImage.polishId)}>
+                <Text style={styles.imageModalPolishText}>
+                  {polishLookup[selectedImage.polishId]?.brand || ""}:{" "}
+                  {polishLookup[selectedImage.polishId]?.name || "Unknown Polish"}
                 </Text>
-              </View>
+              </TouchableOpacity>
+              <Text style={styles.imageModalLocation}>📍 {selectedImage.nailLocation}</Text>
             </View>
-          </TouchableWithoutFeedback>
-        </Modal>
+          </View>
+        </View>
+      </View>
+    </TouchableWithoutFeedback>
+  </Modal>
       )}
     </SafeAreaView>
   );
 };
-const styles = StyleSheet.create({
-  container: {
+  const styles = StyleSheet.create({
+    // Container Styles
+    container: {
+      flex: 1,
+      backgroundColor: '#f8f9fa',
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 16,
+      position: 'relative',
+    },
+    title: {
+      fontSize: 22,
+      fontWeight: '600',
+      color: '#333',
+    },
+    searchButton: {
+      position: 'absolute',
+      right: 16,
+      padding: 8,
+    },
+  
+    // Filter Styles
+    filterContainer: {
+      paddingHorizontal: 16,
+      marginBottom: 8,
+    },
+    filterButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 8,
+      borderRadius: 20,
+      backgroundColor: '#f5f5f5',
+      borderWidth: 1,
+      borderColor: '#e0e0e0',
+      marginRight: 'auto', 
+      paddingHorizontal: 12,
+    },
+    filterButtonActive: {
+      backgroundColor: '#f0e8ff',
+      borderColor: '#6A5ACD',
+    },
+    filterText: {
+      color: '#999',
+      fontSize: 14,
+      marginLeft: 8,
+      fontWeight: '500',
+    },
+    filterTextActive: {
+      color: '#6A5ACD',
+      fontWeight: '600',
+    },
+    // List Styles
+    listContent: {
+      paddingBottom: 80,
+    },
+    emptyState: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 40,
+    },
+    emptyText: {
+      marginTop: 16,
+      color: '#999',
+      textAlign: 'center',
+      fontSize: 16,
+    },
+  
+    // Post Styles
+    postContainer: {
+      backgroundColor: 'white',
+      borderRadius: 12,
+      marginHorizontal: 16,
+      marginBottom: 16,
+      padding: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    postHeader: {
+      marginBottom: 12,
+    },
+    username: {
+      fontWeight: '600',
+      color: '#6A5ACD',
+    },
+    postImage: {
+      width: '100%',
+      aspectRatio: 1,
+      borderRadius: 8,
+      backgroundColor: '#f5f5f5',
+    },
+    imagePlaceholder: {
+      width: '100%',
+      aspectRatio: 1,
+      borderRadius: 8,
+      backgroundColor: '#f5f5f5',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    postActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+    },
+    actionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginLeft: 20,
+    },
+    commentButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginLeft: 8,
+    },
+    actionCount: {
+      marginLeft: 6,
+      fontSize: 14,
+      color: '#333',
+    },
+    likeCount: {
+      fontSize: 14,
+      color: '#333',
+      marginRight: 7,
+    },
+    caption: {
+      marginTop: 8,
+      fontSize: 15,
+      color: '#333',
+    },
+    // Details Styles
+    detailsContainer: {
+      marginTop: 12,
+    },
+    detailItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    colorCircle: {
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      marginRight: 8,
+    },
+    detailText: {
+      fontSize: 14,
+      color: '#666',
+      flex: 1,
+    },
+    // Comments Styles
+    commentsContainer: {
+      marginTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: '#eee',
+      paddingTop: 12,
+    },
+    comment: {
+      flexDirection: 'row',
+      marginBottom: 8,
+    },
+    commentUsername: {
+      fontWeight: '600',
+      color: '#333',
+    },
+    commentText: {
+      color: '#333',
+      flex: 1,
+    },
+    noComments: {
+      color: '#999',
+      fontStyle: 'italic',
+      marginBottom: 12,
+    },
+    commentInputContainer: {
+      flexDirection: 'row',
+      marginTop: 8,
+    },
+    commentInput: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: '#eee',
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      backgroundColor: '#f9f9f9',
+    },
+    commentSubmit: {
+      marginLeft: 8,
+      backgroundColor: '#6A5ACD',
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      justifyContent: 'center',
+      opacity: 0.7,
+    },
+    commentSubmitActive: {
+      opacity: 1,
+    },
+    commentSubmitText: {
+      color: 'white',
+      fontWeight: '500',
+    },
+  
+    // Add Button
+    addButton: {
+      position: 'absolute',
+      bottom: 24,
+      right: 24,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: '#6A5ACD',
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 4,
+      zIndex: 10,
+    },
+  
+    // Modal Styles
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContainer: {
+      backgroundColor: 'white',
+      borderRadius: 16,
+      width: '80%',
+      maxHeight: '60%',
+      padding: 20,
+    },
+    pickerModalContainer: {
+      backgroundColor: 'white',
+      borderRadius: 16,
+      width: '90%',
+      maxHeight: '80%',
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: '#eee',
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: '#333',
+    },
+    modalClose: {
+      padding: 4,
+    },
+    likerItem: {
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: '#f5f5f5',
+    },
+    likerName: {
+      fontSize: 16,
+      color: '#333',
+      textAlign: 'center',
+    },
+    noLikes: {
+      textAlign: 'center',
+      color: '#999',
+      padding: 20,
+    },
+  
+    // Create Post Modal Styles
+    postModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      padding: 20,
+    },
+    postModalContainer: {
+      backgroundColor: '#fff',
+      borderRadius: 12,
+      padding: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    postModalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    mediaSection: {
+      marginBottom: 16,
+    },
+    placeholderText: {
+      color: '#999',
+      marginTop: 8,
+    },
+    imagePreview: {
+      width: '100%',
+      height: 200,
+      borderRadius: 8,
+      marginBottom: 12,
+      resizeMode: 'cover',
+    },
+    imageButtonContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      paddingTop: '8',
+      gap: 12,
+    },
+    imageButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#6c5ce7',
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 20,
+      gap: 6,
+    },
+    imageButtonText: {
+      color: '#fff',
+      fontSize: 14,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: '#e0e0e0',
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 16,
+      marginBottom: 16,
+      minHeight: 80,
+      textAlignVertical: 'top',
+    },
+    tagButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 12,
+      borderWidth: 1,
+      borderColor: '#e0e0e0',
+      borderRadius: 8,
+      marginBottom: 12,
+      gap: 8,
+    },
+    tagButtonText: {
+      flex: 1,
+      color: '#333',
+      fontSize: 14,
+    },
+    submitButton: {
+      backgroundColor: '#6c5ce7',
+      padding: 14,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    submitButtonText: {
+      color: '#fff',
+      fontWeight: '600',
+      fontSize: 16,
+    },  
+    submitButton: {
+      backgroundColor: '#6A5ACD',
+      margin: 16,
+      padding: 16,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    submitButtonText: {
+      color: 'white',
+      fontWeight: '600',
+      fontSize: 16,
+    },
+  
+    // Picker Modal Styles
+    searchBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#f5f5f5',
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      margin: 16,
+      marginBottom: 8,
+    },
+    searchInput: {
+      flex: 1,
+      height: 40,
+      paddingHorizontal: 8,
+      color: '#333',
+    },
+    polishItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: '#eee',
+    },
+    polishImage: {
+      width: 50,
+      height: 50,
+      borderRadius: 6,
+      backgroundColor: '#f5f5f5',
+    },
+    polishImagePlaceholder: {
+      width: 50,
+      height: 50,
+      borderRadius: 6,
+      backgroundColor: '#f5f5f5',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    polishInfo: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    polishName: {
+      fontSize: 16,
+      color: '#333',
+    },
+    polishBrand: {
+      fontSize: 14,
+      color: '#666',
+    },
+    businessItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: '#eee',
+    },
+    businessIcon: {
+      marginRight: 12,
+    },
+    businessInfo: {
+      flex: 1,
+    },
+    businessName: {
+      fontSize: 16,
+      color: '#333',
+    },
+    businessLocation: {
+      fontSize: 14,
+      color: '#666',
+      marginTop: 4,
+    },
+    emptyResults: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 40,
+    },
+    emptyResultsText: {
+      marginTop: 16,
+      color: '#999',
+      textAlign: 'center',
+    },
+  
+    // Image Viewer Styles
+  imageModalOverlay: {
     flex: 1,
-    backgroundColor: "#fff",
-  },
-  addButton: {
-    position: "absolute",
-    bottom: 20,
-    right: 20,
-    zIndex: 10,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginVertical: 20,
-    textAlign: "center",
-  },
-  postCard: {
-    backgroundColor: "#f9f9f9",
-    padding: 15,
-    borderRadius: 15,
-    marginVertical: 10,
-    width: "90%",
-    alignSelf: "center",
-  },
-  postImage: {
-    width: "100%",
-    height: 350,
-    borderRadius: 10,
-    marginBottom: 15,
-  },
-  postCaption: {
-    fontSize: 18, // Larger font size
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  polishDetailsContainer: {
-    flexDirection: "row", // Align color circle and text horizontally
-    alignItems: "center", // Center items vertically
-    marginTop: 10,
-  },
-  colorCircle: {
-    width: 20, // Size of the circle
-    height: 20,
-    borderRadius: 10, // Make it circular
-    marginRight: 10, // Space between circle and text
-  },
-  postDetails: {
-    fontSize: 16, // Larger font size
-    color: "#666",
-    flex: 1,
-  },
-  likerName: {
-    fontSize: 16,
-    paddingVertical: 6,
-    textAlign: "center",
-    color: "#555",
-  },
-  imageButtonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    marginBottom: 15,
-  },
-  imageButton: {
-    backgroundColor: "#6A5ACD",
-    padding: 12,
-    borderRadius: 10,
-    flex: 1,
-    marginHorizontal: 5,
-    alignItems: "center",
-  },
-  imageButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  imagePreview: {
-    width: "100%",
-    height: 200,
-    borderRadius: 10,
-    marginVertical: 10,
-    resizeMode: "cover",
-  },
-  input: {
-    width: "100%",
-    height: 50,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
-    marginBottom: 10,
-    fontSize: 16,
-    backgroundColor: "#f9f9f9",
-  },
-  addPolishButton: {
-    backgroundColor: "#6A5ACD",
-    padding: 12,
-    borderRadius: 10,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  addPolishText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  buttonRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    marginTop: 10,
-  },
-  cancelButton: {
-    backgroundColor: "#ddd",
-    padding: 12,
-    borderRadius: 10,
-    flex: 1,
-    alignItems: "center",
-    marginRight: 5,
-  },
-  submitButton: {
-    backgroundColor: "#6A5ACD",
-    padding: 12,
-    borderRadius: 10,
-    flex: 1,
-    alignItems: "center",
-    marginLeft: 5,
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  polishModalContainer: {
-    width: "90%",
-    maxWidth: 400,
-    maxHeight: "80%", // Fixed modal height
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "space-between", // Ensures the Close button sticks to the bottom
-  },
-  username: {
-    position: "absolute",
-    top: 10,
-    left: 10,
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#6A5ACD",
-    backgroundColor: "rgba(255, 255, 255, 0.7)", 
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    zIndex: 10,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  polishModalContainer: {
-    width: "90%",
-    maxWidth: 400,
-    height: 580, // Fixed modal height
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 15,
-    justifyContent: "center", // Center content vertically
-    alignItems: "center", // Center content horizontally
-  },
-  modalContainer: {
-    width: "90%",
-    maxWidth: 400,
-    maxHeight: "80%", // Fixed modal height
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 15,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  searchInput: {
-    height: 40,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    marginBottom: 10,
-  },
-  polishListContainer: {
-    flex: 1, // Take up remaining space
-    marginBottom: 10,
-  },
-  polishItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  polishImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 10,
-    marginRight: 10,
-  },
-  polishName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  closeButton: {
-    backgroundColor: "#6A5ACD",
-    padding: 10,
-    borderRadius: 15,
-    alignItems: "center",
-  },
-  closeButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  modalImageContainer: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.9)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  modalImageContent: {
-    backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 10,
-    alignItems: "center",
-    width: "90%",
-  },
-  fullScreenImage: {
-    width: "100%",
-    height: 300,
-    borderRadius: 10,
-  },
-  fullScreenCaption: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginTop: 10,
-    textAlign: "center",
-  },
-  fullScreenDetails: {
-    fontSize: 16,
-    color: "#666",
-    marginTop: 5,
-    textAlign: "center",
-  },
-  modalBackground: {
-    flex: 1,
-    justifyContent: 'center', // Centers vertically
-    alignItems: 'center', // Centers horizontally
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
-  },
-  searchButton: {
-    position: "absolute",
-    top: 50, // Adjust for notch/safe area
-    right: 20, // Distance from right
-    zIndex: 10, // Make sure it's on top of other elements
-  },
-  followingFilterButtonActive: {
-    backgroundColor: "#F0E8FF",
-    borderRadius: 20,
-  },
-  followingFilterButton: {
-    marginLeft: 10,
-    padding: 5,
-  },
-  noPostsText: {
-    textAlign: 'center',
-    marginTop: 20,
-    fontSize: 16,
-    color: '#666',
-  },
-  businessListContent: {
-    paddingBottom: 20,
-  },
-  businessImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
-    marginRight: 12,
-  },
-  businessImagePlaceholder: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: 'rgba(0,0,0,0.9)',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
-  businessTextContainer: {
-    flex: 1,
+  imageModalContainer: {
+    width: '100%',
+    maxWidth: 500,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    overflow: 'hidden',
   },
-  businessName: {
+  imageModalClose: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    zIndex: 10,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    borderRadius: 15,
+    padding: 5,
+  },
+  imageModalImage: {
+    width: '100%',
+    aspectRatio: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  imageModalFooter: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  imageModalCaption: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#333',
-    marginBottom: 4,
+    marginBottom: 12,
+    fontWeight: '500',
   },
-  businessLocation: {
+  imageModalDetails: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  imageModalPolishText: {
+    color: '#6A5ACD',
+    fontSize: 14,
+    fontWeight: '500',
+    marginRight: 8,
+  },
+  imageModalLocation: {
     fontSize: 14,
     color: '#666',
   },
-  noResultsContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-  },
-  noResultsText: {
-    marginTop: 15,
-    fontSize: 16,
-    color: '#888',
-    textAlign: 'center',
-  },
-  loadingIndicator: {
-    marginVertical: 20,
-  },
-  businessSelectButton: {
-    width: '100%',
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  businessButtonText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  businessModalContainer: {
-    backgroundColor: 'white',
-    borderRadius: 15,
-    padding: 20,
-    width: '90%',
-    maxHeight: '80%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    marginBottom: 15,
-  },
-  searchIcon: {
-    marginRight: 10,
-  },
-  clearSearchButton: {
-    padding: 5,
-  },
-  businessItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  businessInfoContainer: {
-    flex: 1,
-    marginRight: 15,
-  },
-});
+  });
