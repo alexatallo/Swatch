@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
   View, Text, ActivityIndicator, FlatList, Image, TouchableOpacity,
-  RefreshControl, Modal, StyleSheet, ScrollView, TouchableWithoutFeedback
+  RefreshControl, Modal, StyleSheet, Alert, ScrollView, TouchableWithoutFeedback
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,7 +44,8 @@ const AccountScreen = () => {
   const [lastTap, setLastTap] = useState(null);
   const [followersCount, setFollowersCount] = useState(0);
   const [isLoadingFollowers, setIsLoadingFollowers] = useState(false);
-
+  const [collectionData, setCollectionData] = useState([]); // State for collections
+  const [isCollectionModalVisible, setCollectionModalVisible] = useState(false); // State for modal visibility
 
   const loadUserData = async () => {
     try {
@@ -55,24 +56,40 @@ const AccountScreen = () => {
         return;
       }
 
-      const [userResponse, postsResponse] = await Promise.all([
+      // Fetch user data, posts, and collections in parallel
+      const [userResponse, postsResponse, collectionsResponse] = await Promise.all([
         axios.get(`${API_URL}/account`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         axios.get(`${API_URL}/posts`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        axios.get(`${API_URL}/collections`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
 
       if (!isMounted.current) return;
 
+      // Set user data
       if (userResponse.data?.user) {
-        setUser(userResponse.data.user);
-        fetchFollowersCount(userResponse.data.user._id);
+        const user = userResponse.data.user;
+        setUser(user);
+        fetchFollowersCount(user._id); // Fetch followers count for the user
       }
 
-      const userPosts = postsResponse.data?.data?.filter(post => post.userId === userResponse.data.user._id) || [];
+      // Set posts data
+      const userPosts =
+        postsResponse.data?.data?.filter((post) => post.userId === userResponse.data.user._id) || [];
       setDatabasePosts(userPosts);
+
+      // Set collections data
+      if (Array.isArray(collectionsResponse.data)) {
+        setCollectionData(collectionsResponse.data);
+      } else {
+        console.error("Collection data not found or invalid");
+        setCollectionData([]);
+      }
     } catch (error) {
       console.error("Error fetching user data:", error);
     } finally {
@@ -184,10 +201,6 @@ const AccountScreen = () => {
     return uniquePosts;
   }, [localPosts, databasePosts]);
 
-  //const deletePost = async (postId) => {
-  //  setPostToDelete(postId);
-  //  setIsDeleteModalVisible(true);
-  //};
   const deletePost = async (postId) => {
     try {
       const token = await getToken();
@@ -275,13 +288,15 @@ const AccountScreen = () => {
   }, []);
 
   // Update your businessLookup creation
-  const businessLookup = businessData.reduce((acc, business) => {
-    acc[business._id] = {
-      name: business.businessName || business.name,
-      location: business.businessLocation,
-    };
-    return acc;
-  }, {});
+  const businessLookup = useMemo(() => {
+    return businessData.reduce((acc, business) => {
+      acc[business._id] = {
+        name: business.businessName || business.name,
+        location: business.businessLocation,
+      };
+      return acc;
+    }, {});
+  }, [businessData]);
 
   // Add these functions to your component
   const handleProfilePicUpload = async () => {
@@ -359,6 +374,77 @@ const AccountScreen = () => {
     }
   };
 
+  const fetchCollections = async () => {
+    try {
+      const token = await getToken();
+      if (!token) {
+        console.error("Token is missing.");
+        return;
+      }
+
+      const response = await axios.get(`${API_URL}/collections`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (Array.isArray(response.data)) {
+        setCollectionData(response.data);
+      } else {
+        console.error("Invalid collections data:", response.data);
+        setCollectionData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching collections:", error);
+    }
+  };
+
+  const deleteCollection = async (collectionId) => {
+    try {
+      const token = await getToken();
+      if (!token) {
+        Alert.alert("Error", "Please login again");
+        navigation.navigate("Login");
+        return;
+      }
+  
+      // Make the delete request to the correct endpoint
+      const response = await axios.delete(`${API_URL}/collection/${collectionId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+  
+      // Check if the response status is successful
+      if (response.status === 200 || response.status === 204) {
+        // Update the state to remove the deleted collection
+        setCollectionData((prev) => prev.filter((c) => c._id !== collectionId));
+        Alert.alert("Success", "Collection deleted successfully");
+      } else {
+        throw new Error("Failed to delete collection");
+      }
+    } catch (error) {
+      console.error("Error deleting collection:", error);
+  
+      // Handle different error scenarios
+      let errorMessage = "Failed to delete collection.";
+      if (error.response) {
+        // Server responded with an error status
+        errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
+      } else if (error.request) {
+        // Request was made but no response received
+        errorMessage = "No response from server. Please check your internet connection.";
+      }
+  
+      // Show an alert with the error message
+      Alert.alert("Error", errorMessage);
+    }
+  };
+
+  const openCollectionsModal = () => {
+    setCollectionModalVisible(true);
+  };
+
+  const closeCollectionsModal = () => {
+    setCollectionModalVisible(false);
+  };
+
 
   if (loading) {
     return (
@@ -368,28 +454,35 @@ const AccountScreen = () => {
       </View>
     );
   }
-
   return (
     <View style={{ flex: 1, backgroundColor: 'white' }}>
-      {/* Header with settings button */}
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', padding: 15 }}>
-        <TouchableOpacity
-          onPress={() => {
-            if (user?.isBusiness) {
-              navigation.navigate("BusinessAccount");
-            } else {
-              navigation.navigate("ClientAccount");
-            }
-          }}
-        >
-          <Ionicons name="settings-outline" size={28} color="black" />
-        </TouchableOpacity>
+      {/* Header with settings and collections buttons */}
+      <View style={styles.headerContainer}>
+        <View style={styles.headerIconsContainer}>
+          <TouchableOpacity
+            onPress={openCollectionsModal}
+            style={styles.headerIcon}
+          >
+            <Ionicons name="albums-outline" size={24} color="black" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              if (user?.isBusiness) {
+                navigation.navigate("BusinessAccount");
+              } else {
+                navigation.navigate("ClientAccount");
+              }
+            }}
+            style={styles.headerIcon}
+          >
+            <Ionicons name="settings-outline" size={24} color="black" />
+          </TouchableOpacity>
+        </View>
       </View>
-
+  
       {/* Profile section */}
-      <View style={{ paddingHorizontal: 15 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {/* Profile picture circle - make it clickable */}
+      <View style={styles.profileContainer}>
+        <View style={styles.profileRow}>
           <TouchableOpacity onPress={handleProfilePicUpload}>
             <View style={styles.profilePicContainer}>
               {user?.profilePic ? (
@@ -407,8 +500,7 @@ const AccountScreen = () => {
               </View>
             </View>
           </TouchableOpacity>
-
-          {/* Stats */}
+  
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{mergedPosts.length}</Text>
@@ -451,28 +543,33 @@ const AccountScreen = () => {
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* Username and bio */}
-        <View style={{ marginTop: 10 }}>
-          <Text style={styles.username}>{user?.username}</Text>
-          <Text style={styles.bio}>{user?.bio || "No bio yet"}</Text>
-          <Text style={styles.accountType}>
-            {user?.isBusiness ? "Business Account" : "Personal Account"}
+  
+        <Text style={styles.username}>{user?.username}</Text>
+        {user?.bio && <Text style={styles.bio}>{user.bio}</Text>}
+        <View style={styles.accountTypeBadge}>
+          <Text style={styles.accountTypeText}>
+            {user?.isBusiness ? "BUSINESS" : "PERSONAL"}
           </Text>
         </View>
       </View>
-
+  
       {/* Posts grid */}
       {mergedPosts.length === 0 ? (
         <View style={styles.noPostsContainer}>
           <Ionicons name="camera-outline" size={50} color="#ddd" />
           <Text style={styles.noPostsText}>No Posts Yet</Text>
+          <TouchableOpacity
+            style={styles.addPostButton}
+            onPress={() => navigation.navigate("ExploreFeed")}
+          >
+            <Text style={styles.addPostButtonText}>Add Your First Post</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
           data={mergedPosts}
           numColumns={3}
-          keyExtractor={(item) => item._id} 
+          keyExtractor={(item) => item._id}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
@@ -494,7 +591,8 @@ const AccountScreen = () => {
           )}
         />
       )}
-
+  
+      {/* Selected Image Modal */}
       <Modal
         visible={!!selectedImage}
         transparent={true}
@@ -502,14 +600,11 @@ const AccountScreen = () => {
         onRequestClose={() => setSelectedImage(null)}
       >
         <View style={styles.modalContainer}>
-          {/* Outer touchable for dismissing the modal */}
           <TouchableWithoutFeedback onPress={() => setSelectedImage(null)}>
             <View style={styles.modalBackground} />
           </TouchableWithoutFeedback>
-
-          {/* Modal content - not wrapped in TouchableWithoutFeedback */}
+  
           <View style={styles.postModal}>
-            {/* Modal header */}
             <View style={styles.modalHeader}>
               <TouchableOpacity onPress={() => setSelectedImage(null)}>
                 <Ionicons name="close" size={28} color="black" />
@@ -522,18 +617,17 @@ const AccountScreen = () => {
                 <Ionicons name="trash-outline" size={24} color="red" />
               </TouchableOpacity>
             </View>
-
-            {/* Post content */}
+  
             <ScrollView>
               <Image
                 source={{ uri: selectedImage?.photoUri }}
                 style={styles.modalImage}
                 resizeMode="contain"
               />
-
+  
               <View style={styles.modalContent}>
                 <Text style={styles.modalCaption}>{selectedImage?.caption}</Text>
-
+  
                 <View style={styles.polishDetailsContainer}>
                   <View
                     style={[
@@ -549,7 +643,6 @@ const AccountScreen = () => {
                       {polishLookup[selectedImage?.polishId]?.brand || ""}: {polishLookup[selectedImage?.polishId]?.name || "Unknown Polish"}
                     </Text>
                   </TouchableOpacity>
-                  {/* Business details - fixed version */}
                   {selectedImage?.businessId && (
                     <>
                       <Text> | 📍 </Text>
@@ -571,7 +664,7 @@ const AccountScreen = () => {
           </View>
         </View>
       </Modal>
-
+  
       {/* Delete confirmation modal */}
       <Modal transparent visible={isDeleteModalVisible} animationType="fade">
         <View style={styles.deleteModalContainer}>
@@ -595,217 +688,425 @@ const AccountScreen = () => {
           </View>
         </View>
       </Modal>
+  
+      {/* Collections Modal */}
+      <Modal
+        visible={isCollectionModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeCollectionsModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.collectionsModalContainer}>
+            <View style={styles.collectionsModalHeader}>
+              <Text style={styles.modalTitle}>Your Collections</Text>
+              <TouchableOpacity onPress={closeCollectionsModal}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            {collectionData.length > 0 ? (
+              <FlatList
+                data={collectionData}
+                keyExtractor={(item) => item._id}
+                renderItem={({ item }) => (
+                  <View style={styles.collectionCard}>
+                    <TouchableOpacity
+                      style={styles.collectionContent}
+                      onPress={() => {
+                        closeCollectionsModal();
+                        navigation.navigate('CollectionScreen', { collectionId: item._id });
+                      }}
+                    >
+                      <Text style={styles.collectionName}>{item.name}</Text>
+                      <Text style={styles.collectionDescription}>
+                        {item.description || "No description"}
+                      </Text>
+                      <Text style={styles.collectionCount}>
+                        {item.posts?.length || 0} items
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => {
+                        Alert.alert(
+                          "Delete Collection",
+                          `Are you sure you want to delete "${item.name}"?`,
+                          [
+                            {
+                              text: "Cancel",
+                              style: "cancel"
+                            },
+                            {
+                              text: "Delete",
+                              onPress: () => deleteCollection(item._id),
+                              style: "destructive"
+                            }
+                          ]
+                        );
+                      }}
+                      style={styles.deleteCollectionButton}
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#666" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+              />
+            ) : (
+              <View style={styles.noCollectionsContainer}>
+                <Ionicons name="albums-outline" size={50} color="#ddd" />
+                <Text style={styles.noCollectionsText}>No collections yet</Text>
+                <TouchableOpacity
+                  style={styles.createCollectionButton}
+                  onPress={() => {
+                    closeCollectionsModal();
+                    navigation.navigate('CreateCollection');
+                  }}
+                >
+                  <Text style={styles.createCollectionButtonText}>Create Collection</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
-}
-
-const styles = StyleSheet.create({
-  profilePicContainer: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-    marginRight: 20,
-  },
-  profilePic: {
-    width: '100%',
-    height: '100%',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    flex: 1,
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontWeight: 'bold',
-    fontSize: 18,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#666',
-  },
-  username: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    marginBottom: 5,
-  },
-  bio: {
-    fontSize: 14,
-    marginBottom: 5,
-  },
-  accountType: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 10,
-  },
-  noPostsContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 50,
-  },
-  noPostsText: {
-    fontSize: 18,
-    color: '#999',
-    marginTop: 10,
-  },
-  gridItem: {
-    width: '33.33%',
-    aspectRatio: 1,
-    padding: 1,
-    backgroundColor: '#fafafa',
-  },
-  gridImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#f0f0f0', // Light background for loading state
-  },
-  noImagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-    justifyContent: 'center',
-  },
-  postModal: {
-    backgroundColor: 'white',
-    marginHorizontal: 20,
-    borderRadius: 12,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-  },
-  modalUsername: {
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  modalImage: {
-    width: '100%',
-    height: 400,
-    marginVertical: 10,
-  },
-  modalContent: {
-    padding: 15,
-  },
-  modalCaption: {
-    fontSize: 16,
-    marginBottom: 15,
-  },
-  polishDetailsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
-    flexWrap: 'wrap',
-  },
-  colorCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    marginRight: 10,
-  },
-  postDetails: {
-    fontSize: 16,
-    color: '#666',
-    marginRight: 5,
-  },
-  deleteModalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  deleteModalContent: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    width: '80%',
-    padding: 20,
-  },
-  deleteModalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  deleteModalText: {
-    fontSize: 16,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  deleteModalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  deleteModalButton: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#f0f0f0',
-    marginRight: 10,
-  },
-  deleteButton: {
-    backgroundColor: '#ff4444',
-    marginLeft: 10,
-  },
-  cancelButtonText: {
-    color: '#333',
-    fontWeight: 'bold',
-  },
-  deleteButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  profilePicContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#e1e1e1',
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  profilePic: {
-    width: '100%',
-    height: '100%',
-  },
-  profilePicPlaceholder: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#A020F0', // Purple color
-  },
-  editProfilePicIcon: {
-    position: 'absolute',
-    bottom: 5,
-    right: 5,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 10,
-    padding: 5,
-  },
-});
-
-export default AccountScreen;
+  };
+  
+  const styles = StyleSheet.create({
+    // Header
+    headerContainer: {
+      padding: 15,
+      borderBottomWidth: 1,
+      borderBottomColor: '#f0f0f0',
+    },
+    headerIconsContainer: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+    },
+    headerIcon: {
+      marginLeft: 20,
+    },
+  
+    // Profile Section
+    profileContainer: {
+      paddingHorizontal: 20,
+      marginBottom: 20,
+    },
+    profileRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 15,
+    },
+    profilePicContainer: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: '#e1e1e1',
+      justifyContent: 'center',
+      alignItems: 'center',
+      overflow: 'hidden',
+      position: 'relative',
+      marginRight: 20,
+      borderWidth: 2,
+      borderColor: '#f0f0f0',
+    },
+    profilePic: {
+      width: '100%',
+      height: '100%',
+    },
+    profilePicPlaceholder: {
+      width: '100%',
+      height: '100%',
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#A020F0',
+    },
+    editProfilePicIcon: {
+      position: 'absolute',
+      bottom: 5,
+      right: 5,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      borderRadius: 10,
+      padding: 5,
+    },
+    statsContainer: {
+      flexDirection: 'row',
+      flex: 1,
+      justifyContent: 'space-between',
+      paddingHorizontal: 10,
+    },
+    statItem: {
+      alignItems: 'center',
+      minWidth: 80,
+    },
+    statNumber: {
+      fontWeight: 'bold',
+      fontSize: 18,
+      marginBottom: 2,
+    },
+    statLabel: {
+      fontSize: 14,
+      color: '#666',
+    },
+    clickableCount: {
+      color: '#A020F0',
+    },
+    username: {
+      fontWeight: 'bold',
+      fontSize: 20,
+      marginBottom: 5,
+    },
+    bio: {
+      fontSize: 15,
+      marginBottom: 15,
+      color: '#333',
+      lineHeight: 20,
+    },
+    accountTypeBadge: {
+      backgroundColor: '#f0f0f0',
+      paddingVertical: 4,
+      paddingHorizontal: 8,
+      borderRadius: 4,
+      alignSelf: 'flex-start',
+      marginBottom: 15,
+    },
+    accountTypeText: {
+      fontSize: 12,
+      color: '#666',
+      fontWeight: '600',
+      textTransform: 'uppercase',
+    },
+  
+    // Posts Grid
+    noPostsContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    noPostsText: {
+      fontSize: 18,
+      color: '#999',
+      marginTop: 10,
+      marginBottom: 20,
+    },
+    addPostButton: {
+      backgroundColor: '#A020F0',
+      paddingVertical: 12,
+      paddingHorizontal: 25,
+      borderRadius: 25,
+    },
+    addPostButtonText: {
+      color: 'white',
+      fontWeight: 'bold',
+      fontSize: 16,
+    },
+    gridItem: {
+      width: '33.33%',
+      aspectRatio: 1,
+      padding: 1,
+      backgroundColor: '#fafafa',
+    },
+    gridImage: {
+      width: '100%',
+      height: '100%',
+      backgroundColor: '#f0f0f0',
+    },
+  
+    // Post Modal
+    modalContainer: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.9)',
+      justifyContent: 'center',
+    },
+    modalBackground: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    postModal: {
+      backgroundColor: 'white',
+      marginHorizontal: 20,
+      borderRadius: 12,
+      maxHeight: '80%',
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 15,
+      borderBottomWidth: 1,
+      borderBottomColor: '#eee',
+    },
+    modalUsername: {
+      fontWeight: 'bold',
+      fontSize: 16,
+    },
+    modalImage: {
+      width: '100%',
+      height: 350,
+    },
+    modalContent: {
+      padding: 15,
+    },
+    modalCaption: {
+      fontSize: 16,
+      marginBottom: 15,
+    },
+    polishDetailsContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 10,
+      flexWrap: 'wrap',
+    },
+    colorCircle: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      marginRight: 10,
+    },
+    postDetails: {
+      fontSize: 16,
+      color: '#666',
+      marginRight: 5,
+    },
+  
+    // Delete Modal
+    deleteModalContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    deleteModalContent: {
+      backgroundColor: 'white',
+      borderRadius: 12,
+      width: '80%',
+      padding: 20,
+    },
+    deleteModalTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      marginBottom: 10,
+      textAlign: 'center',
+    },
+    deleteModalText: {
+      fontSize: 16,
+      marginBottom: 20,
+      textAlign: 'center',
+    },
+    deleteModalButtons: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    deleteModalButton: {
+      flex: 1,
+      padding: 12,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    cancelButton: {
+      backgroundColor: '#f0f0f0',
+      marginRight: 10,
+    },
+    deleteButton: {
+      backgroundColor: '#ff4444',
+      marginLeft: 10,
+    },
+    cancelButtonText: {
+      color: '#333',
+      fontWeight: 'bold',
+    },
+    deleteButtonText: {
+      color: 'white',
+      fontWeight: 'bold',
+    },
+  
+    // Collections Modal
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    collectionsModalContainer: {
+      backgroundColor: 'white',
+      borderRadius: 12,
+      width: '90%',
+      maxHeight: '80%',
+      padding: 15,
+    },
+    collectionsModalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 15,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: '#333',
+    },
+    collectionCard: {
+      backgroundColor: 'white',
+      padding: 15,
+      borderRadius: 8,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: '#eee',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    collectionName: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      marginBottom: 5,
+      color: '#333',
+    },
+    collectionDescription: {
+      fontSize: 14,
+      color: '#666',
+      marginBottom: 5,
+    },
+    collectionCount: {
+      fontSize: 12,
+      color: '#999',
+    },
+    deleteCollectionButton: {
+      padding: 8,
+      marginLeft: 10,
+    },
+    collectionContent: {
+      flex: 1,
+      paddingRight: 10,
+    },
+    noCollectionsContainer: {
+      alignItems: 'center',
+      padding: 30,
+    },
+    noCollectionsText: {
+      textAlign: 'center',
+      color: '#666',
+      marginVertical: 15,
+      fontSize: 16,
+    },
+    createCollectionButton: {
+      backgroundColor: '#A020F0',
+      paddingVertical: 12,
+      paddingHorizontal: 25,
+      borderRadius: 25,
+      marginTop: 15,
+    },
+    createCollectionButtonText: {
+      color: 'white',
+      fontWeight: 'bold',
+      fontSize: 16,
+    },
+  });
+  
+  export default AccountScreen;
