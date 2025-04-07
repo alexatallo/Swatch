@@ -378,10 +378,10 @@ app.post("/posts", async (req, res) => {
         if (!token) return res.status(403).json({ error: "No token provided" });
 
         const decoded = jwt.verify(token, jwtSecret);
-        const { caption, polishId, nailLocation, photoUri } = req.body;
+        const { caption, polishId, businessId, photoUri } = req.body;
 
         // Validate required fields
-        if (!caption || !polishId || !nailLocation) {
+        if (!caption || !polishId || !businessId) {
             return res.status(400).json({ error: "Missing required fields." });
         }
 
@@ -404,7 +404,7 @@ app.post("/posts", async (req, res) => {
             username: user.username, // Include username
             caption,
             polishId: new ObjectId(polishId),
-            nailLocation,
+            businessId: new ObjectId(businessId),
             photoUri: photoUri || null, // Allow photoUri to be optional
             createdAt: new Date(),
         };

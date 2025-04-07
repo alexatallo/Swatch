@@ -285,7 +285,6 @@ export default function ExploreFeedScreen({ navigation }) {
   };
 
 
-
   const fetchPosts = async (pageNum = 1, limit = 10) => {
     if (loading || !hasMorePosts) return;
 
