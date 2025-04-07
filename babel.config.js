@@ -1,5 +1,5 @@
 module.exports = {
-  presets: ['module:metro-react-native-babel-preset'],
+  presets: ['babel-preset-expo'], // Use Expo's preset
   plugins: [
     'module:react-native-dotenv', // For .env variable usage
     [

@@ -79,6 +79,7 @@ export default function SearchScreen({ navigation }) {
   const [selectedBrand, setSelectedBrand] = useState([]);
   const [selectedType, setSelectedType] = useState([]);
   const flatListRef = useRef(null);
+  const [extractionError, setExtractionError] = useState(null);
 
   //color extractor states
   const [image, setImage] = useState(null); // Store selected image URI
@@ -130,38 +131,56 @@ export default function SearchScreen({ navigation }) {
   };
 
   const handleImageTap = async (event) => {
-    if (!image || !imageSize) return;
-  
-    const { locationX, locationY } = event.nativeEvent;
-  
-    // Scale tap coordinates to match the original image size
-    const actualX = Math.round((locationX / displaySize.width) * imageSize.width);
-    const actualY = Math.round((locationY / displaySize.height) * imageSize.height);
-  
-    setTapLocation({ x: actualX, y: actualY });
-  
-    console.log(`Tapped at Display: X=${locationX}, Y=${locationY}`);
-    console.log(`Mapped to Original Image: X=${actualX}, Y=${actualY}`);
-  
     try {
-      // Crop the image at the corrected tap point (1x1 pixel)
-      const croppedImage = await ImageManipulator.manipulateAsync(
-        image,
-        [{ crop: { originX: actualX, originY: actualY, width: 1, height: 1 } }],
-        { format: ImageManipulator.SaveFormat.PNG }
-      );
+      if (!image || !imageSize) {
+        throw new Error("Please load an image first");
+      }
   
-      console.log("Cropped Image URI:", croppedImage.uri);
+      const { locationX, locationY } = event.nativeEvent;
+      const scaleX = imageSize.width / displaySize.width;
+      const scaleY = imageSize.height / displaySize.height;
+      const actualX = Math.round(locationX * scaleX);
+      const actualY = Math.round(locationY * scaleY);
   
-      // Get the hex color of the cropped image (this could be a promise, so we handle it accordingly)
-      const hexColor = await getPixelColor(croppedImage.uri);
-      console.log("Picked Color:", hexColor);
+      const formData = new FormData();
+      formData.append('image', {
+        uri: image,
+        type: 'image/jpeg',
+        name: 'color.jpg'
+      });
+      formData.append('x', actualX.toString());
+      formData.append('y', actualY.toString());
   
-      // Set the picked color
-      setPickedColor(hexColor);
+      setExtractionError(null);
+      setPickedColor(null);
+  
+      const response = await fetch('http://35.50.71.204:5001/extract-color', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+  
+      const responseText = await response.text();
+      const data = JSON.parse(responseText); // Handle potential malformed JSON
+  
+      if (!response.ok) {
+        throw new Error(data.error || "Server error");
+      }
+  
+      if (!data.hex) {
+        throw new Error("Invalid color data received");
+      }
+  
+      setPickedColor(data.hex);
+      setSelectedColor(data.hex);
+      applyColorFilter(data.hex);
   
     } catch (error) {
-      console.error("Error extracting color:", error);
+      console.error("Color extraction failed:", error);
+      setExtractionError(error.message);
     }
   };
   
