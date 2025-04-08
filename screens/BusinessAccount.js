@@ -258,9 +258,11 @@ export default function BusinessAccount({ navigation }) {
           <Text style={styles.errorText}>Business data not available</Text>
         )}
       </View>
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-  <Text style={styles.logoutText}>Log Out</Text>
-</TouchableOpacity>
+      <View style={styles.logoutButtonContainer}>
+  <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+    <Text style={styles.logoutText}>Log Out</Text>
+  </TouchableOpacity>
+</View>
     </ScrollView>
   );
 }
@@ -406,16 +408,29 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
   },
+  logoutButtonContainer: {
+    alignItems: 'flex-end',
+    marginTop: 15,
+    paddingHorizontal: 15,
+  },
   logoutButton: {
     backgroundColor: '#e74c3c',
-    padding: 15,
-    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 25,
+    borderRadius: 30,
     alignItems: 'center',
-    marginTop: 20,
+    justifyContent: 'center',
+    shadowColor: '#e74c3c',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
   logoutText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
 });
