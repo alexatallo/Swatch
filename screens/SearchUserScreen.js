@@ -170,18 +170,7 @@ export default function SearchUserScreen({ navigation }) {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.headerContainer}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={28} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerText}>Search Users</Text>
-      </View>
-
+    <View style={styles.container}> 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <TextInput

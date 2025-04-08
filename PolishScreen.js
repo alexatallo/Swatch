@@ -337,17 +337,7 @@ export default function PolishScreen({ route }) {
     <ScrollView 
   style={styles.container}
   contentContainerStyle={{ flexGrow: 1 }}
-> 
-      {/* Header with back button */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()} 
-          style={styles.backButton}
-        >
-          <MaterialIcons name="arrow-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Polish Details</Text>
-      </View>
+>  
 
       {/* Main content */}
       <View style={[styles.content, styles.contentContainer]}>

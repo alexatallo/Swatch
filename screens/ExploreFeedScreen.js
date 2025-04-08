@@ -74,7 +74,7 @@ const [postData, setPostData] = useState({
       const token = await AsyncStorage.getItem("token");
       if (!token) return;
 
-      const response = await axios.get(`http://35.50.84.107:5000/account`, {
+      const response = await axios.get(`${API_URL}/account`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -112,7 +112,7 @@ const [postData, setPostData] = useState({
       }
 
       console.log(`📡 Fetching polishes... Page: ${pageNum}`);
-      const response = await axios.get(`http://35.50.84.107:5000/polishes`, {
+      const response = await axios.get(`${API_URL}/polishes`, {
         params: { page: pageNum, limit },
         headers: {
           Authorization: `Bearer ${token}`,
@@ -203,7 +203,7 @@ const [postData, setPostData] = useState({
         return;
       }
 
-      const response = await axios.get(`http://35.50.84.107:5000/businesses`, {
+      const response = await axios.get(`${API_URL}/businesses`, {
         params: { page: pageNum, limit },
         headers: {
           Authorization: `Bearer ${token}`,
@@ -296,7 +296,7 @@ const [postData, setPostData] = useState({
         return;
       }
 
-      const response = await axios.get(`http://35.50.84.107:5000/posts`, {
+      const response = await axios.get(`${API_URL}/posts`, {
         params: { page: pageNum, limit },
         headers: {
           Authorization: `Bearer ${storedToken}`,
@@ -433,7 +433,7 @@ const [postData, setPostData] = useState({
 
 
       const response = await axios.post(
-        `http://35.50.84.107:5000/posts`,
+        `${API_URL}/posts`,
         {
           caption: postData.caption,
           polishIds: postData.polishArray, // Changed field name
@@ -493,7 +493,7 @@ const [postData, setPostData] = useState({
     try {
       const token = await AsyncStorage.getItem("token");
       const response = await axios.post(
-        `http://35.50.84.107:5000/posts/${postId}/comments`,
+        `${API_URL}/posts/${postId}/comments`,
         { text: commentText },
         {
           headers: {
@@ -550,7 +550,7 @@ const [postData, setPostData] = useState({
 
   const fetchCurrentUserId = async () => {
     const token = await AsyncStorage.getItem("token");
-    const res = await axios.get(`http://35.50.84.107:5000/account`, {
+    const res = await axios.get(`${API_URL}/account`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (res.data?.user) setCurrentUserId(res.data.user._id);
@@ -559,7 +559,7 @@ const [postData, setPostData] = useState({
   const toggleLike = async (postId) => {
     try {
       const token = await AsyncStorage.getItem("token");
-      await axios.post(`http://35.50.84.107:5000/posts/${postId}/like`, {}, {
+      await axios.post(`${API_URL}/${postId}/like`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
   
@@ -585,7 +585,7 @@ const [postData, setPostData] = useState({
   const showLikesModal = async (postId) => {
     try {
       const token = await AsyncStorage.getItem("token");
-      const res = await axios.get(`http://35.50.84.107:5000/posts/${postId}/likes`, {
+      const res = await axios.get(`${API_URL}/posts/${postId}/likes`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSelectedLikes(res.data.users || []);
@@ -598,38 +598,39 @@ const [postData, setPostData] = useState({
   return (
     <SafeAreaView style={styles.container}>
       {/* Header with title and search button */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Explore Feed</Text>
-        <TouchableOpacity
-          onPress={() => navigation.navigate("SearchUser")}
-          style={styles.searchButton}
-        >
-          <Ionicons name="search-outline" size={24} color="#6A5ACD" />
-        </TouchableOpacity>
-      </View>
-  
-     {/* Following filter toggle */}
-<View style={styles.filterContainer}>
-  <TouchableOpacity
-    onPress={toggleFollowingPosts}
-    style={[
-      styles.filterButton,
-      showFollowingPosts && styles.filterButtonActive
-    ]}
-  >
-    <Ionicons 
-      name="people-outline" 
-      size={20} 
-      color={showFollowingPosts ? "#6A5ACD" : "#999"} 
-    />
-    <Text style={[
-      styles.filterText,
-      showFollowingPosts && styles.filterTextActive
-    ]}>
-      {showFollowingPosts ? 'Following Feed' : 'Explore Feed'}
-    </Text>
-  </TouchableOpacity>
+      <View style={styles.topBar}>
+  {/* Left: Explore / Following toggle */}
+  <View style={styles.tabToggle}>
+    <TouchableOpacity onPress={() => {
+      setShowFollowingPosts(false);
+      setIsFollowing(false);
+    }}>
+      <Text style={[styles.tabText, !showFollowingPosts && styles.tabTextActive]}>
+        Explore
+      </Text>
+    </TouchableOpacity>
+    <TouchableOpacity onPress={() => {
+      setShowFollowingPosts(true);
+      setIsFollowing(true);
+      fetchFollowingIds();
+    }}>
+      <Text style={[styles.tabText, showFollowingPosts && styles.tabTextActive]}>
+        Following
+      </Text>
+    </TouchableOpacity>
+  </View>
+
+  {/* Right: Add + Search */}
+  <View style={styles.actionsRight}>
+    <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.iconButton}>
+      <Ionicons name="add-circle-outline" size={26} color="#6A5ACD" />
+    </TouchableOpacity>
+    <TouchableOpacity onPress={() => navigation.navigate("SearchUser")} style={styles.iconButton}>
+      <Ionicons name="search" size={24} color="#6A5ACD" />
+    </TouchableOpacity>
+  </View>
 </View>
+
   
       {/* Posts List */}
       <KeyboardAvoidingView
@@ -728,37 +729,48 @@ const [postData, setPostData] = useState({
               )}
   
               {/* Polish & Business Details */}
-              <View style={styles.detailsContainer}>
-              {item.polishIds && item.polishIds.map(polishId => (
-  <TouchableOpacity 
-    key={polishId}
-    onPress={() => handlePolishNamePress(polishId)}
-    style={styles.detailItem}
-  >
-    <View
-      style={[
-        styles.colorCircle,
-        { backgroundColor: polishLookup[polishId]?.hex || "#ccc" },
-      ]}
-    />
-    <Text style={styles.detailText} numberOfLines={1}>
-      {polishLookup[polishId]?.brand || "Unknown"}: {polishLookup[polishId]?.name || "Polish"}
-    </Text>
-  </TouchableOpacity>
-))}
-  
-                {item.businessId && (
-                  <TouchableOpacity 
-                    onPress={() => handleBusinessNamePress(item.businessId)}
-                    style={styles.detailItem}
-                  >
-                    <Ionicons name="business-outline" size={16} color="#6A5ACD" />
-                    <Text style={styles.detailText} numberOfLines={1}>
-                      {businessLookup[item.businessId]?.name || "Unknown Business"}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+{/* Polish & Business Details */}
+<View style={styles.detailsContainer}>
+  {/* Display Nail Polishes Horizontally */}
+  <View style={styles.polishContainer}>
+    {item.polishIds && item.polishIds.map(polishId => (
+      <TouchableOpacity 
+        key={polishId}
+        onPress={() => handlePolishNamePress(polishId)}
+        style={styles.detailItem}
+      >
+        <View
+          style={[styles.colorCircle, { backgroundColor: polishLookup[polishId]?.hex || "#ccc" }]}
+        />
+        <Text style={styles.detailText} numberOfLines={1}>
+          {polishLookup[polishId]?.brand || "Unknown"}: {polishLookup[polishId]?.name || "Polish"}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+
+  {/* Business Name and Icon with Adjusted Spacing */}
+  {item.businessId && (
+    <TouchableOpacity 
+      onPress={() => handleBusinessNamePress(item.businessId)}
+      style={[styles.detailItem, styles.businessDetail]}
+    >
+      <View style={styles.iconTextContainer}>
+  <Ionicons 
+    name="business-outline" 
+    size={16} 
+    color="#6A5ACD" 
+    style={styles.iconStyle}
+  />
+  <Text style={styles.detailText} numberOfLines={1}>
+    {businessLookup[item.businessId]?.name || "Unknown Business"}
+  </Text>
+</View>
+    </TouchableOpacity>
+  )}
+</View>
+
+
   
               {/* Comments Section */}
               {visibleComments[item._id] && (
@@ -804,14 +816,6 @@ const [postData, setPostData] = useState({
           )}
         />
       </KeyboardAvoidingView>
-  
-      {/* Floating Add Button */}
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => setModalVisible(true)}
-      >
-        <Ionicons name="add" size={28} color="white" />
-      </TouchableOpacity>
   
       {/* Likes Modal */}
       <Modal
@@ -1212,11 +1216,7 @@ const [postData, setPostData] = useState({
       fontWeight: '600',
       color: '#333',
     },
-    searchButton: {
-      position: 'absolute',
-      right: 16,
-      padding: 8,
-    },
+   
   
     // Filter Styles
     filterContainer: {
@@ -1330,23 +1330,33 @@ const [postData, setPostData] = useState({
     },
     // Details Styles
     detailsContainer: {
-      marginTop: 12,
+      marginTop: 10,  // Add some space from the caption
+    },
+    polishContainer: {
+      flexDirection: 'row',  // Horizontal layout for nail polishes
+      flexWrap: 'wrap',      // Allow wrapping when necessary
+      alignItems: 'center',  // Align items vertically in the center
+      marginBottom: 10,      // Add space after the polishes
     },
     detailItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 8,
+      flexDirection: 'row',   // Ensure items are displayed side by side
+      alignItems: 'center',   // Align the text and color circle properly
+      marginRight: 10,        // Space between polish items
+      marginBottom: 10,       // Space between rows when wrapping
     },
     colorCircle: {
-      width: 16,
-      height: 16,
-      borderRadius: 8,
-      marginRight: 8,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      marginRight: 8,         // Space between color circle and text
     },
+  
     detailText: {
-      fontSize: 14,
-      color: '#666',
-      flex: 1,
+      fontSize: 12,
+      color: '#333',
+      // Remove the maxWidth to allow the text to wrap and display fully
+      flex: 1,      // Allow text to wrap if necessary
+                  // Add some width restriction if necessary
     },
     // Comments Styles
     commentsContainer: {
@@ -1401,24 +1411,7 @@ const [postData, setPostData] = useState({
       fontWeight: '500',
     },
   
-    // Add Button
-    addButton: {
-      position: 'absolute',
-      bottom: 24,
-      right: 24,
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: '#6A5ACD',
-      justifyContent: 'center',
-      alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
-      elevation: 4,
-      zIndex: 10,
-    },
+    
   
     // Modal Styles
     modalOverlay: {
@@ -1736,4 +1729,62 @@ const [postData, setPostData] = useState({
     fontWeight: '600',
     fontSize: 16,
   },
-});
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    backgroundColor: "#fff",
+    width: '100%', // Add this
+    zIndex: 10, // Ensure it stays above other content
+  },
+  
+  tabToggle: {
+    flexDirection: "row",
+    gap: 16,
+  },
+  
+  tabText: {
+    fontSize: 16,
+    color: "#888",
+    fontWeight: "500",
+  },
+  
+  tabTextActive: {
+    color: "#6A5ACD",
+    borderBottomWidth: 2,
+    borderBottomColor: "#6A5ACD",
+  },
+  
+  actionsRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  
+  iconButton: {
+    padding: 4,
+  },
+  businessDetail: {
+    marginTop: 10,          // Space between polishes and business name
+    flexDirection: 'row',   // Ensure the icon and text are side by side
+    alignItems: 'center',   // Align icon and text vertically in the center
+    marginLeft: 12,         // Increase space between icon and name
+  },
+  iconTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8, // This adds space between items (works in React Native 0.71+)
+  },
+  iconTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconStyle: {
+    marginRight: 8, // Adds 8px space between icon and text
+  },
+  
+  });

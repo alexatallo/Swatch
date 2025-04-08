@@ -120,16 +120,6 @@ export default function BusinessAccount({ navigation }) {
       contentContainerStyle={styles.container}
       style={Platform.OS === "web" ? { height: "100vh" } : null}
     >
-      {/* Header Section */}
-      <View style={styles.headerContainer}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={28} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerText}>Business Settings</Text>
-      </View>
 
       {/* Inventory Button */}
       <TouchableOpacity

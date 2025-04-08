@@ -76,12 +76,6 @@ const FollowerScreen = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerContainer}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={28} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerText}>Followers</Text>
-      </View>
 
       {followers.length === 0 ? (
         <View style={styles.emptyContainer}>

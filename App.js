@@ -3,7 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
+import { Platform, TouchableOpacity } from 'react-native';
 import SignUpScreen from "./auth/SignUpScreen";
 import LoginScreen from "./auth/LoginScreen";
 import DashboardScreen from "./auth/DashBoardScreen";
@@ -23,6 +23,12 @@ import SearchScreen from "./screens/SearchScreen";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
+
+const CustomBackButton = ({ onPress }) => (
+  <TouchableOpacity onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', padding: 10 }}>
+    <Ionicons name="arrow-back" size={24} color="#000" /> {/* Custom back arrow icon */}
+  </TouchableOpacity>
+);
 
 function MainTabs() {
   return (
@@ -67,21 +73,21 @@ function MainTabs() {
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{ headerShown: true, headerTintColor: '#000', }}>
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="SignUp" component={SignUpScreen} />
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen name="Main" component={MainTabs} />
-        <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen name="PolishScreen" component={PolishScreen} />
-        <Stack.Screen name="CollectionScreen" component={CollectionScreen} />
-        <Stack.Screen name="ClientAccount" component={ClientAccount} />
-        <Stack.Screen name="BusinessAccount" component={BusinessAccount} />
-        <Stack.Screen name="InventoryScreen" component={InventoryScreen} />
-        <Stack.Screen name="SearchUser" component={SearchUserScreen} />
-        <Stack.Screen name="OtherAccount" component={OtherAccountScreen} />
-        <Stack.Screen name="Followers" component={FollowerScreen} /> 
-        <Stack.Screen name="Following" component={FollowingScreen} /> 
+        <Stack.Screen name="Home" options={{ headerShown: false }} component={HomeScreen} />
+        <Stack.Screen name="PolishScreen" options={{ title: 'Polish Details', headerLeft: ({ onPress }) => <CustomBackButton onPress={onPress} /> }}component={PolishScreen} />
+        <Stack.Screen name="CollectionScreen" options={{ title: 'Collections', headerLeft: ({ onPress }) => <CustomBackButton onPress={onPress} />}}component={CollectionScreen} />
+        <Stack.Screen name="ClientAccount" options={{ title: 'Settings', headerLeft: ({ onPress }) => <CustomBackButton onPress={onPress} /> }}component={ClientAccount} />
+        <Stack.Screen name="BusinessAccount" options={{ title: 'Settings', headerLeft: ({ onPress }) => <CustomBackButton onPress={onPress} />}}component={BusinessAccount} />
+        <Stack.Screen name="InventoryScreen"  options={{ title: 'Inventory', headerLeft: ({ onPress }) => <CustomBackButton onPress={onPress} /> }}component={InventoryScreen} />
+        <Stack.Screen name="SearchUser" options={{ title: 'Find Users' }}component={SearchUserScreen} />
+        <Stack.Screen name="OtherAccount" options={{ title: 'Find Users', headerLeft: ({ onPress }) => <CustomBackButton onPress={onPress} /> }}component={OtherAccountScreen} />
+        <Stack.Screen name="Followers" options={{ title: 'Followers', headerLeft: ({ onPress }) => <CustomBackButton onPress={onPress} /> }}component={FollowerScreen} /> 
+        <Stack.Screen name="Following" options={{ title: 'Following', headerLeft: ({ onPress }) => <CustomBackButton onPress={onPress} /> }}component={FollowingScreen} /> 
       </Stack.Navigator>
     </NavigationContainer>
   );
