@@ -10,6 +10,7 @@ import {
   Image,
   StyleSheet,
   ScrollView,
+  SafeAreaView,
   ActivityIndicator,
 } from "react-native";
 import { ColorPicker, fromHsv } from "react-native-color-picker";
@@ -325,31 +326,40 @@ export default function SearchScreen({ navigation }) {
   return (
     <View style={styles.container}>
       {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search polish name..."
-          placeholderTextColor={COLORS.muted}
-          value={searchQuery}
-          onChangeText={handleSearch}
-        />
-        
-        <View style={styles.buttonGroup}>
-          <IconButton 
-            icon="🎨" 
+      <SafeAreaView style={styles.container}>
+      <View style={styles.topBar}>
+        {/* Search Input in place of tabs */}
+        <View style={styles.searchInputContainer}>
+          <Ionicons name="search" size={20} color="#6A5ACD" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search polish name..."
+            placeholderTextColor="#888"
+            value={searchQuery}
+            onChangeText={handleSearch}
+          />
+        </View>
+
+        {/* Right Action Buttons */}
+        <View style={styles.actionsRight}>
+          <TouchableOpacity 
             onPress={() => setShowColorPicker(true)} 
             style={styles.iconButton}
-          />
-          <IconButton 
-            icon="📷" 
+          >
+            <Ionicons name="color-palette-outline" size={24} color="#6A5ACD" />
+          </TouchableOpacity>
+          <TouchableOpacity 
             onPress={() => setShowColorExtractor(true)} 
             style={styles.iconButton}
-          />
-          <IconButton 
-            icon="☰" 
+          >
+            <Ionicons name="camera-outline" size={24} color="#6A5ACD" />
+          </TouchableOpacity>
+          <TouchableOpacity 
             onPress={() => setShowFilterModal(true)} 
             style={styles.iconButton}
-          />
+          >
+            <Ionicons name="filter-outline" size={24} color="#6A5ACD" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -525,16 +535,11 @@ export default function SearchScreen({ navigation }) {
       </View>
       </View>
       </Modal>
+      </SafeAreaView>
     </View>
   );
 }
 
-// Reusable Components
-const IconButton = ({ icon, onPress, style }) => (
-  <TouchableOpacity style={[styles.iconButton, style]} onPress={onPress}>
-    <Text style={styles.iconText}>{icon}</Text>
-  </TouchableOpacity>
-);
 
 const ActionButton = ({ text, onPress, primary = false }) => (
   <TouchableOpacity
@@ -585,8 +590,7 @@ const FilterOption = ({ option, isSelected, onPress }) => (
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#f8f9fa',
   },
   loader: {
     flex: 1,
@@ -600,13 +604,9 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    height: 48,
-    paddingHorizontal: 16,
-    backgroundColor: COLORS.card,
-    borderRadius: 24,
+    height: 40,
     fontSize: 16,
-    color: COLORS.text,
-    elevation: 2,
+    color: "#333",
   },
   buttonGroup: {
     flexDirection: 'row',
@@ -811,5 +811,35 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '500',
     fontSize: 14,
+  },
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    backgroundColor: "#fff",
+  },
+  searchInputContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginRight: 12,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  actionsRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  iconButton: {
+    padding: 4,
   },
 });

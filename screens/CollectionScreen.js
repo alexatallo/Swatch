@@ -91,11 +91,7 @@ const CollectionScreen = () => {
         <>
 
           <View style={styles.headerContainer}>
-            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={28} color="#333" />
-            </TouchableOpacity>
-            <Text style={styles.headerText}>Your Collection</Text>
-            <TouchableOpacity
+             <TouchableOpacity
               style={styles.editButton}
               onPress={() => setIsEditing(!isEditing)}
             >

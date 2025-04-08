@@ -209,15 +209,6 @@ const InventoryScreen = () => {
           ) : (
             <>
               {/* Header Section */}
-              <View style={styles.headerContainer}>
-                <TouchableOpacity 
-                  style={styles.backButton} 
-                  onPress={() => navigation.goBack()}
-                >
-                  <Ionicons name="arrow-back" size={28} color="#6e3b6e" />
-                </TouchableOpacity>
-                <Text style={styles.headerText}>Inventory</Text>
-              </View>
     
               {/* Action Buttons */}
               <View style={styles.actionRow}>

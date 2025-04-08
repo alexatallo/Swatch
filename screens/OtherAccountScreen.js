@@ -324,14 +324,7 @@ const [distance, setDistance] = useState(null);
 
   return (
     <View style={styles.container}>
-      
-      <View style={styles.headerContainer}>
-        
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={28} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerText}>Account</Text>
-      </View>
+       
 
       <View style={styles.profileSection}>
         <View style={styles.profileInfo}>
