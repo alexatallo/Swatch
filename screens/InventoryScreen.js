@@ -199,347 +199,416 @@ const InventoryScreen = () => {
 
     return (
         <View style={styles.container}>
-            {loading ? (
-                <ActivityIndicator size="large" color="#A020F0" style={{ marginTop: 20 }} />
-            ) : polishData.length === 0 ? (
-                <Text style={styles.emptyText}>No polishes found.</Text>
-            ) : (
-                <>
-                    {/* Back Button */}
-                    <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-                        <Ionicons name="arrow-back" size={28} color="#333" />
-                    </TouchableOpacity>
-
-                    {/* Header */}
-                    <Text style={styles.headerText}>Inventory</Text>
-
-                    {/* View Collections Button */}
-                    <TouchableOpacity
-                        style={styles.collectionButton}
-                        onPress={() => {
-                            setSelectedCollection(null);
-                            setModalVisible(true);
-                        }}
-                    >
-                        <Text style={styles.buttonText}>View Collections</Text>
-                    </TouchableOpacity>
-
-                    {/* Search */}
-                    <View style={styles.searchContainer}>
-                            <TextInput
-                                style={styles.searchInput}
-                                placeholder="Search polish name..."
-                                placeholderTextColor="#888"
-                                value={searchQuery}
-                                onChangeText={handleSearch}
-                            />
-                        </View>
-
-                        {/* Clear Filters Button (Outside the search container) */}
-                        {(searchQuery) && (
-                            <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
-                                <Text style={styles.clearButtonText}>Clear Filters</Text>
-                            </TouchableOpacity>
-                        )}
-
-                    {/* Polish List */}
-                    <FlatList
-                        ref={flatListRef}
-                        data={filteredPolishes}
-                        keyExtractor={(item, index) =>
-                            item._id ? item._id.toString() : index.toString()
-                        }
-                        numColumns={2}
-                        columnWrapperStyle={styles.row}
-                        contentContainerStyle={[styles.listContainer, { flexGrow: 1 }]} // Enable scrolling
-                        style={styles.flatList} // Add fixed height for web
-                        renderItem={({ item }) => (
-                            <TouchableOpacity
-                                style={styles.itemContainer}
-                                onPress={() => navigation.navigate("PolishScreen", { item })}
-                            >
-                                <Image source={{ uri: item.picture }} style={styles.image} />
-                                <Text style={styles.nameText}>{item.name || "No name"}</Text>
-                                <Text style={styles.brandText}>{item.brand || "Unknown brand"}</Text>
-                                {/* Add Button */}
-                                <TouchableOpacity
-                                    style={styles.addButton}
-                                    onPress={() => handleAddPolishToInventory(item)}
-                                >
-                                    <Ionicons name="add-circle" size={30} color="#A020F0" />
-                                </TouchableOpacity>
-                            </TouchableOpacity>
-                        )}
-                    />
-                </>
-            )}
-
-            {/* Modal for Collections */}
-            <Modal
-                animationType="slide"
-                transparent={true}
-                visible={modalVisible}
-                onRequestClose={() => setModalVisible(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        {selectedCollection ? (
-                            <>
-                                <Text style={styles.modalTitle}>{selectedCollection}</Text>
-                                <FlatList
-                                    data={filteredPolishes}
-                                    keyExtractor={(item) => item._id.toString()}
-                                    renderItem={({ item }) => (
-                                        <View style={styles.polishCard}>
-                                            <Image source={{ uri: item.picture }} style={styles.image} />
-                                            <View style={styles.textContainer}>
-                                                <Text style={styles.title}>{item.name || "No name available"}</Text>
-                                                <Text style={styles.text}>Brand: {item.brand || "Unknown"}</Text>
-                                                <Text style={styles.text}>Finish: {item.finish || "Unknown"}</Text>
-                                            </View>
-
-                                            <TouchableOpacity
-                                                style={styles.addButton}
-                                                onPress={() => addCollectionToInventory(selectedCollection, filteredPolishes)}
-                                            >
-                                                <Ionicons name="add-circle" size={30} color="#A020F0" />
-                                            </TouchableOpacity>
-                                        </View>
-                                    )}
-                                />
-                                <Button title="Back to Collections" onPress={() => setSelectedCollection(null)} />
-                            </>
-                        ) : (
-                            <>
-                                <Text style={styles.modalTitle}>Select a Collection</Text>
-                                <FlatList
-                                    data={getUniqueCollections()}
-                                    keyExtractor={(item) => item}
-                                    renderItem={({ item }) => (
-                                        <TouchableOpacity
-                                            style={styles.collectionItem}
-                                            onPress={() => handleCollectionPress(item)}
-                                        >
-                                            <Text style={styles.collectionText}>{item}</Text>
-                                            <TouchableOpacity
-                                                style={styles.addButton}
-                                                onPress={() => addCollectionToInventory(item, polishData.filter(polish => polish.collection === item))}
-                                            >
-                                                <Ionicons name="add-circle" size={30} color="#A020F0" />
-                                            </TouchableOpacity>
-                                        </TouchableOpacity>
-                                    )}
-                                />
-                            </>
-                        )}
-
-                        {/* Close Button */}
-                        <TouchableOpacity
-                            style={styles.closeButton}
-                            onPress={() => setModalVisible(false)}
-                        >
-                            <Text style={styles.closeButtonText}>Close</Text>
-                        </TouchableOpacity>
+          {loading ? (
+            <ActivityIndicator size="large" color="#6e3b6e" style={styles.loadingIndicator} />
+          ) : polishData.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="sad-outline" size={50} color="#6e3b6e" />
+              <Text style={styles.emptyText}>No polishes found</Text>
+            </View>
+          ) : (
+            <>
+              {/* Header Section */}
+              <View style={styles.headerContainer}>
+                <TouchableOpacity 
+                  style={styles.backButton} 
+                  onPress={() => navigation.goBack()}
+                >
+                  <Ionicons name="arrow-back" size={28} color="#6e3b6e" />
+                </TouchableOpacity>
+                <Text style={styles.headerText}>Inventory</Text>
+              </View>
+    
+              {/* Action Buttons */}
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={styles.collectionButton}
+                  onPress={() => {
+                    setSelectedCollection(null);
+                    setModalVisible(true);
+                  }}
+                >
+                  <Ionicons name="folder-open-outline" size={20} color="#fff" />
+                  <Text style={styles.buttonText}>Collections</Text>
+                </TouchableOpacity>
+    
+              </View>
+    
+              {/* Search Bar */}
+              <View style={styles.searchContainer}>
+                <Ionicons name="search-outline" size={20} color="#6e3b6e" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search polish name..."
+                  placeholderTextColor="#999"
+                  value={searchQuery}
+                  onChangeText={handleSearch}
+                />
+                {searchQuery && (
+                  <TouchableOpacity onPress={clearFilters}>
+                    <Ionicons name="close-circle" size={20} color="#6e3b6e" />
+                  </TouchableOpacity>
+                )}
+              </View>
+    
+              {/* Polish List */}
+              <FlatList
+                ref={flatListRef}
+                data={filteredPolishes}
+                keyExtractor={(item, index) => item._id ? item._id.toString() : index.toString()}
+                numColumns={2}
+                columnWrapperStyle={styles.row}
+                contentContainerStyle={styles.listContainer}
+                style={styles.flatList}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.itemContainer}
+                    onPress={() => navigation.navigate("PolishScreen", { item })}
+                  >
+                    <Image source={{ uri: item.picture }} style={styles.image} />
+                    <View style={styles.itemInfo}>
+                      <Text style={styles.nameText} numberOfLines={1}>{item.name || "No name"}</Text>
+                      <Text style={styles.brandText} numberOfLines={1}>{item.brand || "Unknown brand"}</Text>
                     </View>
+                    <TouchableOpacity
+                      style={styles.addItemButton}
+                      onPress={() => handleAddPolishToInventory(item)}
+                    >
+                      <Ionicons name="add-circle" size={30} color="#6e3b6e" />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                )}
+                ListEmptyComponent={
+                  <View style={styles.noResultsContainer}>
+                    <Ionicons name="search-outline" size={40} color="#6e3b6e" />
+                    <Text style={styles.noResultsText}>No results found</Text>
+                    <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
+                      <Text style={styles.clearButtonText}>Clear search</Text>
+                    </TouchableOpacity>
+                  </View>
+                }
+              />
+            </>
+          )}
+    
+          {/* Collections Modal */}
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={modalVisible}
+            onRequestClose={() => setModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>
+                    {selectedCollection ? selectedCollection : 'Select a Collection'}
+                  </Text>
+                  <TouchableOpacity onPress={() => setModalVisible(false)}>
+                    <Ionicons name="close" size={24} color="#6e3b6e" />
+                  </TouchableOpacity>
                 </View>
-            </Modal>
+    
+                {selectedCollection ? (
+                  <>
+                    <FlatList
+                      data={filteredPolishes}
+                      keyExtractor={(item) => item._id.toString()}
+                      renderItem={({ item }) => (
+                        <View style={styles.polishCard}>
+                          <Image source={{ uri: item.picture }} style={styles.modalImage} />
+                          <View style={styles.textContainer}>
+                            <Text style={styles.title}>{item.name || "No name available"}</Text>
+                            <Text style={styles.text}>Brand: {item.brand || "Unknown"}</Text>
+                          </View>
+                          <TouchableOpacity
+                            style={styles.addItemButton}
+                            onPress={() => addCollectionToInventory(selectedCollection, filteredPolishes)}
+                          >
+                            <Ionicons name="add-circle" size={30} color="#6e3b6e" />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    />
+                    <TouchableOpacity 
+                      style={styles.backButtonModal}
+                      onPress={() => setSelectedCollection(null)}
+                    >
+                      <Text style={styles.backButtonText}>Back to Collections</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <FlatList
+                    data={getUniqueCollections()}
+                    keyExtractor={(item) => item}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.collectionItem}
+                        onPress={() => handleCollectionPress(item)}
+                      >
+                        <Ionicons name="folder-outline" size={20} color="#6e3b6e" />
+                        <Text style={styles.collectionText}>{item}</Text>
+                        <TouchableOpacity
+                          style={styles.addItemButton}
+                          onPress={() => addCollectionToInventory(item, polishData.filter(polish => polish.collection === item))}
+                        >
+                          <Ionicons name="add-circle" size={30} color="#6e3b6e" />
+                        </TouchableOpacity>
+                      </TouchableOpacity>
+                    )}
+                  />
+                )}
+              </View>
+            </View>
+          </Modal>
         </View>
-    );
-};
-
-const styles = StyleSheet.create({
-    container: {
+      );
+    };
+    
+    const styles = StyleSheet.create({
+      container: {
         flex: 1,
-        backgroundColor: "#FAF9FE",
+        backgroundColor: "#f8f9fa",
         paddingTop: Platform.OS === 'web' ? 20 : 40,
-        paddingHorizontal: Platform.OS === 'web' ? 20 : 10,
-    },
-    flatList: {
-        height: Platform.OS === 'web' ? '70vh' : undefined, // Fixed height for web
-    },
-    collectionButton: {
-        backgroundColor: "#A020F0",
+        paddingHorizontal: 16,
+      },
+      loadingIndicator: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+      },
+      emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+      },
+      emptyText: {
+        fontSize: 18,
+        color: '#6e3b6e',
+        marginTop: 10,
+      },
+      headerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+      },
+      backButton: {
+        padding: 8,
+        marginRight: 10,
+      },
+      headerText: {
+        fontSize: 28,
+        fontWeight: '700',
+        color: '#6e3b6e',
+        flex: 1,
+        textAlign: 'center',
+      },
+      actionRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 15,
+      },
+      collectionButton: {
+        backgroundColor: "#6e3b6e",
         paddingVertical: 12,
-        borderRadius: 12,
-        margin: 15,
-        alignItems: "center",
-    },
-    itemContainer: {
-        width: '48%',
-        backgroundColor: "#fff",
-        borderRadius: 15,
-        padding: 15,
-        marginBottom: 12,
-        shadowColor: "#000",
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
-        elevation: 3,
-        alignItems: "center",
-    },
-    buttonText: {
+        paddingHorizontal: 20,
+        borderRadius: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        marginRight: 10,
+      },
+      addButton: {
+        backgroundColor: "#6e3b6e",
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+      },
+      buttonText: {
         color: "#fff",
         fontSize: 16,
         fontWeight: "600",
-    },
-    row: {
-        justifyContent: "space-between",
-    },
-    listContainer: {
-        paddingHorizontal: 10,
-        paddingBottom: 20,
-    },
-    backButton: {
-        marginBottom: 10,
-        padding: 10,
-        alignSelf: "flex-start",
-    },
-    headerText: {
-        fontSize: 26,
-        fontWeight: "700",
-        color: "#333",
-        textAlign: "center",
-        marginBottom: 20,
-    },
-    polishCard: {
+        marginLeft: 8,
+      },
+      searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
         backgroundColor: "#fff",
-        borderRadius: 15,
-        padding: 15,
-        margin: 10,
-        flexDirection: "row",
-        alignItems: "center",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.1,
-        shadowRadius: 5,
-        elevation: 5,
-    },
-    image: {
-        width: 100,
-        height: 100,
         borderRadius: 10,
-        marginBottom: 10,
-    },
-    textContainer: {
+        paddingHorizontal: 15,
+        paddingVertical: 12,
+        marginBottom: 15,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+      },
+      searchInput: {
         flex: 1,
-    },
-    title: {
         fontSize: 16,
-        fontWeight: "700",
         color: "#333",
-    },
-    text: {
-        fontSize: 14,
-        color: "#555",
-    },
-    addButton: {
-        padding: 5,
-    },
-    emptyText: {
-        textAlign: "center",
+        paddingHorizontal: 10,
+      },
+      flatList: {
+        height: Platform.OS === 'web' ? '70vh' : undefined,
+      },
+      row: {
+        justifyContent: 'space-between',
+        paddingHorizontal: 4,
+      },
+      listContainer: {
+        paddingBottom: 20,
+      },
+      itemContainer: {
+        width: '48%',
+        backgroundColor: "#fff",
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 12,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+      },
+      itemInfo: {
+        marginTop: 8,
+      },
+      image: {
+        width: '100%',
+        height: 120,
+        borderRadius: 8,
+        resizeMode: 'cover',
+      },
+      nameText: {
         fontSize: 16,
+        fontWeight: "600",
+        color: "#333",
+      },
+      brandText: {
+        fontSize: 14,
         color: "#666",
-        marginTop: 20,
-    },
-    modalOverlay: {
+        marginTop: 4,
+      },
+      addItemButton: {
+        position: 'absolute',
+        bottom: 10,
+        right: 10,
+      },
+      noResultsContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 40,
+      },
+      noResultsText: {
+        fontSize: 18,
+        color: '#6e3b6e',
+        marginVertical: 10,
+      },
+      clearButton: {
+        backgroundColor: "#6e3b6e",
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 20,
+        marginTop: 10,
+      },
+      clearButtonText: {
+        color: "#fff",
+        fontSize: 14,
+        fontWeight: "600",
+      },
+      modalOverlay: {
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
         backgroundColor: "rgba(0, 0, 0, 0.5)",
-    },
-    modalContent: {
+      },
+      modalContent: {
         backgroundColor: "#fff",
         padding: 20,
-        borderRadius: 10,
-        width: Platform.OS === 'web' ? '40%' : '80%',
+        borderRadius: 12,
+        width: Platform.OS === 'web' ? '40%' : '90%',
         maxHeight: '80%',
-    },
-    modalTitle: {
-        fontSize: 24,
-        fontWeight: "700",
-        color: "#6A0DAD",
-        textAlign: "center",
-        paddingBottom: 10,
-        borderBottomWidth: 2,
-        borderBottomColor: "#D8BFD8",
+      },
+      modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         marginBottom: 15,
-    },
-    nameText: {
-        fontSize: 16,
+        paddingBottom: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+      },
+      modalTitle: {
+        fontSize: 20,
         fontWeight: "700",
+        color: "#6e3b6e",
+      },
+      polishCard: {
+        backgroundColor: "#fff",
+        borderRadius: 10,
+        padding: 12,
+        marginVertical: 8,
+        flexDirection: "row",
+        alignItems: "center",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 2,
+      },
+      modalImage: {
+        width: 60,
+        height: 60,
+        borderRadius: 8,
+        marginRight: 12,
+      },
+      textContainer: {
+        flex: 1,
+      },
+      title: {
+        fontSize: 16,
+        fontWeight: "600",
         color: "#333",
-        textAlign: "center",
-    },
-    brandText: {
+      },
+      text: {
         fontSize: 14,
-        color: "#555",
-        textAlign: "center",
-    },
-    collectionItem: {
+        color: "#666",
+        marginTop: 4,
+      },
+      collectionItem: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
         paddingVertical: 12,
-        paddingHorizontal: 20,
+        paddingHorizontal: 15,
         marginVertical: 6,
-        backgroundColor: "#F0E6FA",
-        borderRadius: 12,
-    },
-    collectionText: {
-        fontSize: 18,
-        fontWeight: "bold",
-        color: "#4B0082",
-    },
-    closeButton: {
-        backgroundColor: "#A020F0",
-        padding: 10,
+        backgroundColor: "#f0e6ff",
+        borderRadius: 10,
+      },
+      collectionText: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: "600",
+        color: "#6e3b6e",
+        marginLeft: 10,
+      },
+      backButtonModal: {
+        backgroundColor: "#6e3b6e",
+        padding: 12,
         borderRadius: 8,
         alignItems: "center",
-        marginTop: 10,
-    },
-    closeButtonText: {
+        marginTop: 15,
+      },
+      backButtonText: {
         color: "#fff",
         fontSize: 16,
         fontWeight: "600",
-    },
-    /** Search Bar **/
-    searchContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        backgroundColor: "#fff",
-        borderRadius: 12,
-        paddingHorizontal: 15,
-        paddingVertical: 10,
-        shadowColor: "#000",
-        shadowOpacity: 0.05,
-        shadowRadius: 3,
-        elevation: 2,
-        marginBottom: 15,
-    },
-    searchInput: {
-        flex: 1,
-        fontSize: 16,
-        color: "#333",
-        paddingVertical: 8,
-        paddingHorizontal: 10,
-    },
-    clearButton: {
-        alignSelf: "center",
-        backgroundColor: "#E0E0E0",
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 20,
-        marginBottom: 10,
-        marginTop: 5,
-        shadowColor: "#000",
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        elevation: 2,
-    },
-    clearButtonText: {
-        color: "#333",
-        fontSize: 14,
-        fontWeight: "bold",
-    },
-});
-
-export default InventoryScreen;
+      },
+    });
+    
+    export default InventoryScreen;

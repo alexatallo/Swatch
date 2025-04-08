@@ -1,28 +1,21 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, ActivityIndicator, Alert, StyleSheet, Modal, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, ActivityIndicator, Alert, Image, StyleSheet, Platform, TouchableOpacity, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import Feather from 'react-native-vector-icons/Feather';
 import Ionicons from "react-native-vector-icons/Ionicons";
 import axios from 'axios';
 import { API_URL } from "@env";
 
-const Storage = AsyncStorage;
-
 export default function ClientAccount({ navigation }) {
   const [userData, setUserData] = useState(null);
-  const [collectionData, setCollectionData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
-  const [collectionToDelete, setCollectionToDelete] = useState(null);
 
- 
   useFocusEffect(
     useCallback(() => {
       const fetchUserData = async () => {
         setLoading(true);
         try {
-          const storedToken = await Storage.getItem("token");
+          const storedToken = await AsyncStorage.getItem("token");
           if (!storedToken) {
             console.error("Token is not available.");
             setLoading(false);
@@ -36,18 +29,16 @@ export default function ClientAccount({ navigation }) {
 
           console.log("Full API Response:", response.data);
 
-          if (response.data.user) setUserData(response.data.user);
-          if (Array.isArray(response.data.collection)) {
-            setCollectionData(response.data.collection);
+          if (response.data.user) {
+            setUserData(response.data.user);
           } else {
-            console.error("Collection data not found or invalid:", response.data.collection);
-            setCollectionData([]);
+            console.error("User data not found.");
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
           if (error.response?.status === 401) {
             Alert.alert("Unauthorized", "Session expired or invalid token. Please log in again.");
-            await Storage.removeItem("token");
+            await AsyncStorage.removeItem("token");
             navigation.replace('Login');
           } else {
             Alert.alert("Error", error?.response?.data?.error || "Failed to fetch user data.");
@@ -61,115 +52,123 @@ export default function ClientAccount({ navigation }) {
     }, [])
   );
 
-  if (loading) {
-    return <ActivityIndicator size="large" color="#0000ff" />;
-  }
-
-  const deleteCollection = async (postId) => {
-    setCollectionToDelete(postId);
-    setIsDeleteModalVisible(true);  // Show delete confirmation modal
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem("token");
+      navigation.replace("Login");
+    } catch (error) {
+      Alert.alert("Error", "Failed to log out. Please try again.");
+    }
   };
 
-  const handleDeleteConfirmation = async () => {
-    if (!collectionToDelete) return;
-
+  // Add these functions to your component
+  const handleProfilePicUpload = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
-      if (!token) {
-        alert("Authentication token missing.");
+      // Request permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Permission to access camera roll is required!');
         return;
       }
 
-      const response = await axios.delete(`${API_URL}/collection/${collectionToDelete}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      // Launch image picker
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],  // Square aspect ratio
+        quality: 0.7,    // 70% quality to reduce file size
       });
 
-      if (response.status === 200) {
-        alert("Collection deleted successfully!");
-
-        // Update state to remove deleted collection
-        setCollectionData(prevCollections => prevCollections.filter(col => col._id !== collectionToDelete));
-      } else {
-        throw new Error("Failed to delete collection");
+      if (!result.canceled && result.assets[0].uri) {
+        await uploadProfilePicture(result.assets[0].uri);
       }
     } catch (error) {
-      alert("Error deleting collection: " + (error.response?.data?.error || error.message));
+      console.error('Error picking image:', error);
+      alert('Error selecting image');
     }
-
-    setIsDeleteModalVisible(false);
-    setCollectionToDelete(null);
   };
 
   if (loading) {
-    return <ActivityIndicator size="large" color="#0000ff" />;
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
   }
 
-  const handleDeleteCancel = () => {
-    setIsDeleteModalVisible(false);
-    setCollectionToDelete(null);
-  };
-
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.headerText}>User Profile</Text>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      style={Platform.OS === "web" ? { height: "100vh" } : null}
+    >
+      {/* Header Section */}
+      <View style={styles.headerContainer}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={28} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.headerText}>User Settings</Text>
+      </View>
 
-      {/* Back Button */}
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-        <Text style={styles.backButtonText}>← Back</Text>
-      </TouchableOpacity>
- 
-      {userData ? (
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>User Info</Text>
-          <View style={styles.userInfoContainer}>
-            <Text style={styles.userInfoText}>Email: {userData.email}</Text>
-            <Text style={styles.userInfoText}>Username: {userData.username}</Text>
-            <Text style={styles.userInfoText}>First Name: {userData.firstname}</Text>
-            <Text style={styles.userInfoText}>Last Name: {userData.lastname}</Text>
-          </View>
-        </View>
-      ) : (
-        <Text style={styles.errorText}>User data not found.</Text>
-      )}
- 
-      {Array.isArray(collectionData) && collectionData.length > 0 ? (
-        collectionData.map((collection, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.collectionCard}
-            onPress={() => navigation.navigate('CollectionScreen', { collectionId: collection._id })}
-          >
-            <Text style={styles.collectionName}>{collection.name}</Text>
-            <Text style={styles.collectionDescription}>Click to view details</Text>
-            {/* Trash Icon */}
-            <TouchableOpacity
-              style={styles.trashButton}
-              onPress={() => deleteCollection(collection._id)}
-            >
-              <Ionicons name="trash-outline" size={24} color="purple" />
-            </TouchableOpacity>
+      {/* Profile section */}
+      <View style={styles.profileContainer}>
+        <View style={styles.profileRow}>
+          <TouchableOpacity onPress={handleProfilePicUpload}>
+            <View style={styles.profilePicContainer}>
+              {userData?.profilePic ? (
+                <Image
+                  source={{ uri: userData.profilePic }}
+                  style={styles.profilePic}
+                />
+              ) : (
+                <View style={styles.profilePicPlaceholder}>
+                  <Ionicons name="person" size={40} color="white" />
+                </View>
+              )}
+              <View style={styles.editProfilePicIcon}>
+                <Ionicons name="camera" size={16} color="white" />
+              </View>
+            </View>
           </TouchableOpacity>
-        ))
-      ) : (
-        <Text style={styles.errorText}>No collections found.</Text>
-      )}
-      {/* Delete Confirmation Modal */}
-      <Modal transparent visible={isDeleteModalVisible} animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Delete Collection?</Text>
-            <Text style={styles.modalMessage}>This action cannot be undone.</Text>
-            <View style={styles.modalButtonContainer}>
-              <TouchableOpacity style={styles.cancelButton} onPress={handleDeleteCancel}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteConfirmation}>
-                <Text style={styles.deleteButtonText}>Delete</Text>
-              </TouchableOpacity>
+        </View>
+      </View>
+
+
+
+      {/* User Info Section */}
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Ionicons name="person-circle-outline" size={24} color="#6e3b6e" />
+          <Text style={styles.cardTitle}>User Information</Text>
+        </View>
+        {userData ? (
+          <View style={styles.infoContainer}>
+            <View style={styles.infoRow}>
+              <Ionicons name="mail-outline" size={18} color="#6e3b6e" />
+              <Text style={styles.infoText}>Email: {userData.email}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Ionicons name="person-outline" size={18} color="#6e3b6e" />
+              <Text style={styles.infoText}>Username: {userData.username}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Ionicons name="person-outline" size={18} color="#6e3b6e" />
+              <Text style={styles.infoText}>First Name: {userData.firstname}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Ionicons name="person-outline" size={18} color="#6e3b6e" />
+              <Text style={styles.infoText}>Last Name: {userData.lastname}</Text>
             </View>
           </View>
-        </View>
-      </Modal>
+        ) : (
+          <Text style={styles.errorText}>User data not available</Text>
+        )}
+      </View>
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Text style={styles.logoutText}>Log Out</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -178,138 +177,124 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     padding: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f9fa',
   },
-  backButton: { position: "absolute", top: 40, left: 20, padding: 10 },
-  backButtonText: { fontSize: 18, color: "#007BFF", fontWeight: "bold" },
-  headerText: {
-    fontSize: 34,
-    fontWeight: '700',
-    color: '#2c3e50',
-    textAlign: 'center',
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingBottom: 10,
+    paddingHorizontal: 20,
+    marginTop: Platform.OS === "ios" ? 10 : 0,
+  },
+  backButton: {
+    position: 'absolute',
+    left: 0,
+    zIndex: 1,
+    padding: 8,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
     marginBottom: 20,
-  },
-  sectionContainer: {
-    marginBottom: 30,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#34495e',
-    marginBottom: 15,
-  },
-  userInfoContainer: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 15,
     shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 5,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  userInfoText: {
-    fontSize: 18,
-    color: '#7f8c8d',
-    marginBottom: 10,
-  },
-  collectionCard: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 15,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingBottom: 10,
   },
-  collectionName: {
+  cardTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#34495e',
+    fontWeight: '600',
+    color: '#6e3b6e',
+    marginLeft: 10,
   },
-  collectionDescription: {
+  infoContainer: {
+    paddingHorizontal: 5,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  infoText: {
     fontSize: 16,
-    color: '#7f8c8d',
-    marginTop: 5,
+    color: '#555',
+    marginLeft: 10,
   },
   errorText: {
     color: '#e74c3c',
     fontSize: 16,
+    textAlign: 'center',
     marginTop: 10,
+  },
+  headerText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#6e3b6e',
     textAlign: 'center',
-  },
-  modalContainer: {
-    width: "90%",
-    maxWidth: 400,
-    maxHeight: "80%", // Fixed modal height
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 15,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  modalOverlay: {
     flex: 1,
+  },
+  logoutButton: {
+    backgroundColor: '#e74c3c',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  logoutText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  profileContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  profileRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  profilePicContainer: {
+    position: 'relative',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#6e3b6e',
+  },
+  profilePic: {
+    width: '100%',
+    height: '100%',
+  },
+  profilePicPlaceholder: {
+    backgroundColor: '#6e3b6e',
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  modalContent: {
-    width: 300,
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 10,
-    alignItems: "center",
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  modalMessage: {
-    fontSize: 16,
-    color: "#555",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  modalButtonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-  },
-  buttonRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    marginTop: 10,
-  },
-  cancelButton: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: "#ccc",
-    alignItems: "center",
-    marginRight: 10,
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  deleteButton: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: "#A020F0", // Purple delete button
-    alignItems: "center",
-  },
-  deleteButtonText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#fff",
+  editProfilePicIcon: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#6e3b6e',
+    borderRadius: 12,
+    padding: 4,
   },
 });
