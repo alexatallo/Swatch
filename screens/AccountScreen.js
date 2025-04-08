@@ -405,12 +405,12 @@ const AccountScreen = () => {
         navigation.navigate("Login");
         return;
       }
-  
+
       // Make the delete request to the correct endpoint
       const response = await axios.delete(`${API_URL}/collection/${collectionId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-  
+
       // Check if the response status is successful
       if (response.status === 200 || response.status === 204) {
         // Update the state to remove the deleted collection
@@ -421,7 +421,7 @@ const AccountScreen = () => {
       }
     } catch (error) {
       console.error("Error deleting collection:", error);
-  
+
       // Handle different error scenarios
       let errorMessage = "Failed to delete collection.";
       if (error.response) {
@@ -431,7 +431,7 @@ const AccountScreen = () => {
         // Request was made but no response received
         errorMessage = "No response from server. Please check your internet connection.";
       }
-  
+
       // Show an alert with the error message
       Alert.alert("Error", errorMessage);
     }
@@ -454,35 +454,37 @@ const AccountScreen = () => {
       </View>
     );
   }
+
   return (
-    <View style={{ flex: 1, backgroundColor: 'white' }}>
-      {/* Header with settings and collections buttons */}
-      <View style={styles.headerContainer}>
-        <View style={styles.headerIconsContainer}>
+    <View style={styles.container}>
+      {/* Header with gradient background */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
           <TouchableOpacity
             onPress={openCollectionsModal}
-            style={styles.headerIcon}
+            style={styles.headerButton}
           >
-            <Ionicons name="albums-outline" size={24} color="black" />
+            <Ionicons name="albums-outline" size={24} color="white" />
           </TouchableOpacity>
+
           <TouchableOpacity
-            onPress={() => {
-              if (user?.isBusiness) {
-                navigation.navigate("BusinessAccount");
-              } else {
-                navigation.navigate("ClientAccount");
-              }
-            }}
-            style={styles.headerIcon}
+            onPress={() => navigation.navigate(user?.isBusiness ? "BusinessAccount" : "ClientAccount")}
+            style={styles.headerButton}
           >
-            <Ionicons name="settings-outline" size={24} color="black" />
+            <Ionicons name="settings-outline" size={24} color="white" />
           </TouchableOpacity>
         </View>
       </View>
-  
-      {/* Profile section */}
-      <View style={styles.profileContainer}>
-        <View style={styles.profileRow}>
+
+      <View style={styles.bodyWrapper}>
+        <View style={styles.profileCard}>
+          {/* Profile content */}
+        </View>
+      </View>
+
+      {/* Profile section with card layout */}
+      <View style={styles.profileCard}>
+        <View style={styles.profileHeader}>
           <TouchableOpacity onPress={handleProfilePicUpload}>
             <View style={styles.profilePicContainer}>
               {user?.profilePic ? (
@@ -500,24 +502,25 @@ const AccountScreen = () => {
               </View>
             </View>
           </TouchableOpacity>
-  
+
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{mergedPosts.length}</Text>
               <Text style={styles.statLabel}>Posts</Text>
             </View>
+
             <TouchableOpacity
               style={styles.statItem}
               onPress={() => navigation.navigate("Followers", { userId: user._id })}
               disabled={isLoadingFollowers || followersCount === 0}
             >
               {isLoadingFollowers ? (
-                <ActivityIndicator size="small" color="#A020F0" />
+                <ActivityIndicator size="small" color="#6e3b6e" />
               ) : (
                 <>
                   <Text style={[
                     styles.statNumber,
-                    followersCount > 0 ? styles.clickableCount : null
+                    followersCount > 0 && styles.clickableCount
                   ]}>
                     {followersCount}
                   </Text>
@@ -525,6 +528,7 @@ const AccountScreen = () => {
                 </>
               )}
             </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.statItem}
               onPress={() => navigation.navigate("Following", {
@@ -535,7 +539,7 @@ const AccountScreen = () => {
             >
               <Text style={[
                 styles.statNumber,
-                user?.following?.length ? styles.clickableCount : null
+                user?.following?.length && styles.clickableCount
               ]}>
                 {user?.following?.length || 0}
               </Text>
@@ -543,116 +547,143 @@ const AccountScreen = () => {
             </TouchableOpacity>
           </View>
         </View>
-  
-        <Text style={styles.username}>{user?.username}</Text>
-        {user?.bio && <Text style={styles.bio}>{user.bio}</Text>}
-        <View style={styles.accountTypeBadge}>
-          <Text style={styles.accountTypeText}>
-            {user?.isBusiness ? "BUSINESS" : "PERSONAL"}
-          </Text>
+
+        <View style={styles.profileInfo}>
+          <Text style={styles.username}>@{user?.username}</Text>
+          {user?.bio && <Text style={styles.bio}>{user.bio}</Text>}
+
+          <View style={[
+            styles.accountTypeBadge,
+            user?.isBusiness && styles.businessBadge
+          ]}>
+            <Text style={styles.accountTypeText}>
+              {user?.isBusiness ? "BUSINESS ACCOUNT" : "PERSONAL ACCOUNT"}
+            </Text>
+          </View>
         </View>
       </View>
-  
-      {/* Posts grid */}
-      {mergedPosts.length === 0 ? (
-        <View style={styles.noPostsContainer}>
-          <Ionicons name="camera-outline" size={50} color="#ddd" />
-          <Text style={styles.noPostsText}>No Posts Yet</Text>
-          <TouchableOpacity
-            style={styles.addPostButton}
-            onPress={() => navigation.navigate("ExploreFeed")}
-          >
-            <Text style={styles.addPostButtonText}>Add Your First Post</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <FlatList
-          data={mergedPosts}
-          numColumns={3}
-          keyExtractor={(item) => item._id}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-          }
-          renderItem={({ item }) => (
+
+      {/* Posts grid with section header */}
+      <View style={styles.contentContainer}>
+        <Text style={styles.sectionTitle}>Your Posts</Text>
+
+        {mergedPosts.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="camera-outline" size={60} color="#d8bfd8" />
+            <Text style={styles.emptyStateText}>No Posts Yet</Text>
             <TouchableOpacity
-              style={styles.gridItem}
-              onPress={() => handleImagePress(item)}
-              activeOpacity={0.9}
+              style={styles.primaryButton}
+              onPress={() => navigation.navigate("ExploreFeed")}
             >
-              <Image
-                source={{ uri: item.photoUri }}
-                style={styles.gridImage}
-                resizeMode="cover"
-              />
-              {item.photoUri ? null : (
-                <Ionicons name="image-outline" size={40} color="#ddd" />
-              )}
+              <Text style={styles.primaryButtonText}>Add Your First Post</Text>
+              <Ionicons name="add" size={20} color="white" />
             </TouchableOpacity>
-          )}
-        />
-      )}
-  
+          </View>
+        ) : (
+          <FlatList
+            data={mergedPosts}
+            numColumns={3}
+            keyExtractor={(item) => item._id}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                colors={['#6e3b6e']}
+                tintColor="#6e3b6e"
+              />
+            }
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.postItem}
+                onPress={() => handleImagePress(item)}
+                activeOpacity={0.8}
+              >
+                <Image
+                  source={{ uri: item.photoUri }}
+                  style={styles.postImage}
+                  resizeMode="cover"
+                />
+                {!item.photoUri && (
+                  <View style={styles.postPlaceholder}>
+                    <Ionicons name="image-outline" size={30} color="#d8bfd8" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
+          />
+        )}
+      </View>
+
       {/* Selected Image Modal */}
       <Modal
         visible={!!selectedImage}
         transparent={true}
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setSelectedImage(null)}
       >
         <View style={styles.modalContainer}>
           <TouchableWithoutFeedback onPress={() => setSelectedImage(null)}>
-            <View style={styles.modalBackground} />
+            <View style={styles.modalBackdrop} />
           </TouchableWithoutFeedback>
-  
+
           <View style={styles.postModal}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setSelectedImage(null)}>
-                <Ionicons name="close" size={28} color="black" />
+              <TouchableOpacity
+                onPress={() => setSelectedImage(null)}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={28} color="#6e3b6e" />
               </TouchableOpacity>
+
               <Text style={styles.modalUsername}>@{selectedImage?.username}</Text>
-              <TouchableOpacity onPress={() => {
-                setSelectedImage(null);
-                deletePost(selectedImage._id);
-              }}>
-                <Ionicons name="trash-outline" size={24} color="red" />
+
+              <TouchableOpacity
+                onPress={() => {
+                  setSelectedImage(null);
+                  deletePost(selectedImage._id);
+                }}
+                style={styles.modalDeleteButton}
+              >
+                <Ionicons name="trash-outline" size={24} color="#ff4444" />
               </TouchableOpacity>
             </View>
-  
+
             <ScrollView>
               <Image
                 source={{ uri: selectedImage?.photoUri }}
                 style={styles.modalImage}
                 resizeMode="contain"
               />
-  
+
               <View style={styles.modalContent}>
                 <Text style={styles.modalCaption}>{selectedImage?.caption}</Text>
-  
-                <View style={styles.polishDetailsContainer}>
+
+                <View style={styles.polishDetails}>
                   <View
                     style={[
                       styles.colorCircle,
-                      { backgroundColor: polishLookup[selectedImage?.polishId]?.hex || "#ccc" },
+                      { backgroundColor: polishLookup[selectedImage?.polishId]?.hex || "#d8bfd8" },
                     ]}
                   />
                   <TouchableOpacity onPress={() => {
                     handlePolishNamePress(selectedImage.polishId);
                     setSelectedImage(null);
                   }}>
-                    <Text style={styles.postDetails}>
+                    <Text style={styles.polishText}>
                       {polishLookup[selectedImage?.polishId]?.brand || ""}: {polishLookup[selectedImage?.polishId]?.name || "Unknown Polish"}
                     </Text>
                   </TouchableOpacity>
+
                   {selectedImage?.businessId && (
                     <>
-                      <Text> | 📍 </Text>
+                      <Text style={styles.divider}> | </Text>
                       <TouchableOpacity
                         onPress={() => {
                           handleBusinessNamePress(selectedImage.businessId);
                           setSelectedImage(null);
                         }}
                       >
-                        <Text style={styles.postDetails}>
+                        <Text style={styles.businessText}>
                           {businessLookup[selectedImage.businessId]?.name || "Unknown Business"}
                         </Text>
                       </TouchableOpacity>
@@ -664,31 +695,34 @@ const AccountScreen = () => {
           </View>
         </View>
       </Modal>
-  
+
       {/* Delete confirmation modal */}
       <Modal transparent visible={isDeleteModalVisible} animationType="fade">
-        <View style={styles.deleteModalContainer}>
-          <View style={styles.deleteModalContent}>
-            <Text style={styles.deleteModalTitle}>Delete Post?</Text>
-            <Text style={styles.deleteModalText}>Are you sure you want to delete this post?</Text>
-            <View style={styles.deleteModalButtons}>
+        <View style={styles.confirmationModal}>
+          <View style={styles.confirmationContent}>
+            <Ionicons name="warning" size={40} color="#ff4444" style={styles.warningIcon} />
+            <Text style={styles.confirmationTitle}>Delete Post?</Text>
+            <Text style={styles.confirmationText}>This action cannot be undone</Text>
+
+            <View style={styles.confirmationButtons}>
               <TouchableOpacity
-                style={[styles.deleteModalButton, styles.cancelButton]}
+                style={[styles.confirmationButton, styles.cancelButton]}
                 onPress={handleDeleteCancel}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
-                style={[styles.deleteModalButton, styles.deleteButton]}
+                style={[styles.confirmationButton, styles.confirmButton]}
                 onPress={handleDeleteConfirmation}
               >
-                <Text style={styles.deleteButtonText}>Delete</Text>
+                <Text style={styles.confirmButtonText}>Delete</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-  
+
       {/* Collections Modal */}
       <Modal
         visible={isCollectionModalVisible}
@@ -696,21 +730,24 @@ const AccountScreen = () => {
         transparent={true}
         onRequestClose={closeCollectionsModal}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.collectionsModalContainer}>
-            <View style={styles.collectionsModalHeader}>
-              <Text style={styles.modalTitle}>Your Collections</Text>
-              <TouchableOpacity onPress={closeCollectionsModal}>
-                <Ionicons name="close" size={24} color="#666" />
+        <View style={styles.fullModalContainer}>
+          <View style={styles.collectionsModal}>
+            <View style={styles.collectionsHeader}>
+              <Text style={styles.collectionsTitle}>Your Collections</Text>
+              <TouchableOpacity
+                onPress={closeCollectionsModal}
+                style={styles.closeModalButton}
+              >
+                <Ionicons name="close" size={24} color="#6e3b6e" />
               </TouchableOpacity>
             </View>
-            
+
             {collectionData.length > 0 ? (
               <FlatList
                 data={collectionData}
                 keyExtractor={(item) => item._id}
                 renderItem={({ item }) => (
-                  <View style={styles.collectionCard}>
+                  <View style={styles.collectionItem}>
                     <TouchableOpacity
                       style={styles.collectionContent}
                       onPress={() => {
@@ -718,24 +755,28 @@ const AccountScreen = () => {
                         navigation.navigate('CollectionScreen', { collectionId: item._id });
                       }}
                     >
-                      <Text style={styles.collectionName}>{item.name}</Text>
-                      <Text style={styles.collectionDescription}>
-                        {item.description || "No description"}
-                      </Text>
-                      <Text style={styles.collectionCount}>
-                        {item.posts?.length || 0} items
-                      </Text>
+                      <View style={styles.collectionIcon}>
+                        <Ionicons name="folder" size={24} color="#6e3b6e" />
+                      </View>
+
+                      <View style={styles.collectionInfo}>
+                        <Text style={styles.collectionName}>{item.name}</Text>
+                        <Text style={styles.collectionDescription}>
+                          {item.description || "No description"}
+                        </Text>
+                        <Text style={styles.collectionCount}>
+                          {item.posts?.length || 0} {item.posts?.length === 1 ? 'item' : 'items'}
+                        </Text>
+                      </View>
                     </TouchableOpacity>
+
                     <TouchableOpacity
                       onPress={() => {
                         Alert.alert(
                           "Delete Collection",
                           `Are you sure you want to delete "${item.name}"?`,
                           [
-                            {
-                              text: "Cancel",
-                              style: "cancel"
-                            },
+                            { text: "Cancel", style: "cancel" },
                             {
                               text: "Delete",
                               onPress: () => deleteCollection(item._id),
@@ -744,25 +785,26 @@ const AccountScreen = () => {
                           ]
                         );
                       }}
-                      style={styles.deleteCollectionButton}
+                      style={styles.collectionDeleteButton}
                     >
-                      <Ionicons name="trash-outline" size={20} color="#666" />
+                      <Ionicons name="trash-outline" size={20} color="#ff4444" />
                     </TouchableOpacity>
                   </View>
                 )}
               />
             ) : (
-              <View style={styles.noCollectionsContainer}>
-                <Ionicons name="albums-outline" size={50} color="#ddd" />
-                <Text style={styles.noCollectionsText}>No collections yet</Text>
+              <View style={styles.emptyCollections}>
+                <Ionicons name="albums-outline" size={60} color="#d8bfd8" />
+                <Text style={styles.emptyCollectionsText}>No collections yet</Text>
                 <TouchableOpacity
-                  style={styles.createCollectionButton}
+                  style={styles.primaryButton}
                   onPress={() => {
                     closeCollectionsModal();
                     navigation.navigate('CreateCollection');
                   }}
                 >
-                  <Text style={styles.createCollectionButtonText}>Create Collection</Text>
+                  <Text style={styles.primaryButtonText}>Create Collection</Text>
+                  <Ionicons name="add" size={20} color="white" />
                 </TouchableOpacity>
               </View>
             )}
@@ -771,342 +813,449 @@ const AccountScreen = () => {
       </Modal>
     </View>
   );
-  };
-  
-  const styles = StyleSheet.create({
-    // Header
-    headerContainer: {
-      padding: 15,
-      borderBottomWidth: 1,
-      borderBottomColor: '#f0f0f0',
-    },
-    headerIconsContainer: {
-      flexDirection: 'row',
-      justifyContent: 'flex-end',
-      alignItems: 'center',
-    },
-    headerIcon: {
-      marginLeft: 20,
-    },
-  
-    // Profile Section
-    profileContainer: {
-      paddingHorizontal: 20,
-      marginBottom: 20,
-    },
-    profileRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 15,
-    },
-    profilePicContainer: {
-      width: 100,
-      height: 100,
-      borderRadius: 50,
-      backgroundColor: '#e1e1e1',
-      justifyContent: 'center',
-      alignItems: 'center',
-      overflow: 'hidden',
-      position: 'relative',
-      marginRight: 20,
-      borderWidth: 2,
-      borderColor: '#f0f0f0',
-    },
-    profilePic: {
-      width: '100%',
-      height: '100%',
-    },
-    profilePicPlaceholder: {
-      width: '100%',
-      height: '100%',
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: '#A020F0',
-    },
-    editProfilePicIcon: {
-      position: 'absolute',
-      bottom: 5,
-      right: 5,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      borderRadius: 10,
-      padding: 5,
-    },
-    statsContainer: {
-      flexDirection: 'row',
-      flex: 1,
-      justifyContent: 'space-between',
-      paddingHorizontal: 10,
-    },
-    statItem: {
-      alignItems: 'center',
-      minWidth: 80,
-    },
-    statNumber: {
-      fontWeight: 'bold',
-      fontSize: 18,
-      marginBottom: 2,
-    },
-    statLabel: {
-      fontSize: 14,
-      color: '#666',
-    },
-    clickableCount: {
-      color: '#A020F0',
-    },
-    username: {
-      fontWeight: 'bold',
-      fontSize: 20,
-      marginBottom: 5,
-    },
-    bio: {
-      fontSize: 15,
-      marginBottom: 15,
-      color: '#333',
-      lineHeight: 20,
-    },
-    accountTypeBadge: {
-      backgroundColor: '#f0f0f0',
-      paddingVertical: 4,
-      paddingHorizontal: 8,
-      borderRadius: 4,
-      alignSelf: 'flex-start',
-      marginBottom: 15,
-    },
-    accountTypeText: {
-      fontSize: 12,
-      color: '#666',
-      fontWeight: '600',
-      textTransform: 'uppercase',
-    },
-  
-    // Posts Grid
-    noPostsContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: 20,
-    },
-    noPostsText: {
-      fontSize: 18,
-      color: '#999',
-      marginTop: 10,
-      marginBottom: 20,
-    },
-    addPostButton: {
-      backgroundColor: '#A020F0',
-      paddingVertical: 12,
-      paddingHorizontal: 25,
-      borderRadius: 25,
-    },
-    addPostButtonText: {
-      color: 'white',
-      fontWeight: 'bold',
-      fontSize: 16,
-    },
-    gridItem: {
-      width: '33.33%',
-      aspectRatio: 1,
-      padding: 1,
-      backgroundColor: '#fafafa',
-    },
-    gridImage: {
-      width: '100%',
-      height: '100%',
-      backgroundColor: '#f0f0f0',
-    },
-  
-    // Post Modal
-    modalContainer: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.9)',
-      justifyContent: 'center',
-    },
-    modalBackground: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-    },
-    postModal: {
-      backgroundColor: 'white',
-      marginHorizontal: 20,
-      borderRadius: 12,
-      maxHeight: '80%',
-    },
-    modalHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: 15,
-      borderBottomWidth: 1,
-      borderBottomColor: '#eee',
-    },
-    modalUsername: {
-      fontWeight: 'bold',
-      fontSize: 16,
-    },
-    modalImage: {
-      width: '100%',
-      height: 350,
-    },
-    modalContent: {
-      padding: 15,
-    },
-    modalCaption: {
-      fontSize: 16,
-      marginBottom: 15,
-    },
-    polishDetailsContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginTop: 10,
-      flexWrap: 'wrap',
-    },
-    colorCircle: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      marginRight: 10,
-    },
-    postDetails: {
-      fontSize: 16,
-      color: '#666',
-      marginRight: 5,
-    },
-  
-    // Delete Modal
-    deleteModalContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: 'rgba(0,0,0,0.5)',
-    },
-    deleteModalContent: {
-      backgroundColor: 'white',
-      borderRadius: 12,
-      width: '80%',
-      padding: 20,
-    },
-    deleteModalTitle: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      marginBottom: 10,
-      textAlign: 'center',
-    },
-    deleteModalText: {
-      fontSize: 16,
-      marginBottom: 20,
-      textAlign: 'center',
-    },
-    deleteModalButtons: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-    },
-    deleteModalButton: {
-      flex: 1,
-      padding: 12,
-      borderRadius: 8,
-      alignItems: 'center',
-    },
-    cancelButton: {
-      backgroundColor: '#f0f0f0',
-      marginRight: 10,
-    },
-    deleteButton: {
-      backgroundColor: '#ff4444',
-      marginLeft: 10,
-    },
-    cancelButtonText: {
-      color: '#333',
-      fontWeight: 'bold',
-    },
-    deleteButtonText: {
-      color: 'white',
-      fontWeight: 'bold',
-    },
-  
-    // Collections Modal
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    collectionsModalContainer: {
-      backgroundColor: 'white',
-      borderRadius: 12,
-      width: '90%',
-      maxHeight: '80%',
-      padding: 15,
-    },
-    collectionsModalHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 15,
-    },
-    modalTitle: {
-      fontSize: 20,
-      fontWeight: 'bold',
-      color: '#333',
-    },
-    collectionCard: {
-      backgroundColor: 'white',
-      padding: 15,
-      borderRadius: 8,
-      marginBottom: 10,
-      borderWidth: 1,
-      borderColor: '#eee',
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    collectionName: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      marginBottom: 5,
-      color: '#333',
-    },
-    collectionDescription: {
-      fontSize: 14,
-      color: '#666',
-      marginBottom: 5,
-    },
-    collectionCount: {
-      fontSize: 12,
-      color: '#999',
-    },
-    deleteCollectionButton: {
-      padding: 8,
-      marginLeft: 10,
-    },
-    collectionContent: {
-      flex: 1,
-      paddingRight: 10,
-    },
-    noCollectionsContainer: {
-      alignItems: 'center',
-      padding: 30,
-    },
-    noCollectionsText: {
-      textAlign: 'center',
-      color: '#666',
-      marginVertical: 15,
-      fontSize: 16,
-    },
-    createCollectionButton: {
-      backgroundColor: '#A020F0',
-      paddingVertical: 12,
-      paddingHorizontal: 25,
-      borderRadius: 25,
-      marginTop: 15,
-    },
-    createCollectionButtonText: {
-      color: 'white',
-      fontWeight: 'bold',
-      fontSize: 16,
-    },
-  });
-  
-  export default AccountScreen;
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f2f2f2',
+  },
+
+  // Header
+  header: {
+    backgroundColor: '#6e3b6e',
+    paddingTop: 30,
+    paddingBottom: 80,
+    paddingHorizontal: 15,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  headerButton: {
+    marginLeft: 20,
+    padding: 5,
+  },
+
+  // Profile Card
+  profileCard: {
+    position: 'absolute',
+    top: 70,
+    left: 20,
+    right: 20,
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 2,
+  },
+  profileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  profilePicContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#e1e1e1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    position: 'relative',
+    marginRight: 20,
+    borderWidth: 3,
+    borderColor: '#f0e6ff',
+  },
+  profilePic: {
+    width: '100%',
+    height: '100%',
+  },
+  profilePicPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#6e3b6e',
+  },
+  editProfilePicIcon: {
+    position: 'absolute',
+    bottom: 5,
+    right: 5,
+    backgroundColor: 'rgba(110, 59, 110, 0.8)',
+    borderRadius: 12,
+    padding: 5,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  statItem: {
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  statNumber: {
+    fontWeight: 'bold',
+    fontSize: 20,
+    marginBottom: 4,
+    color: '#333',
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  clickableCount: {
+    color: '#6e3b6e',
+  },
+  profileInfo: {
+    marginTop: 10,
+  },
+  username: {
+    fontWeight: 'bold',
+    fontSize: 22,
+    marginBottom: 5,
+    color: '#333',
+  },
+  bio: {
+    fontSize: 15,
+    marginBottom: 15,
+    color: '#555',
+    lineHeight: 22,
+  },
+  accountTypeBadge: {
+    backgroundColor: '#f0e6ff',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 15,
+    alignSelf: 'flex-start',
+  },
+  businessBadge: {
+    backgroundColor: '#e6f0ff',
+  },
+  accountTypeText: {
+    fontSize: 12,
+    color: '#6e3b6e',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+
+  // Content
+  contentContainer: {
+    flex: 1,
+    position: 'absolute',
+    top: 265,
+    left: 20,
+    right: 20,
+    marginTop: 10, 
+    paddingTop: 30, 
+    paddingHorizontal: 15,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6e3b6e',
+    marginBottom: 15,
+    paddingLeft: 5,
+  },
+
+  // Posts Grid
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    color: '#666',
+    marginVertical: 15,
+  },
+  primaryButton: {
+    backgroundColor: '#6e3b6e',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 25,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 15,
+    shadowColor: '#6e3b6e',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  primaryButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 16,
+    marginRight: 8,
+  },
+  postItem: {
+    width: '32%',
+    aspectRatio: 1,
+    margin: '0.66%',
+    backgroundColor: '#fafafa',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  postImage: {
+    width: '100%',
+    height: '100%',
+  },
+  postPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+
+  // Modals
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  postModal: {
+    backgroundColor: 'white',
+    marginHorizontal: 20,
+    borderRadius: 15,
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  modalCloseButton: {
+    padding: 5,
+  },
+  modalUsername: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    color: '#6e3b6e',
+  },
+  modalDeleteButton: {
+    padding: 5,
+  },
+  modalImage: {
+    width: '100%',
+    height: 350,
+  },
+  modalContent: {
+    padding: 20,
+  },
+  modalCaption: {
+    fontSize: 16,
+    marginBottom: 15,
+    lineHeight: 22,
+    color: '#333',
+  },
+  polishDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    flexWrap: 'wrap',
+  },
+  colorCircle: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    marginRight: 10,
+  },
+  polishText: {
+    fontSize: 15,
+    color: '#6e3b6e',
+    fontWeight: '500',
+  },
+  divider: {
+    color: '#ccc',
+    marginHorizontal: 5,
+  },
+  businessText: {
+    fontSize: 15,
+    color: '#6e3b6e',
+    fontWeight: '500',
+  },
+
+  // Confirmation Modal
+  confirmationModal: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  confirmationContent: {
+    backgroundColor: 'white',
+    borderRadius: 15,
+    width: '80%',
+    padding: 25,
+    alignItems: 'center',
+  },
+  warningIcon: {
+    marginBottom: 15,
+  },
+  confirmationTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 5,
+    color: '#333',
+    textAlign: 'center',
+  },
+  confirmationText: {
+    fontSize: 16,
+    marginBottom: 20,
+    color: '#666',
+    textAlign: 'center',
+  },
+  confirmationButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  confirmationButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#f0f0f0',
+    marginRight: 10,
+  },
+  confirmButton: {
+    backgroundColor: '#ff4444',
+    marginLeft: 10,
+  },
+  cancelButtonText: {
+    color: '#333',
+    fontWeight: '600',
+  },
+  confirmButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+
+  // Collections Modal
+  fullModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  collectionsModal: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '85%',
+  },
+  collectionsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  collectionsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#6e3b6e',
+  },
+  closeModalButton: {
+    padding: 5,
+  },
+  collectionItem: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+  },
+  collectionContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  collectionIcon: {
+    backgroundColor: '#f0e6ff',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  collectionInfo: {
+    flex: 1,
+  },
+  collectionName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  collectionDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 2,
+  },
+  collectionCount: {
+    fontSize: 12,
+    color: '#999',
+  },
+  collectionDeleteButton: {
+    padding: 8,
+    marginLeft: 10,
+  },
+  emptyCollections: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyCollectionsText: {
+    textAlign: 'center',
+    color: '#666',
+    marginVertical: 15,
+    fontSize: 16,
+  },
+  bodyWrapper: {
+    flex: 1,
+    marginTop: -30, // lets card rise into header just a little
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+  },
+});
+
+export default AccountScreen;

@@ -1461,5 +1461,61 @@ app.get('/users/:userId', async (req, res) => {
       res.status(500).json({ error: "Server error" });
     }
   });
+
+  // Profile Picture Upload Route
+app.put("/account/profile-picture", async (req, res) => {
+    console.log("✅ Profile picture update request received");
+
+    try {
+        const authHeader = req.headers.authorization;
+        const token = authHeader ? authHeader.split(" ")[1] : null;
+
+        if (!token) {
+            console.log("❌ No token received");
+            return res.status(403).json({ message: "No token provided" });
+        }
+
+        // Verify JWT token
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+            console.log("✅ Token Verified:", decoded);
+        } catch (err) {
+            console.error("❌ JWT Verification Failed:", err.message);
+            return res.status(401).json({ message: "Invalid or expired token" });
+        }
+
+        console.log("✅ Connecting to database...");
+        await client.connect();
+        const db = client.db("Swatch");
+        const usersCollection = db.collection("User");
+
+        const { image } = req.body;
+
+        if (!image) {
+            return res.status(400).json({ message: "No image provided" });
+        }
+
+        // Update user's profile picture
+        const result = await usersCollection.updateOne(
+            { _id: new ObjectId(decoded.userId) },
+            { $set: { profilePic: image } }
+        );
+
+        if (result.modifiedCount === 0) {
+            console.log("❌ User not found or no changes made");
+            return res.status(404).json({ message: "User not found or no changes made" });
+        }
+
+        console.log("✅ Profile picture updated successfully");
+        res.json({ status: "okay", message: "Profile picture updated successfully" });
+
+    } catch (error) {
+        console.error("❌ Server Error:", error);
+        return res.status(500).json({ message: "Server error" });
+    } finally {
+        // await client.close();
+    }
+});
   
 app.listen(5000, () => console.log("🚀 Backend API running on port 5000"));
