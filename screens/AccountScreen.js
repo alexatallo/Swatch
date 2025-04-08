@@ -761,11 +761,8 @@ const AccountScreen = () => {
 
                       <View style={styles.collectionInfo}>
                         <Text style={styles.collectionName}>{item.name}</Text>
-                        <Text style={styles.collectionDescription}>
-                          {item.description || "No description"}
-                        </Text>
                         <Text style={styles.collectionCount}>
-                          {item.posts?.length || 0} {item.posts?.length === 1 ? 'item' : 'items'}
+                          {item.polishes?.length || 0} {item.polishes?.length === 1 ? 'item' : 'items'}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -1168,14 +1165,20 @@ const styles = StyleSheet.create({
   fullModalContainer: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',   
   },
   collectionsModal: {
     backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 15,
+    width: '90%',  // Or a fixed width like 300
+    maxHeight: '80%',
     padding: 20,
-    maxHeight: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   collectionsHeader: {
     flexDirection: 'row',

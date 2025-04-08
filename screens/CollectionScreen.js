@@ -84,7 +84,7 @@ const CollectionScreen = () => {
   return (
     <View style={styles.container}>
       {loading ? (
-        <ActivityIndicator size="large" color="#A020F0" style={{ marginTop: 20 }} />
+        <ActivityIndicator size="large" color="#6e3b6e" style={{ marginTop: 20 }} />
       ) : polishData.length === 0 ? (
         <Text style={styles.emptyText}>No polishes found in this collection.</Text>
       ) : (
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   },
   buyButton: {
     marginTop: 8,
-    backgroundColor: "#A020F0",
+    backgroundColor: "#6e3b6e",
     paddingVertical: 8,
     borderRadius: 8,
     alignItems: "center",
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     fontSize: 16,
-    color: '#A020F0',
+    color: '#6e3b6e',
     fontWeight: '600',
   },
   deleteButton: {

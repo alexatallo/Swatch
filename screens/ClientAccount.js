@@ -166,9 +166,11 @@ export default function ClientAccount({ navigation }) {
           <Text style={styles.errorText}>User data not available</Text>
         )}
       </View>
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Log Out</Text>
-      </TouchableOpacity>
+      <View style={styles.logoutButtonContainer}>
+  <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+    <Text style={styles.logoutText}>Log Out</Text>
+  </TouchableOpacity>
+</View>
     </ScrollView>
   );
 }
@@ -249,18 +251,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     flex: 1,
   },
-  logoutButton: {
-    backgroundColor: '#e74c3c',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  logoutText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   profileContainer: {
     alignItems: 'center',
     marginBottom: 20,
@@ -296,5 +286,30 @@ const styles = StyleSheet.create({
     backgroundColor: '#6e3b6e',
     borderRadius: 12,
     padding: 4,
+  },
+  logoutButtonContainer: {
+    alignItems: 'flex-end',
+    marginTop: 15,
+    paddingHorizontal: 15,
+  },
+  logoutButton: {
+    backgroundColor: '#e74c3c',
+    paddingVertical: 14,
+    paddingHorizontal: 25,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#e74c3c',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  logoutText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
 });
