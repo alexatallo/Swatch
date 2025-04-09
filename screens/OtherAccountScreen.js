@@ -1,16 +1,14 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
-View, Text, Button, Modal, Platform, ActivityIndicator, StyleSheet, FlatList, Image,
+View, Text, Button, ScrollView, Modal, Platform, ActivityIndicator, StyleSheet, FlatList, Image,
 TouchableOpacity, TouchableWithoutFeedback, RefreshControl, Alert, Linking, TextInput, KeyboardAvoidingView
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import { API_URL } from '@env';
-
-
-
+import { API_URL }  from '@env';
+import {GOOGLE_API}  from '@env'; 
 
 const getToken = async () => {
 return await AsyncStorage.getItem("token");
@@ -45,7 +43,7 @@ return R * c; // Distance in km
 const geocodeAddress = async (address) => {
 try {
   console.log('🗺️ Geocoding address:', address);
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=api_key`;
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_API}`;
   const response = await fetch(url);
   const data = await response.json();
   if (data.results && data.results.length > 0) {
@@ -422,7 +420,24 @@ const handleViewFollowing = () => {
   navigation.navigate("Following", { userId: state.user._id });
 };
 
+const handleBusinessNamePress = async (businessId) => {
+  try {
+    const token = await AsyncStorage.getItem("token");
 
+    const response = await axios.get(`${API_URL}/business-user/${businessId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (response.data) {
+      const item = response.data;
+      navigation.navigate("OtherAccount", { item });
+    } else {
+      console.error("❌ Unexpected API response:", response.data);
+    }
+  } catch (error) {
+    console.error("❌ Error fetching user from business ID:", error);
+  }
+};
 
 
 const toggleLike = async (postId) => {
@@ -655,12 +670,14 @@ const renderItem = ({ item }) => (
 
 
    <View style={styles.detailsContainer}>
-   <View style={styles.polishContainer}>
+   <ScrollView 
+       horizontal
+       showsHorizontalScrollIndicator={false}
+       contentContainerStyle={styles.polishScrollContainer}
+     >
  {item.polishIds && item.polishIds.map((polishId, index) => {
    const polish = polishLookup[polishId];
    if (!polish) return null;
-
-
    return (
      <TouchableOpacity
        key={polishId}
@@ -668,35 +685,41 @@ const renderItem = ({ item }) => (
        style={styles.detailItem}
      >
        <View
-         style={[styles.colorCircle, { backgroundColor: polish.hex || "#ccc" }]}
-       />
-       <Text style={styles.detailText}>
+         style={[
+          styles.colorCircle, 
+          { 
+            backgroundColor: polish?.hex || "#ccc",
+            borderColor: polish?.hex ? 'rgba(0,0,0,0.2)' : '#999'
+          }
+        ]}
+      />
+       <Text style={styles.detailText} numberOfLines={1}>
          {polish.brand || "Brand"}: {polish.name || "Name"}
        </Text>
      </TouchableOpacity>
    );
  })}
- </View>
+ </ScrollView>
 
 
  {/* Business name shown under polish, not beside it */}
- {item.businessId && businessLookup[item.businessId]?.name && (
-   <View style={[styles.detailItem, styles.businessDetail]}>
-     <Ionicons
-       name="business-outline"
-       size={16}
-       color="#6A5ACD"
-       style={styles.iconStyle}
-     />
-     <TouchableOpacity onPress={() => handleBusinessNamePress(item.businessId)}>
-       <Text style={styles.detailText} numberOfLines={1}>
-         {businessLookup[item.businessId].name}
-       </Text>
-     </TouchableOpacity>
-   </View>
- )}
-</View>
-
+ {item.businessId && (
+  <TouchableOpacity 
+        onPress={() => handleBusinessNamePress(item.businessId)}
+        style={[styles.businessDetailItem, styles.businessDetail]}
+      >
+        <Ionicons 
+          name="business-outline" 
+          size={16}  // Match color circle size
+          color="#333"
+          style={styles.iconStyle}
+        />
+        <Text style={styles.detailText} numberOfLines={1}>
+          {businessLookup[item.businessId]?.name || "Unknown Business"}
+        </Text>
+      </TouchableOpacity>
+    )}
+  </View>
 
    {/* Comments Section */}
    {visibleComments[item._id] && (
@@ -1194,8 +1217,8 @@ accountTypeText: {
 // Follow Button
 followButtonContainer: {
   position: 'absolute',
-  top: 250,
-  right: 20,
+  top: 220,
+  left: 280,
   zIndex: 3,
 },
 followButton: {
@@ -1648,32 +1671,44 @@ commentSubmitText: {
   fontWeight: '500',
 },
 detailItem: {
- flexDirection: 'row',
- alignItems: 'center',
- marginRight: 12,
- marginBottom: 4,
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: '#f5f5f5',
+  borderRadius: 16,
+  paddingVertical: 6,
+  paddingHorizontal: 10,
+  marginRight: 8, // Space between items
+  height: 32, // Fixed height for consistency
+},
+businessDetailItem: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: '#f5f5f5',
+  borderRadius: 16,
+  paddingVertical: 6,
+  paddingHorizontal: 10,
+  marginRight: 8,
+  height: 32,
+  alignSelf: 'flex-start', // 🛠️ prevents full-width stretching
 },
 businessDetail: {
  marginTop: 4,  // Add slight separation from polish items
 },
 detailText: {
- fontSize: 12,
- color: '#333',
- // Remove the maxWidth to allow the text to wrap and display fully
- maxWidth: 200,      // Allow text to wrap if necessary
-             // Add some width restriction if necessary
+  fontSize: 12,
+  color: '#333',
+  maxWidth: 120, // Limit text width
 },
 iconStyle: {
  marginRight: 8, // Adds 8px space between icon and text
 },
 detailsContainer: {
- marginTop: 10,  // Add some space from the caption
+ marginTop: 12,  // Add some space from the caption
 },
-polishContainer: {
- flexDirection: 'row',
- flexWrap: 'wrap',
- marginBottom: 4,
-},
+polishScrollContainer: {
+  paddingVertical: 4,
+  paddingRight: 16, // Extra padding on the right
+}, 
 
 });
 

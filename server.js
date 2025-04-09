@@ -1605,6 +1605,32 @@ app.get("/collections/:userId", async (req, res) => {
       res.status(500).json({ message: "Server error" });
     }
   });
+
+  app.get('/business-user/:id', async (req, res) => {
+    try {
+    const businessId = new ObjectId(req.params.id);
+  
+      const businessCollection = db.collection("Business");
+      const userCollection = db.collection("User");
+      // Find the business by _id
+      const business = await businessCollection.findOne({ _id: businessId });
+      if (!business) {
+        return res.status(404).json({ error: 'Business not found' });
+      }
+  
+      // Find the user by the userId field in the business
+      const user = await userCollection.findOne({ _id: business.userId });
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+  
+      // Return the user
+      res.json(user);
+    } catch (err) {
+      console.error('Error fetching user from business ID:', err);
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
  
   
 app.listen(5000, () => console.log("🚀 Backend API running on port 5000"));
