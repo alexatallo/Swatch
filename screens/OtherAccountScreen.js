@@ -71,8 +71,7 @@ const [visibleComments, setVisibleComments] = useState({});
 const { item: routeItem } = route.params || {};
 const [userLocation, setUserLocation] = useState(null);
 const [businessLocation, setBusinessLocation] = useState(null);
-const [distance, setDistance] = useState(null);
-const [followersCount, setFollowersCount] = useState(0);
+const [distance, setDistance] = useState(null); 
   //inventory
   const [isInventoryModalVisible, setIsInventoryModalVisible] = useState(false);
   const [collections, setCollections] = useState([]);
@@ -93,7 +92,11 @@ const [state, setState] = useState({
   followLoading: false,
   distanceLoading: false,
   accountData: null,
-  user: routeItem,
+  user: {
+    ...routeItem,
+    followersCount: routeItem.followersCount || 0,  // Initialize with route data
+    followingCount: routeItem.followingCount || 0
+  },
   distance: null,
   databasePosts: [],
   polishData: [],
@@ -268,35 +271,34 @@ const calculateRealDistance = async (userLocation, businessLocation) => {
 
 
 useEffect(() => {
- const loadAllData = async () => {
-   try {
-     const accountData = await fetchAccountData();
-     const userAddress = accountData?.location;
-     if (state.user?.isBusiness) {
-      const business = await fetchBusinessData(state.user._id);
-      const businessAddress = business?.businessLocation;
-      fetchCollections(state.user._id);
-
-
-       if (userAddress && businessAddress) {
-         const userLoc = await geocodeAddress(userAddress);
-         const businessLoc = await geocodeAddress(businessAddress);
+  const loadAllData = async () => {
+    try {
+      const accountData = await fetchAccountData();
+      const userAddress = accountData?.location;
       
-         setUserLocation(userLoc);
-         setBusinessLocation(businessLoc);
-       }
-     }
+      if (state.user?.isBusiness) {
+        const business = await fetchBusinessData(state.user._id);
+        const businessAddress = business?.businessLocation;
+        fetchCollections(state.user._id);
 
+        if (userAddress && businessAddress) {
+          const userLoc = await geocodeAddress(userAddress);
+          const businessLoc = await geocodeAddress(businessAddress);
+          setUserLocation(userLoc);
+          setBusinessLocation(businessLoc);
+        }
+      }
 
-     updateState({ accountData, loading: false });
+      // Add this line to fetch counts on initial load
+      await fetchUpdatedFollowCounts(); 
 
-
-     await Promise.all([fetchPolishes(), fetchPosts(), fetchBusinesses()]);
-   } catch (error) {
-     console.error('Load error:', error);
-   }
- };
- loadAllData();
+      updateState({ accountData, loading: false });
+      await Promise.all([fetchPolishes(), fetchPosts(), fetchBusinesses()]);
+    } catch (error) {
+      console.error('Load error:', error);
+    }
+  };
+  loadAllData();
 }, [state.user]);
 useEffect(() => {
  if (userLocation && businessLocation) {
@@ -366,19 +368,20 @@ const toggleFollow = async () => {
     updateState({ followLoading: false });
   }
 };
- const fetchUpdatedFollowCounts = async () => {
+const fetchUpdatedFollowCounts = async () => {
   try {
     const token = await getToken();
     const response = await axios.get(
       `${API_URL}/users/${state.user._id}/follow-counts`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
-     if (response.data) {
+    
+    if (response.data) {
       updateState(prev => ({
         user: {
-          ...prev.user,
+          ...prev.user,  // Keep existing user properties
           followersCount: response.data.followersCount || 0,
-          followingCount: response.data.followingCount || 0,
+          followingCount: response.data.followingCount || 0
         }
       }));
     }
@@ -830,8 +833,8 @@ return (
               onPress={handleViewFollowers}
             >
               <Text style={styles.statNumber}>
-                {state.user.followersCount || 0}
-              </Text>
+  {state.user.followersCount || 0}
+</Text>
               <Text style={styles.statLabel}>Followers</Text>
             </TouchableOpacity>
              <TouchableOpacity
@@ -848,10 +851,13 @@ return (
          <View style={styles.profileInfo}>
           <Text style={styles.username}>@{state.user.username}</Text>
           {state.user.bio && <Text style={styles.bio}>{state.user.bio}</Text>}
-          {distance !== null && state.user?.isBusiness && (
-<Text style={{ marginTop: 5, color: '#555' }}>
-  📍 {(distance * 0.621371).toFixed(2)} miles away
-</Text>
+          {distance != null && state?.user?.isBusiness && (  // Checks for both null & undefined
+  <>
+    <Text style={{ marginTop: 5, color: '#555' }}>
+    <Ionicons name="location" size={16} color="#6e3b6e" style={{ marginRight: 5 }} />
+    {(distance * 0.621371).toFixed(2)} miles away
+    </Text> 
+  </>
 )}
            <View
             style={[
@@ -1252,8 +1258,12 @@ followingButtonText: {
 // Content Area
 contentContainer: {
   flex: 1,
-  marginTop: 180,
-  paddingTop: 30,
+  position: 'absolute',
+  top: 265,
+  left: 20,
+  right: 20,
+  marginTop: 10, 
+  paddingTop: 30, 
   paddingHorizontal: 15,
 },
 sectionTitle: {

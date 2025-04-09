@@ -471,7 +471,7 @@ export default function SearchScreen({ navigation }) {
 
         <Modal transparent visible={showColorExtractor} animationType="slide">
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
+            <View style={styles.extractModalContainer}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Extract Color</Text>
                 <TouchableOpacity
@@ -513,12 +513,38 @@ export default function SearchScreen({ navigation }) {
                 </View>
               )}
 
-              {/* Display extracted color */}
-              {pickedColor && (
-                <View style={{ marginTop: 20, alignItems: "center" }}>
-                  <Text backgroundColor={pickedColor}>Picked Color:</Text>
-                </View>
-              )}
+{pickedColor && (
+        <View style={{ marginTop: 20, alignItems: "center" }}>
+          <Text style={{ marginBottom: 10, fontSize: 16, color: '#555' }}>Picked Color:</Text>
+          <View style={{
+            width: 100,
+            height: 100,
+            borderRadius: 50,
+            backgroundColor: pickedColor,
+            borderWidth: 3,
+            borderColor: '#eee',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.2,
+            shadowRadius: 4,
+            elevation: 5,
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}>
+            <Text style={{ 
+              backgroundColor: 'rgba(255,255,255,0.7)', 
+              paddingHorizontal: 10,
+              paddingVertical: 2,
+              borderRadius: 10,
+              overflow: 'hidden',
+              color: '#333',
+              fontWeight: 'bold'
+            }}>
+              {pickedColor}
+            </Text>
+          </View>
+        </View>
+      )}
 
               <View style={styles.imageButtonContainer}>
                 <TouchableOpacity
@@ -693,6 +719,19 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center'
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  extractModalContainer: {
+    width: '90%',
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
+    maxHeight: '80%',
+  },
   filterModalContainer: {
     width: '90%',
     maxHeight: '80%',
@@ -804,11 +843,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   galleryButton: {
-    backgroundColor: '#5D3FD3',
+    backgroundColor:  COLORS.primary,
     marginRight: 10,
   },
   cameraButton: {
-    backgroundColor: '#5D3FD3',
+    backgroundColor:  COLORS.primary,
   },
   imageButtonText: {
     color: 'white',

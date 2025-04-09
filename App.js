@@ -4,6 +4,8 @@ import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from '@expo/vector-icons';
 import { Platform, TouchableOpacity } from 'react-native';
+import { LogBox } from 'react-native';
+LogBox.ignoreAllLogs();
 import SignUpScreen from "./auth/SignUpScreen";
 import LoginScreen from "./auth/LoginScreen";
 import DashboardScreen from "./auth/DashBoardScreen";
@@ -74,7 +76,7 @@ export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: true, headerTintColor: '#000', }}>
-        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Login" component={LoginScreen} options={{ headerLeft: null }} />
         <Stack.Screen name="SignUp" component={SignUpScreen} />
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen name="Main" component={MainTabs} />
