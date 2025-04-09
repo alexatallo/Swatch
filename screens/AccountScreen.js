@@ -35,6 +35,7 @@ const AccountScreen = () => {
   const [databasePosts, setDatabasePosts] = useState([]);
   const [localPosts, setLocalPosts] = useState([]);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [isPostModalVisible, setIsPostModalVisible] = useState(false);
   const [postToDelete, setPostToDelete] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -46,7 +47,7 @@ const AccountScreen = () => {
   const [isLoadingFollowers, setIsLoadingFollowers] = useState(false);
   const [collectionData, setCollectionData] = useState([]); // State for collections
   const [isCollectionModalVisible, setCollectionModalVisible] = useState(false); // State for modal visibility
-
+  const [currentUserId, setCurrentUserId] = useState(null);  
   const loadUserData = async () => {
     try {
       const token = await getToken();
@@ -98,15 +99,10 @@ const AccountScreen = () => {
     }
   };
 
-  const polishLookup = useMemo(() => {
-    const lookup = {};
-    polishData.forEach(polish => {
-      if (polish?._id) {
-        lookup[polish._id] = polish;
-      }
-    });
-    return lookup;
-  }, [polishData]);
+  const polishLookup = polishData.reduce((acc, polish) => {
+    acc[polish._id] = polish;
+    return acc;
+  }, {});
 
   const loadLocalPosts = async () => {
     try {
@@ -118,19 +114,30 @@ const AccountScreen = () => {
     }
   };
 
+  const fetchCurrentUserId = async () => {
+      const token = await AsyncStorage.getItem("token");
+      const res = await axios.get(`${API_URL}/account`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data?.user) setCurrentUserId(res.data.user._id);
+    };
+
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadUserData();
   }, []);
 
   const handleImagePress = (post) => {
+
     const now = Date.now();
     const DOUBLE_PRESS_DELAY = 300;
 
     if (lastTap && now - lastTap < DOUBLE_PRESS_DELAY) {
       // Double tap detected
       if (post?.photoUri) {
+       
         setSelectedImage(post); // This will open our detailed modal view
+        setIsPostModalVisible(true);
       } else {
         Alert.alert("Image not available");
       }
@@ -146,9 +153,10 @@ const AccountScreen = () => {
       await fetchPolishes(); // Load polishes once
       await fetchBusinesses();
     };
+    
     loadInitialData();
 
-  }, [])
+  }, []) 
 
   const fetchPolishes = useCallback(async () => {
     try {
@@ -172,6 +180,7 @@ const AccountScreen = () => {
       isMounted.current = true;
       loadUserData();
       loadLocalPosts();
+      fetchCurrentUserId();
       return () => {
         isMounted.current = false;
       };
@@ -245,25 +254,36 @@ const AccountScreen = () => {
   };
 
   const handlePolishNamePress = (polishId) => {
+    setIsPostModalVisible(false);
+    setSelectedImage(null);
     const item = polishLookup[polishId];
     if (item) {
       navigation.navigate("PolishScreen", { item });
     }
   };
 
-  const handleBusinessNamePress = (businessId) => {
-    const business = businessLookup[businessId];
-    if (business) {
-      navigation.navigate("BusinessScreen", {
-        business: {
-          ...business,
-          _id: businessId
-        }
+  const handleBusinessNamePress = async (businessId) => {
+    setIsPostModalVisible(false);
+    setSelectedImage(null);
+    try {
+      const token = await AsyncStorage.getItem("token");
+  
+      const response = await axios.get(`${API_URL}/business-user/${businessId}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-    } else {
-      console.error("Business not found:", businessId);
+  
+      if (response.data) {
+        const item = response.data;
+        navigation.navigate("OtherAccount", { item });
+      } else {
+        console.error("❌ Unexpected API response:", response.data);
+      }
+    } catch (error) {
+      console.error("❌ Error fetching user from business ID:", error);
     }
   };
+
+   
 
   // Fetch followers count
   const fetchFollowersCount = useCallback(async (userId) => {
@@ -610,13 +630,15 @@ const AccountScreen = () => {
         )}
       </View>
 
+
       {/* Selected Image Modal */}
       <Modal
-        visible={!!selectedImage}
+        visible={isPostModalVisible}
         transparent={true}
         animationType="fade"
         onRequestClose={() => setSelectedImage(null)}
       >
+        {!selectedImage ? null : (
         <View style={styles.modalContainer}>
           <TouchableWithoutFeedback onPress={() => setSelectedImage(null)}>
             <View style={styles.modalBackdrop} />
@@ -624,16 +646,7 @@ const AccountScreen = () => {
 
           <View style={styles.postModal}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity
-                onPress={() => setSelectedImage(null)}
-                style={styles.modalCloseButton}
-              >
-                <Ionicons name="close" size={28} color="#6e3b6e" />
-              </TouchableOpacity>
-
-              <Text style={styles.modalUsername}>@{selectedImage?.username}</Text>
-
-              <TouchableOpacity
+            <TouchableOpacity
                 onPress={() => {
                   setSelectedImage(null);
                   deletePost(selectedImage._id);
@@ -642,6 +655,19 @@ const AccountScreen = () => {
               >
                 <Ionicons name="trash-outline" size={24} color="#ff4444" />
               </TouchableOpacity>
+
+              <Text style={styles.modalUsername}>@{selectedImage?.username}</Text>
+                
+              <TouchableOpacity
+                onPress={() => { 
+                  setSelectedImage(null);
+                  setIsPostModalVisible(false);
+                }}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={28} color="#6e3b6e" />
+              </TouchableOpacity>
+              
             </View>
 
             <ScrollView>
@@ -652,45 +678,95 @@ const AccountScreen = () => {
               />
 
               <View style={styles.modalContent}>
-                <Text style={styles.modalCaption}>{selectedImage?.caption}</Text>
+               
+                <View style={styles.postActions}>
+                  
+  {/* Like Button with Count */}
+  <TouchableOpacity  
+    style={styles.likeButton}
+  >
+    <Ionicons
+      name={selectedImage.likes?.includes(currentUserId) ? "heart" : "heart-outline"}
+      size={24}
+      color={selectedImage.likes?.includes(currentUserId) ? "#FF3B30" : "#333"}
+    />
+    </TouchableOpacity>
+    <Text style={styles.actionCount}>
+      {selectedImage.likes?.length || 0} {selectedImage.likes?.length === 1 ? "like" : "likes"}
+    </Text>
 
-                <View style={styles.polishDetails}>
-                  <View
-                    style={[
-                      styles.colorCircle,
-                      { backgroundColor: polishLookup[selectedImage?.polishId]?.hex || "#d8bfd8" },
-                    ]}
-                  />
-                  <TouchableOpacity onPress={() => {
-                    handlePolishNamePress(selectedImage.polishId);
-                    setSelectedImage(null);
-                  }}>
-                    <Text style={styles.polishText}>
-                      {polishLookup[selectedImage?.polishId]?.brand || ""}: {polishLookup[selectedImage?.polishId]?.name || "Unknown Polish"}
-                    </Text>
-                  </TouchableOpacity>
+  {/* Comment Button with Count */}
+  <TouchableOpacity 
+   // onPress={() => toggleComments(item._id)} 
+    style={[styles.commentButton, styles.commentButton]}
+  >
+    <Ionicons
+      name="chatbubble-outline"
+      size={22}
+      color="#333"
+    />
+    <Text style={styles.actionCount}>
+      {selectedImage.comments?.length || 0} {selectedImage.comments?.length === 1 ? "comment" : "comments"}
+    </Text>
+  </TouchableOpacity>
+</View>
+<Text style={styles.modalCaption}>{selectedImage?.caption}</Text>
+                <View style={styles.detailsContainer}> 
+  <ScrollView 
+    horizontal
+    showsHorizontalScrollIndicator={false}
+    contentContainerStyle={styles.polishScrollContainer}
+  >
+    {selectedImage?.polishIds && selectedImage?.polishIds.map(polishId => {
+      const polish = polishLookup[polishId];
+      return (
+        <TouchableOpacity 
+          key={polishId}
+          onPress={() => handlePolishNamePress(polishId)}
+          style={styles.detailItem}
+        >
+          <View
+            style={[
+              styles.colorCircle, 
+              { 
+                backgroundColor: polish?.hex || "#ccc",
+                borderColor: polish?.hex ? 'rgba(0,0,0,0.2)' : '#999'
+              }
+            ]}
+          />
+          <Text style={styles.detailText} numberOfLines={1}>
+            {polish?.brand || "Unknown"}: {polish?.name || "Polish"}
+          </Text>
+        </TouchableOpacity>
+      );
+    })}
+  </ScrollView>
 
-                  {selectedImage?.businessId && (
-                    <>
-                      <Text style={styles.divider}> | </Text>
-                      <TouchableOpacity
-                        onPress={() => {
-                          handleBusinessNamePress(selectedImage.businessId);
-                          setSelectedImage(null);
-                        }}
-                      >
-                        <Text style={styles.businessText}>
-                          {businessLookup[selectedImage.businessId]?.name || "Unknown Business"}
-                        </Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
-                </View>
+  {/* Business Name and Icon */}
+  {selectedImage?.businessId && (
+    <TouchableOpacity 
+      onPress={() => handleBusinessNamePress(selectedImage?.businessId)}
+      style={[styles.businessDetailItem, styles.businessDetail]}
+    >
+      <Ionicons 
+        name="business-outline" 
+        size={16}  // Match color circle size
+        color="#333"
+        style={styles.iconStyle}
+      />
+      <Text style={styles.detailText} numberOfLines={1}>
+        {businessLookup[selectedImage.businessId]?.name || "Unknown Business"}
+      </Text>
+    </TouchableOpacity>
+  )}
+</View>
               </View>
             </ScrollView>
           </View>
         </View>
+        )}
       </Modal>
+
 
       {/* Delete confirmation modal */}
       <Modal transparent visible={isDeleteModalVisible} animationType="fade">
@@ -789,16 +865,7 @@ const AccountScreen = () => {
               <View style={styles.emptyCollections}>
                 <Ionicons name="albums-outline" size={60} color="#d8bfd8" />
                 <Text style={styles.emptyCollectionsText}>No collections yet</Text>
-                <TouchableOpacity
-                  style={styles.primaryButton}
-                  onPress={() => {
-                    closeCollectionsModal();
-                    navigation.navigate('CreateCollection');
-                  }}
-                >
-                  <Text style={styles.primaryButtonText}>Create Collection</Text>
-                  <Ionicons name="add" size={20} color="white" />
-                </TouchableOpacity>
+               
               </View>
             )}
           </View>
@@ -869,6 +936,7 @@ const styles = StyleSheet.create({
   },
   editProfilePicIcon: {
     position: 'absolute',
+    paddingStart: 5,
     bottom: -6,    // Move below the profile pic 
     backgroundColor: 'rgba(110, 59, 110, 0.8)',
     borderRadius: 12,
@@ -1085,7 +1153,9 @@ const styles = StyleSheet.create({
     height: 350,
   },
   modalContent: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 5, 
+    paddingBottom: 20
   },
   modalCaption: {
     fontSize: 16,
@@ -1093,23 +1163,68 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: '#333',
   },
-  polishDetails: {
+  postActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
-    flexWrap: 'wrap',
+    paddingVertical: 8,
+  },
+  commentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  actionCount: {
+    marginLeft: 6,
+    fontSize: 14,
+    color: '#333',
+  },
+  detailsContainer: {
+    marginTop: 12,  // Add some space from the caption
+  },
+  polishScrollContainer: {
+    paddingVertical: 4,
+    paddingRight: 16, // Extra padding on the right
+  },  
+  
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginRight: 8, // Space between items
+    height: 32, // Fixed height for consistency
+  },
+  businessDetail: {
+    marginTop: 4,  // Add slight separation from polish items
+  },
+  iconStyle: {
+    marginRight: 8, // Adds 8px space between icon and text
+  },
+  businessDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginRight: 8,
+    height: 32,
+    alignSelf: 'flex-start', // 🛠️ prevents full-width stretching
   },
   colorCircle: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    marginRight: 10,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    marginRight: 6,
+    borderWidth: 1,
   },
-  polishText: {
-    fontSize: 15,
-    color: '#6e3b6e',
-    fontWeight: '500',
-  },
+  detailText: {
+    fontSize: 12,
+    color: '#333',
+    maxWidth: 120, // Limit text width
+  }, 
   divider: {
     color: '#ccc',
     marginHorizontal: 5,

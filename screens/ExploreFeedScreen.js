@@ -162,8 +162,17 @@ const [postData, setPostData] = useState({
     setBusinessModalVisible(true);
   };
 
+  const handlePolishNamePress = (polishId) => {
 
- 
+    setIsSelectedImageVisible(false);
+    const item = polishLookup[polishId];
+    if (item) {
+      navigation.navigate("PolishScreen", { item });
+    } else {
+      console.error("Polish not found:", polishId);
+    }
+  };
+
 
   const applyFilters = useCallback(
     (search = searchQuery) => {
@@ -263,20 +272,25 @@ const [postData, setPostData] = useState({
   );
 
   // Replace handleBusinessNamePress with:
-  const handleBusinessNamePress = (businessId) => {
-    const business = businessLookup[businessId];
-    if (business) {
-      navigation.navigate("BusinessScreen", {
-        business: {
-          ...business,
-          _id: businessId
-        }
+  const handleBusinessNamePress = async (businessId) => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+  
+      const response = await axios.get(`${API_URL}/business-user/${businessId}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-    } else {
-      console.error("Business not found:", businessId);
+  
+      if (response.data) {
+        const item = response.data;
+        navigation.navigate("OtherAccount", { item });
+      } else {
+        console.error("❌ Unexpected API response:", response.data);
+      }
+    } catch (error) {
+      console.error("❌ Error fetching user from business ID:", error);
     }
   };
-
+  
 
   const fetchPosts = async (pageNum = 1, limit = 10) => {
     if (loading || !hasMorePosts) return;
@@ -722,31 +736,43 @@ const [postData, setPostData] = useState({
               )}
   
 {/* Polish & Business Details */}
-<View style={styles.detailsContainer}>
-  {/* Display Nail Polishes Horizontally */}
-  <View style={styles.polishContainer}>
-    {item.polishIds && item.polishIds.map(polishId => (
-      <TouchableOpacity 
-        key={polishId}
-        onPress={() => handlePolishNamePress(polishId)}
-        style={styles.detailItem}
-      >
-        <View
-          style={[styles.colorCircle, { backgroundColor: polishLookup[polishId]?.hex || "#ccc" }]}
-        />
-        <Text style={styles.detailText} numberOfLines={1}>
-          {polishLookup[polishId]?.brand || "Unknown"}: {polishLookup[polishId]?.name || "Polish"}
-        </Text>
-      </TouchableOpacity>
-    ))}
-    
-  </View>
+{/* Polish & Business Details */}
+<View style={styles.detailsContainer}> 
+  <ScrollView 
+    horizontal
+    showsHorizontalScrollIndicator={false}
+    contentContainerStyle={styles.polishScrollContainer}
+  >
+    {item.polishIds && item.polishIds.map(polishId => {
+      const polish = polishLookup[polishId];
+      return (
+        <TouchableOpacity 
+          key={polishId}
+          onPress={() => handlePolishNamePress(polishId)}
+          style={styles.detailItem}
+        >
+          <View
+            style={[
+              styles.colorCircle, 
+              { 
+                backgroundColor: polish?.hex || "#ccc",
+                borderColor: polish?.hex ? 'rgba(0,0,0,0.2)' : '#999'
+              }
+            ]}
+          />
+          <Text style={styles.detailText} numberOfLines={1}>
+            {polish?.brand || "Unknown"}: {polish?.name || "Polish"}
+          </Text>
+        </TouchableOpacity>
+      );
+    })}
+  </ScrollView>
 
   {/* Business Name and Icon */}
   {item.businessId && (
     <TouchableOpacity 
       onPress={() => handleBusinessNamePress(item.businessId)}
-      style={[styles.detailItem, styles.businessDetail]}
+      style={[styles.businessDetailItem, styles.businessDetail]}
     >
       <Ionicons 
         name="business-outline" 
@@ -814,7 +840,17 @@ const [postData, setPostData] = useState({
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Liked By</Text>
+            <TouchableOpacity 
+                  onPress={() => {
+                    setLikesModalVisible(false); 
+                  }}
+                  style={styles.modalClose}
+                >
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
             <FlatList
               data={selectedLikes}
               keyExtractor={(item, index) => index.toString()}
@@ -827,12 +863,6 @@ const [postData, setPostData] = useState({
                 <Text style={styles.noLikes}>No likes yet</Text>
               }
             />
-            <TouchableOpacity 
-                  onPress={() => setLikesModalVisible(false)}
-                  style={styles.modalClose}
-                >
-                  <Ionicons name="close" size={24} color={Colors.purple} />
-                </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -1318,32 +1348,45 @@ const [postData, setPostData] = useState({
     },
     // Details Styles
     detailsContainer: {
-      marginTop: 10,  // Add some space from the caption
+      marginTop: 12,  // Add some space from the caption
     },
-    polishContainer: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      marginBottom: 4,
-    },
+    polishScrollContainer: {
+      paddingVertical: 4,
+      paddingRight: 16, // Extra padding on the right
+    }, 
     detailItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginRight: 12,
-      marginBottom: 4,
+      backgroundColor: '#f5f5f5',
+      borderRadius: 16,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      marginRight: 8, // Space between items
+      height: 32, // Fixed height for consistency
     },
+    businessDetailItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#f5f5f5',
+      borderRadius: 16,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      marginRight: 8,
+      height: 32,
+      alignSelf: 'flex-start', // 🛠️ prevents full-width stretching
+    },
+    
     colorCircle: {
       width: 16,
       height: 16,
       borderRadius: 8,
-      marginRight: 8,  // Match icon margin
+      marginRight: 6,
+      borderWidth: 1,
     },
-  
     detailText: {
       fontSize: 12,
       color: '#333',
-      // Remove the maxWidth to allow the text to wrap and display fully
-      maxWidth: 200,      // Allow text to wrap if necessary
-                  // Add some width restriction if necessary
+      maxWidth: 120, // Limit text width
     },
     // Comments Styles
     commentsContainer: {
@@ -1412,7 +1455,6 @@ const [postData, setPostData] = useState({
       borderRadius: 16,
       width: '80%',
       maxHeight: '60%',
-      padding: 20,
     },
     pickerModalContainer: {
       backgroundColor: 'white',
