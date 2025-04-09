@@ -137,13 +137,13 @@ export default function SearchScreen({ navigation }) {
       if (!image || !imageSize) {
         throw new Error("Please load an image first");
       }
-  
+
       const { locationX, locationY } = event.nativeEvent;
       const scaleX = imageSize.width / displaySize.width;
       const scaleY = imageSize.height / displaySize.height;
       const actualX = Math.round(locationX * scaleX);
       const actualY = Math.round(locationY * scaleY);
-  
+
       const formData = new FormData();
       formData.append('image', {
         uri: image,
@@ -152,11 +152,11 @@ export default function SearchScreen({ navigation }) {
       });
       formData.append('x', actualX.toString());
       formData.append('y', actualY.toString());
-  
+
       setExtractionError(null);
       setPickedColor(null);
-  
-      const response = await fetch(`${API_URL}/extract-color`, {
+
+      const response = await fetch('http://35.50.90.208:5001/extract-color', {
         method: 'POST',
         body: formData,
         headers: {
@@ -164,48 +164,48 @@ export default function SearchScreen({ navigation }) {
           'Content-Type': 'multipart/form-data',
         },
       });
-  
+
       const responseText = await response.text();
       const data = JSON.parse(responseText); // Handle potential malformed JSON
-  
+
       if (!response.ok) {
         throw new Error(data.error || "Server error");
       }
-  
+
       if (!data.hex) {
         throw new Error("Invalid color data received");
       }
-  
+
       setPickedColor(data.hex);
       setSelectedColor(data.hex);
       applyColorFilter(data.hex);
-  
+
     } catch (error) {
       console.error("Color extraction failed:", error);
       setExtractionError(error.message);
     }
   };
-  
+
   const getPixelColor = async (imageUri) => {
     const colors = await ImageColors.getColors(imageUri, { fallback: 'gray' });
     return colors.primary;  // Returns the dominant color as hex
-  }  
+  }
 
 
   const filters = {
     Color: ["Blue", "Pink", "Red", "Purple", "Green", "Yellow", "Orange", "Brown", "Black", "White", "Gray"],
     Brand: ['OPI', 'DND'],
-    Finish: ['Shimmer','Creme','Glitter','Pearl','Dark', 'Rose Gold', 'Metallic'],
+    Finish: ['Shimmer', 'Creme', 'Glitter', 'Pearl', 'Dark', 'Rose Gold', 'Metallic'],
     Type: ['Infinite Shine', 'RapiDry', 'Gel Nail Polish', 'Nail Lacquer', 'Lacquer & Gel'],
   };
 
   // Memoized values
   const hasActiveFilters = useMemo(() => (
-    searchQuery || 
-    selectedColor || 
-    selectedColorFamily.length > 0 || 
-    selectedFinish.length > 0 || 
-    selectedBrand.length > 0 || 
+    searchQuery ||
+    selectedColor ||
+    selectedColorFamily.length > 0 ||
+    selectedFinish.length > 0 ||
+    selectedBrand.length > 0 ||
     selectedType.length > 0
   ), [searchQuery, selectedColor, selectedColorFamily, selectedFinish, selectedBrand, selectedType]);
 
@@ -219,11 +219,11 @@ export default function SearchScreen({ navigation }) {
           setLoading(false);
           return;
         }
-        
+
         const response = await axios.get(`${API_URL}/polishes`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        
+
         if (response.data?.data) {
           const processedData = response.data.data.map(item => ({
             ...item,
@@ -239,15 +239,15 @@ export default function SearchScreen({ navigation }) {
         setLoading(false);
       }
     };
-    
+
     fetchPolishes();
   }, []);
 
   // Handler functions
   const handleSearch = (text) => {
     setSearchQuery(text);
-    const filtered = text.trim() === "" 
-      ? polishData 
+    const filtered = text.trim() === ""
+      ? polishData
       : polishData.filter(item => item.name.toLowerCase().includes(text.toLowerCase()));
     setFilteredData(filtered);
   };
@@ -271,30 +271,30 @@ export default function SearchScreen({ navigation }) {
 
   const applyModalFilters = () => {
     let results = [...polishData];
-    
+
     if (selectedColorFamily.length > 0) {
-      results = results.filter(p => 
-        selectedColorFamily.some(f => 
+      results = results.filter(p =>
+        selectedColorFamily.some(f =>
           p["color family"]?.toLowerCase().includes(f.toLowerCase()) // Updated field name
         )
       );
     }
     if (selectedFinish.length > 0) {
-      results = results.filter(p => 
+      results = results.filter(p =>
         selectedFinish.some(f => p.finish?.toLowerCase().includes(f.toLowerCase()))
       );
     }
     if (selectedBrand.length > 0) {
-      results = results.filter(p => 
+      results = results.filter(p =>
         selectedBrand.some(b => p.brand?.toLowerCase().includes(b.toLowerCase()))
       );
     }
     if (selectedType.length > 0) {
-      results = results.filter(p => 
+      results = results.filter(p =>
         selectedType.some(t => p.type?.toLowerCase().includes(t.toLowerCase()))
       );
     }
-    
+
     setFilteredData(results);
     setShowFilterModal(false);
   };
@@ -328,215 +328,216 @@ export default function SearchScreen({ navigation }) {
     <View style={styles.container}>
       {/* Search Bar */}
       <SafeAreaView style={styles.container}>
-      <View style={styles.topBar}>
-        {/* Search Input in place of tabs */}
-        <View style={styles.searchInputContainer}>
-          <Ionicons name="search" size={20} color={COLORS.primary} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search polish name..."
-            placeholderTextColor="#888"
-            value={searchQuery} 
-            onChangeText={handleSearch}
-          />
+        <View style={styles.topBar}>
+          {/* Search Input in place of tabs */}
+          <View style={styles.searchInputContainer}>
+            <Ionicons name="search" size={20} color={COLORS.primary} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search polish name..."
+              placeholderTextColor="#888"
+              value={searchQuery}
+              onChangeText={handleSearch}
+            />
+          </View>
+
+          {/* Right Action Buttons */}
+          <View style={styles.actionsRight}>
+            <TouchableOpacity
+              onPress={() => setShowColorPicker(true)}
+              style={styles.iconButton}
+            >
+              <Ionicons name="color-palette-outline" size={24} color={COLORS.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setShowColorExtractor(true)}
+              style={styles.iconButton}
+            >
+              <Ionicons name="camera-outline" size={24} color={COLORS.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setShowFilterModal(true)}
+              style={styles.iconButton}
+            >
+              <Ionicons name="filter-outline" size={24} color={COLORS.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Right Action Buttons */}
-        <View style={styles.actionsRight}>
-          <TouchableOpacity 
-            onPress={() => setShowColorPicker(true)} 
-            style={styles.iconButton}
-          >
-            <Ionicons name="color-palette-outline" size={24} color={COLORS.primary} />
+        {/* Clear Filters Button */}
+        {hasActiveFilters && (
+          <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
+            <Text style={styles.clearButtonText}>Clear Filters</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={() => setShowColorExtractor(true)} 
-            style={styles.iconButton}
-          >
-            <Ionicons name="camera-outline" size={24} color={COLORS.primary}  />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={() => setShowFilterModal(true)} 
-            style={styles.iconButton}
-          >
-            <Ionicons name="filter-outline" size={24} color={COLORS.primary}  />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Clear Filters Button */}
-      {hasActiveFilters && (
-        <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
-          <Text style={styles.clearButtonText}>Clear Filters</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Polish List */}
-      <FlatList
-      style={styles.flatList}
-        ref={flatListRef}
-        data={filteredData}
-        keyExtractor={(item) => item._id?.toString() || Math.random().toString()}
-        numColumns={2}
-        columnWrapperStyle={styles.row}
-        renderItem={({ item }) => (
-          <PolishItem item={item} navigation={navigation} />
         )}
-        contentContainerStyle={styles.listContent}
-      />
 
-      {/* Color Picker Modal */}
-      <Modal transparent visible={showColorPicker} animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Select Color</Text>
-            <TouchableOpacity 
-                              onPress={() => {
-                                setShowColorPicker(false);
-                              }}
-                              style={styles.modalClose}
-                            >
-                              <Ionicons name="close" size={24} color="#666" />
-                            </TouchableOpacity>
-                            </View>
-            <ColorPicker
-              onColorChange={(color) => setSelectedColor(fromHsv(color))}
-              sliderComponent={Slider}
-              style={[styles.colorPicker, { width: colorPickerSize, height: colorPickerSize }]}
-            />
-            <View style={styles.modalButtons}>
-              <ActionButton 
-                text="Apply" 
-                primary 
-                onPress={() => {
-                  setShowColorPicker(false);
-                  applyColorFilter(selectedColor);
-                }} 
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Filter Modal */}
-      <Modal transparent visible={showFilterModal} animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.filterModalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Filter Polishes</Text>
-            <TouchableOpacity 
-                              onPress={() => {
-                                setShowFilterModal(false);}}
-                              style={styles.modalClose}
-                            >
-                              <Ionicons name="close" size={24} color="#666" />
-                            </TouchableOpacity>
-                            </View>
-            <ScrollView horizontal contentContainerStyle={styles.filterTabs}>
-              {Object.keys(filters).map((type) => (
-                <FilterTab 
-                  key={type}
-                  type={type}
-                  isActive={selectedFilterType === type}
-                  onPress={() => setSelectedFilterType(type)}
-                />
-              ))}
-            </ScrollView>
-
-            <ScrollView style={styles.filterOptions}>
-              {selectedFilterType && filters[selectedFilterType].map((option) => (
-                <FilterOption
-                  key={option}
-                  option={option}
-                  isSelected={
-                    (selectedFilterType === "Color" && selectedColorFamily.includes(option)) ||
-                    (selectedFilterType === "Finish" && selectedFinish.includes(option)) ||
-                    (selectedFilterType === "Brand" && selectedBrand.includes(option)) ||
-                    (selectedFilterType === "Type" && selectedType.includes(option))
-                  }
-                  onPress={() => handleFilterSelect(selectedFilterType, option)}
-                />
-              ))}
-            </ScrollView>
-
-            <View style={styles.modalButtons}>
-              <ActionButton text="Apply" primary onPress={applyModalFilters} />
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-     
-      <Modal transparent visible={showColorExtractor} animationType="slide">
-      <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Extract Color</Text>
-            <TouchableOpacity 
-          onPress={() => setShowColorExtractor(false)}
-          style={styles.modalClose}
-        >
-          <Ionicons name="close" size={24} color="#666" />
-        </TouchableOpacity>
-      </View>
-            
-      {image && (
-        <View style={{ alignSelf: 'center', position: "relative", marginTop: 20 }}>
-          <TouchableOpacity onPress={handleImageTap} activeOpacity={1}>
-            <Image
-              source={{ uri: image }}
-              style={{ width: displaySize.width, height: displaySize.height }}
-              onLayout={(event) => {
-                const { width, height } = event.nativeEvent.layout;
-                setDisplaySize({ width, height });
-              }}
-            />
-          </TouchableOpacity>
-
-          {/* Display tap location indicator */}
-          {tapLocation && (
-            <View
-              style={{
-                position: "absolute",
-                left: (tapLocation.x / imageSize.width) * displaySize.width - 5,
-                top: (tapLocation.y / imageSize.height) * displaySize.height - 5,
-                width: 10,
-                height: 10,
-                backgroundColor: "red",
-                borderRadius: 5,
-              }}
-            />
+        {/* Polish List */}
+        <FlatList
+          style={styles.flatList}
+          ref={flatListRef}
+          data={filteredData}
+          keyExtractor={(item) => item._id?.toString() || Math.random().toString()}
+          numColumns={2}
+          columnWrapperStyle={styles.row}
+          renderItem={({ item }) => (
+            <PolishItem item={item} navigation={navigation} />
           )}
-          
-        </View>
-      )}
+          contentContainerStyle={styles.listContent}
+        />
 
-      {/* Display extracted color */}
-      {pickedColor && (
-        <View style={{ marginTop: 20, alignItems: "center" }}>
-          <Text backgroundColor={pickedColor}>Picked Color:</Text>
-        </View>
-      )}
-
-<View style={styles.imageButtonContainer}>
-        <TouchableOpacity
-          style={[styles.imageButton, styles.galleryButton]}
-          onPress={openImagePicker}
-        >
-          <Text style={styles.imageButtonText}>Pick from Gallery</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.imageButton, styles.cameraButton]}
-          onPress={openCamera}
-        >
-          <Text style={styles.imageButtonText}>Open Camera</Text>
-        </TouchableOpacity>
+        {/* Color Picker Modal */}
+        <Modal transparent visible={showColorPicker} animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Color</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowColorPicker(false);
+                  }}
+                  style={styles.modalClose}
+                >
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+              <ColorPicker
+                onColorChange={(color) => setSelectedColor(fromHsv(color))}
+                sliderComponent={Slider}
+                style={[styles.colorPicker, { width: colorPickerSize, height: colorPickerSize }]}
+              />
+              <View style={styles.modalButtons}>
+                <ActionButton
+                  text="Apply"
+                  primary
+                  onPress={() => {
+                    setShowColorPicker(false);
+                    applyColorFilter(selectedColor);
+                  }}
+                />
+              </View>
             </View>
-      </View>
-      </View>
-    </Modal>
+          </View>
+        </Modal>
+
+        {/* Filter Modal */}
+        <Modal transparent visible={showFilterModal} animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.filterModalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Filter Polishes</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowFilterModal(false);
+                  }}
+                  style={styles.modalClose}
+                >
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+              <ScrollView horizontal contentContainerStyle={styles.filterTabs}>
+                {Object.keys(filters).map((type) => (
+                  <FilterTab
+                    key={type}
+                    type={type}
+                    isActive={selectedFilterType === type}
+                    onPress={() => setSelectedFilterType(type)}
+                  />
+                ))}
+              </ScrollView>
+
+              <ScrollView style={styles.filterOptions}>
+                {selectedFilterType && filters[selectedFilterType].map((option) => (
+                  <FilterOption
+                    key={option}
+                    option={option}
+                    isSelected={
+                      (selectedFilterType === "Color" && selectedColorFamily.includes(option)) ||
+                      (selectedFilterType === "Finish" && selectedFinish.includes(option)) ||
+                      (selectedFilterType === "Brand" && selectedBrand.includes(option)) ||
+                      (selectedFilterType === "Type" && selectedType.includes(option))
+                    }
+                    onPress={() => handleFilterSelect(selectedFilterType, option)}
+                  />
+                ))}
+              </ScrollView>
+
+              <View style={styles.modalButtons}>
+                <ActionButton text="Apply" primary onPress={applyModalFilters} />
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+
+        <Modal transparent visible={showColorExtractor} animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Extract Color</Text>
+                <TouchableOpacity
+                  onPress={() => setShowColorExtractor(false)}
+                  style={styles.modalClose}
+                >
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+
+              {image && (
+                <View style={{ alignSelf: 'center', position: "relative", marginTop: 20 }}>
+                  <TouchableOpacity onPress={handleImageTap} activeOpacity={1}>
+                    <Image
+                      source={{ uri: image }}
+                      style={{ width: displaySize.width, height: displaySize.height }}
+                      onLayout={(event) => {
+                        const { width, height } = event.nativeEvent.layout;
+                        setDisplaySize({ width, height });
+                      }}
+                    />
+                  </TouchableOpacity>
+
+                  {/* Display tap location indicator */}
+                  {tapLocation && (
+                    <View
+                      style={{
+                        position: "absolute",
+                        left: (tapLocation.x / imageSize.width) * displaySize.width - 5,
+                        top: (tapLocation.y / imageSize.height) * displaySize.height - 5,
+                        width: 10,
+                        height: 10,
+                        backgroundColor: "red",
+                        borderRadius: 5,
+                      }}
+                    />
+                  )}
+
+                </View>
+              )}
+
+              {/* Display extracted color */}
+              {pickedColor && (
+                <View style={{ marginTop: 20, alignItems: "center" }}>
+                  <Text backgroundColor={pickedColor}>Picked Color:</Text>
+                </View>
+              )}
+
+              <View style={styles.imageButtonContainer}>
+                <TouchableOpacity
+                  style={[styles.imageButton, styles.galleryButton]}
+                  onPress={openImagePicker}
+                >
+                  <Text style={styles.imageButtonText}>Pick from Gallery</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.imageButton, styles.cameraButton]}
+                  onPress={openCamera}
+                >
+                  <Text style={styles.imageButtonText}>Open Camera</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </View>
   );
@@ -568,7 +569,7 @@ const PolishItem = React.memo(({ item, navigation }) => (
 const FilterTab = ({ type, isActive, onPress }) => (
   <TouchableOpacity onPress={onPress} style={styles.filterTab}>
     <Text style={[
-      styles.filterTabText, 
+      styles.filterTabText,
       isActive && styles.activeFilterTabText,
       isActive && styles.filterTabUnderline
     ]}>
@@ -698,26 +699,26 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     borderRadius: 16,
     padding: 20,
-    alignItems: 'center', 
+    alignItems: 'center',
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'center', 
+    justifyContent: 'center',
     alignItems: 'center',
     padding: 5,
-    width: '100%',  
-    position: 'relative',  
+    width: '100%',
+    position: 'relative',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
     textAlign: 'center',
-    flex: 1,  
+    flex: 1,
   },
   modalClose: {
-    position: 'absolute',  
-    right: 0,  
+    position: 'absolute',
+    right: 0,
     padding: 4,
   },
   colorPicker: {
@@ -730,7 +731,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   actionButton: {
-    width: 120, 
+    width: 120,
     padding: 12,
     borderRadius: 8,
     backgroundColor: COLORS.border,
@@ -796,18 +797,18 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   imageButton: {
-    width: '48%',  
+    width: '48%',
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   galleryButton: {
-    backgroundColor: '#5D3FD3',  
+    backgroundColor: '#5D3FD3',
     marginRight: 10,
   },
   cameraButton: {
-    backgroundColor: '#5D3FD3', 
+    backgroundColor: '#5D3FD3',
   },
   imageButtonText: {
     color: 'white',
@@ -847,7 +848,7 @@ const styles = StyleSheet.create({
   flatList: {
     marginTop: 10,
     flex: 1,
-  },   
+  },
   colorPreviewContainer: {
     marginTop: 20,
     width: '100%',
