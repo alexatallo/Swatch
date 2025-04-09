@@ -156,7 +156,7 @@ export default function SearchScreen({ navigation }) {
       setExtractionError(null);
       setPickedColor(null);
 
-      const response = await fetch('http://35.50.90.208:5001/extract-color', {
+      const response = await fetch('http://IP-Address/extract-color', {
         method: 'POST',
         body: formData,
         headers: {
