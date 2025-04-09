@@ -12,6 +12,7 @@ import * as FileSystem from "expo-file-system";
 import { useFocusEffect } from '@react-navigation/native';
 import axios from "axios";
 import { API_URL } from "@env";
+import { Colors } from '../src/colors';
 
 export default function ExploreFeedScreen({ navigation }) {
   const [visibleComments, setVisibleComments] = useState({});
@@ -31,7 +32,8 @@ export default function ExploreFeedScreen({ navigation }) {
   const flatListRef = useRef(null);
   const [likesModalVisible, setLikesModalVisible] = useState(false);
   const [selectedLikes, setSelectedLikes] = useState([]);
-  const [currentUserId, setCurrentUserId] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null); 
+
   // Change from polishId: null to:
 const [postData, setPostData] = useState({
   caption: "",
@@ -161,16 +163,7 @@ const [postData, setPostData] = useState({
   };
 
 
-  const handlePolishNamePress = (polishId) => {
-
-    setIsSelectedImageVisible(false);
-    const item = polishLookup[polishId];
-    if (item) {
-      navigation.navigate("PolishScreen", { item });
-    } else {
-      console.error("Polish not found:", polishId);
-    }
-  };
+ 
 
   const applyFilters = useCallback(
     (search = searchQuery) => {
@@ -559,7 +552,7 @@ const [postData, setPostData] = useState({
   const toggleLike = async (postId) => {
     try {
       const token = await AsyncStorage.getItem("token");
-      await axios.post(`${API_URL}/${postId}/like`, {}, {
+      await axios.post(`${API_URL}/posts/${postId}/like`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
   
@@ -623,10 +616,10 @@ const [postData, setPostData] = useState({
   {/* Right: Add + Search */}
   <View style={styles.actionsRight}>
     <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.iconButton}>
-      <Ionicons name="add-circle-outline" size={26} color="#6A5ACD" />
+      <Ionicons name="add-circle-outline" size={26} color={Colors.purple} />
     </TouchableOpacity>
     <TouchableOpacity onPress={() => navigation.navigate("SearchUser")} style={styles.iconButton}>
-      <Ionicons name="search" size={24} color="#6A5ACD" />
+      <Ionicons name="search" size={24} color={Colors.purple} />
     </TouchableOpacity>
   </View>
 </View>
@@ -651,7 +644,7 @@ const [postData, setPostData] = useState({
           ListEmptyComponent={
             showFollowingPosts ? (
               <View style={styles.emptyState}>
-                <Ionicons name="people-outline" size={48} color="#ccc" />
+                <Ionicons name="people-outline" size={48} color={Colors.grey} />
                 <Text style={styles.emptyText}>
                   {followingIds.length === 0
                     ? "You're not following anyone yet!"
@@ -682,7 +675,7 @@ const [postData, setPostData] = useState({
                   />
                 ) : (
                   <View style={styles.imagePlaceholder}>
-                    <Ionicons name="image-outline" size={48} color="#ccc" />
+                    <Ionicons name="image-outline" size={48} color={Colors.grey} />
                   </View>
                 )}
               </TouchableWithoutFeedback>
@@ -728,7 +721,6 @@ const [postData, setPostData] = useState({
                 <Text style={styles.caption}>{item.caption}</Text>
               )}
   
-              {/* Polish & Business Details */}
 {/* Polish & Business Details */}
 <View style={styles.detailsContainer}>
   {/* Display Nail Polishes Horizontally */}
@@ -747,31 +739,27 @@ const [postData, setPostData] = useState({
         </Text>
       </TouchableOpacity>
     ))}
+    
   </View>
 
-  {/* Business Name and Icon with Adjusted Spacing */}
+  {/* Business Name and Icon */}
   {item.businessId && (
     <TouchableOpacity 
       onPress={() => handleBusinessNamePress(item.businessId)}
       style={[styles.detailItem, styles.businessDetail]}
     >
-      <View style={styles.iconTextContainer}>
-  <Ionicons 
-    name="business-outline" 
-    size={16} 
-    color="#6A5ACD" 
-    style={styles.iconStyle}
-  />
-  <Text style={styles.detailText} numberOfLines={1}>
-    {businessLookup[item.businessId]?.name || "Unknown Business"}
-  </Text>
-</View>
+      <Ionicons 
+        name="business-outline" 
+        size={16}  // Match color circle size
+        color="#333"
+        style={styles.iconStyle}
+      />
+      <Text style={styles.detailText} numberOfLines={1}>
+        {businessLookup[item.businessId]?.name || "Unknown Business"}
+      </Text>
     </TouchableOpacity>
   )}
 </View>
-
-
-  
               {/* Comments Section */}
               {visibleComments[item._id] && (
                 <View style={styles.commentsContainer}>
@@ -843,7 +831,7 @@ const [postData, setPostData] = useState({
                   onPress={() => setLikesModalVisible(false)}
                   style={styles.modalClose}
                 >
-                  <Ionicons name="close" size={24} color="#666" />
+                  <Ionicons name="close" size={24} color={Colors.purple} />
                 </TouchableOpacity>
           </View>
         </View>
@@ -864,7 +852,7 @@ const [postData, setPostData] = useState({
                   onPress={handlePostCancel}
                   style={styles.modalClose}
                 >
-                  <Ionicons name="close" size={24} color="#666" />
+                  <Ionicons name="close" size={24} color={Colors.purple} />
                 </TouchableOpacity>
         </View>
 
@@ -991,7 +979,7 @@ const [postData, setPostData] = useState({
                 contentContainerStyle={{ flexGrow: 1 }}
   ListFooterComponent={
     <>
-      {loading && <ActivityIndicator size="small" color="#6A5ACD" />}
+      {loading && <ActivityIndicator size="small" color="#E0E0E0"/>}
       {/* Add spacing before Done button */}
       <View style={{ height: 16 }} />
     </>
@@ -1017,7 +1005,7 @@ const [postData, setPostData] = useState({
       <Ionicons 
         name="checkmark-circle" 
         size={24} 
-        color="#6A5ACD" 
+        color={Colors.purple}
         style={styles.checkIcon}
       />
     )}
@@ -1125,7 +1113,7 @@ const [postData, setPostData] = useState({
                     }}
                   >
                     <View style={styles.businessIcon}>
-                      <Ionicons name="business-outline" size={24} color="#6A5ACD" />
+                      <Ionicons name="business-outline" size={24} color={Colors.purple} />
                     </View>
                     <View style={styles.businessInfo}>
                       <Text style={styles.businessName} numberOfLines={1}>
@@ -1236,7 +1224,7 @@ const [postData, setPostData] = useState({
     },
     filterButtonActive: {
       backgroundColor: '#f0e8ff',
-      borderColor: '#6A5ACD',
+      borderColor: Colors.purple,
     },
     filterText: {
       color: '#999',
@@ -1245,7 +1233,7 @@ const [postData, setPostData] = useState({
       fontWeight: '500',
     },
     filterTextActive: {
-      color: '#6A5ACD',
+      color: Colors.purple,
       fontWeight: '600',
     },
     // List Styles
@@ -1282,7 +1270,7 @@ const [postData, setPostData] = useState({
     },
     username: {
       fontWeight: '600',
-      color: '#6A5ACD',
+      color: "#333",
     },
     postImage: {
       width: '100%',
@@ -1333,29 +1321,28 @@ const [postData, setPostData] = useState({
       marginTop: 10,  // Add some space from the caption
     },
     polishContainer: {
-      flexDirection: 'row',  // Horizontal layout for nail polishes
-      flexWrap: 'wrap',      // Allow wrapping when necessary
-      alignItems: 'center',  // Align items vertically in the center
-      marginBottom: 10,      // Add space after the polishes
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginBottom: 4,
     },
     detailItem: {
-      flexDirection: 'row',   // Ensure items are displayed side by side
-      alignItems: 'center',   // Align the text and color circle properly
-      marginRight: 10,        // Space between polish items
-      marginBottom: 10,       // Space between rows when wrapping
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginRight: 12,
+      marginBottom: 4,
     },
     colorCircle: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      marginRight: 8,         // Space between color circle and text
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      marginRight: 8,  // Match icon margin
     },
   
     detailText: {
       fontSize: 12,
       color: '#333',
       // Remove the maxWidth to allow the text to wrap and display fully
-      flex: 1,      // Allow text to wrap if necessary
+      maxWidth: 200,      // Allow text to wrap if necessary
                   // Add some width restriction if necessary
     },
     // Comments Styles
@@ -1397,7 +1384,7 @@ const [postData, setPostData] = useState({
     },
     commentSubmit: {
       marginLeft: 8,
-      backgroundColor: '#6A5ACD',
+      backgroundColor: Colors.purple,
       borderRadius: 20,
       paddingHorizontal: 16,
       justifyContent: 'center',
@@ -1512,7 +1499,7 @@ const [postData, setPostData] = useState({
     imageButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: '#6c5ce7',
+      backgroundColor: Colors.purple,
       paddingVertical: 8,
       paddingHorizontal: 16,
       borderRadius: 20,
@@ -1548,7 +1535,7 @@ const [postData, setPostData] = useState({
       fontSize: 14,
     },
     submitButton: {
-      backgroundColor: '#6c5ce7',
+      backgroundColor: Colors.purple,
       padding: 14,
       borderRadius: 8,
       alignItems: 'center',
@@ -1559,7 +1546,7 @@ const [postData, setPostData] = useState({
       fontSize: 16,
     },  
     submitButton: {
-      backgroundColor: '#6A5ACD',
+      backgroundColor: Colors.purple,
       margin: 16,
       padding: 16,
       borderRadius: 8,
@@ -1699,7 +1686,7 @@ const [postData, setPostData] = useState({
     alignItems: 'center',
   },
   imageModalPolishText: {
-    color: '#6A5ACD',
+    color: Colors.purple,
     fontSize: 14,
     fontWeight: '500',
     marginRight: 8,
@@ -1718,7 +1705,7 @@ const [postData, setPostData] = useState({
     marginTop: -12,
   },
   doneButton: {
-    backgroundColor: '#6A5ACD',
+    backgroundColor: Colors.purple,
     padding: 16,
     alignItems: 'center',
     borderBottomLeftRadius: 16,
@@ -1754,9 +1741,9 @@ const [postData, setPostData] = useState({
   },
   
   tabTextActive: {
-    color: "#6A5ACD",
+    color: Colors.purple,
     borderBottomWidth: 2,
-    borderBottomColor: "#6A5ACD",
+    borderBottomColor: Colors.purple,
   },
   
   actionsRight: {
@@ -1769,10 +1756,7 @@ const [postData, setPostData] = useState({
     padding: 4,
   },
   businessDetail: {
-    marginTop: 10,          // Space between polishes and business name
-    flexDirection: 'row',   // Ensure the icon and text are side by side
-    alignItems: 'center',   // Align icon and text vertically in the center
-    marginLeft: 12,         // Increase space between icon and name
+    marginTop: 4,  // Add slight separation from polish items
   },
   iconTextContainer: {
     flexDirection: 'row',

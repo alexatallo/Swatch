@@ -449,8 +449,7 @@ const AccountScreen = () => {
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#A020F0" />
-        <Text>Loading...</Text>
+        <ActivityIndicator size="large" color="#E0E0E0" />
       </View>
     );
   }
@@ -462,7 +461,7 @@ const AccountScreen = () => {
         <View style={styles.headerContent}>
           <TouchableOpacity
             onPress={openCollectionsModal}
-            style={styles.headerButton}
+            style={styles.albumHeaderButton}
           >
             <Ionicons name="albums-outline" size={24} color="white" />
           </TouchableOpacity>
@@ -484,24 +483,28 @@ const AccountScreen = () => {
 
       {/* Profile section with card layout */}
       <View style={styles.profileCard}>
-        <View style={styles.profileHeader}>
-          <TouchableOpacity onPress={handleProfilePicUpload}>
-            <View style={styles.profilePicContainer}>
-              {user?.profilePic ? (
-                <Image
-                  source={{ uri: user.profilePic }}
-                  style={styles.profilePic}
-                />
-              ) : (
-                <View style={styles.profilePicPlaceholder}>
-                  <Ionicons name="person" size={40} color="white" />
-                </View>
-              )}
-              <View style={styles.editProfilePicIcon}>
-                <Ionicons name="camera" size={16} color="white" />
-              </View>
+  <View style={styles.profileHeader}>
+    <TouchableOpacity onPress={handleProfilePicUpload}>
+      {/* Container for profile pic + camera button */}
+      <View style={styles.profilePicWrapper}>
+        <View style={styles.profilePicContainer}>
+          {user?.profilePic ? (
+            <Image
+              source={{ uri: user.profilePic }}
+              style={styles.profilePic}
+            />
+          ) : (
+            <View style={styles.profilePicPlaceholder}>
+              <Ionicons name="person" size={40} color="white" />
             </View>
-          </TouchableOpacity>
+          )}
+        </View>
+        {/* Camera button positioned outside */}
+        <View style={styles.editProfilePicIcon}>
+          <Ionicons name="camera" size={16} color="white" />
+        </View>
+      </View>
+    </TouchableOpacity>
 
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
@@ -571,13 +574,6 @@ const AccountScreen = () => {
           <View style={styles.emptyState}>
             <Ionicons name="camera-outline" size={60} color="#d8bfd8" />
             <Text style={styles.emptyStateText}>No Posts Yet</Text>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={() => navigation.navigate("ExploreFeed")}
-            >
-              <Text style={styles.primaryButtonText}>Add Your First Post</Text>
-              <Ionicons name="add" size={20} color="white" />
-            </TouchableOpacity>
           </View>
         ) : (
           <FlatList
@@ -838,9 +834,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerButton: {
-    marginLeft: 20,
-    padding: 5,
-  },
+    marginLeft: 12,  // Reduced from 20
+      padding: 5,
+    },
+    albumHeaderButton: {
+    marginLeft: 12,  // Match the other button's margin
+    paddingVertical: 5,
+    },
 
   // Profile Card
   profileCard: {
@@ -863,6 +863,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 15,
   },
+  profilePicWrapper: {
+    position: 'relative',
+    // Add any additional size constraints if needed
+  },
+  editProfilePicIcon: {
+    position: 'absolute',
+    bottom: -6,    // Move below the profile pic 
+    backgroundColor: 'rgba(110, 59, 110, 0.8)',
+    borderRadius: 12,
+    padding: 6,     // Slightly larger padding
+    zIndex: 1,      // Ensure it's above other elements
+    // Optional shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+  },
   profilePicContainer: {
     width: 100,
     height: 100,
@@ -874,7 +892,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginRight: 20,
     borderWidth: 3,
-    borderColor: '#f0e6ff',
+    borderColor: '#6e3b6e',
   },
   profilePic: {
     width: '100%',
@@ -887,35 +905,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#6e3b6e',
   },
-  editProfilePicIcon: {
-    position: 'absolute',
-    bottom: 5,
-    right: 5,
-    backgroundColor: 'rgba(110, 59, 110, 0.8)',
-    borderRadius: 12,
-    padding: 5,
-  },
   statsContainer: {
     flexDirection: 'row',
     flex: 1,
     justifyContent: 'space-between',
+    alignItems: 'center', // Add this for vertical alignment
   },
   statItem: {
+    flex: 1, // Equal width distribution
     alignItems: 'center',
-    minWidth: 80,
+    justifyContent: 'center', // Center vertically
+    paddingHorizontal: 5, // Add horizontal padding
   },
   statNumber: {
     fontWeight: 'bold',
     fontSize: 20,
     marginBottom: 4,
     color: '#333',
+    textAlign: 'center', // Add this
+    width: '100%', // Ensure full width
   },
   statLabel: {
     fontSize: 14,
     color: '#666',
+    textAlign: 'center', // Add this
+    width: '100%', // Ensure full width
   },
   clickableCount: {
-    color: '#6e3b6e',
+    color: '#333',
   },
   profileInfo: {
     marginTop: 10,

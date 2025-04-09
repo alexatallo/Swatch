@@ -200,7 +200,7 @@ const InventoryScreen = () => {
     return (
         <View style={styles.container}>
           {loading ? (
-            <ActivityIndicator size="large" color="#6e3b6e" style={styles.loadingIndicator} />
+            <ActivityIndicator size="large" color="#E0E0E0" style={styles.loadingIndicator} />
           ) : polishData.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="sad-outline" size={50} color="#6e3b6e" />

@@ -8,13 +8,16 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
-  Alert
+  Alert,
+  SafeAreaView
 } from "react-native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from '@react-navigation/native';
 import { API_URL } from "@env";
 import { Ionicons } from "@expo/vector-icons";
+import { Colors } from '../src/colors';
+
 
 export default function SearchUserScreen({ navigation }) {
   // State management
@@ -27,7 +30,9 @@ export default function SearchUserScreen({ navigation }) {
     showBusinessOnly: false
   });
 
+
   const flatListRef = useRef(null);
+
 
   // Token handling
   const getToken = async () => {
@@ -36,12 +41,13 @@ export default function SearchUserScreen({ navigation }) {
       : await AsyncStorage.getItem("token");
   };
 
+
   // Navigation setup
   useEffect(() => {
     navigation.setOptions({
       headerLeft: () => (
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()} 
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
           style={styles.backButton}
         >
           <Ionicons name="arrow-back" size={24} color="black" />
@@ -50,41 +56,44 @@ export default function SearchUserScreen({ navigation }) {
     });
   }, [navigation]);
 
+
   // Filter function
   const applyFilters = useCallback(() => {
     let filtered = [...state.userData];
-    
+   
     // Apply search filter
     if (state.searchQuery) {
       filtered = filtered.filter((item) =>
         (item.username || "").toLowerCase().includes(state.searchQuery.toLowerCase())
       );
     }
-    
+   
     // Apply business filter
     if (state.showBusinessOnly) {
       filtered = filtered.filter((item) => item.isBusiness === true);
     }
-    
+   
     setState(prev => ({
       ...prev,
       filteredData: filtered
     }));
-    
+   
     flatListRef.current?.scrollToOffset({ animated: true, offset: 0 });
   }, [state.userData, state.searchQuery, state.showBusinessOnly]);
+
 
   // Data fetching
   const fetchData = async () => {
     try {
       setState(prev => ({ ...prev, loading: true }));
       const token = await getToken();
-      
+     
       if (!token) {
         console.error("Token is not available.");
         Alert.alert("Error", "Authentication required");
         return;
       }
+
 
       // Fetch account and users in parallel
       const [accountResponse, usersResponse] = await Promise.all([
@@ -92,18 +101,20 @@ export default function SearchUserScreen({ navigation }) {
           headers: { Authorization: `Bearer ${token}` }
         }),
         axios.get(`${API_URL}/users`, {
-          headers: { 
+          headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json" 
+            "Content-Type": "application/json"
           }
         })
       ]);
 
+
       if (usersResponse.data?.data && Array.isArray(usersResponse.data.data)) {
         const allUsers = usersResponse.data.data;
-        const filteredUsers = allUsers.filter(user => 
+        const filteredUsers = allUsers.filter(user =>
           user.username !== accountResponse.data?.user?.username
         );
+
 
         setState(prev => ({
           ...prev,
@@ -126,6 +137,7 @@ export default function SearchUserScreen({ navigation }) {
     }
   };
 
+
   // Focus effect for data refresh
   useFocusEffect(
     useCallback(() => {
@@ -133,22 +145,26 @@ export default function SearchUserScreen({ navigation }) {
     }, [])
   );
 
+
   // Apply filters when search criteria changes
   useEffect(() => {
     applyFilters();
   }, [state.searchQuery, state.showBusinessOnly, applyFilters]);
+
 
   // Handlers
   const handleSearch = (text) => {
     setState(prev => ({ ...prev, searchQuery: text }));
   };
 
+
   const handleBusinessToggle = () => {
-    setState(prev => ({ 
-      ...prev, 
-      showBusinessOnly: !prev.showBusinessOnly 
+    setState(prev => ({
+      ...prev,
+      showBusinessOnly: !prev.showBusinessOnly
     }));
   };
+
 
   const clearFilters = () => {
     setState(prev => ({
@@ -160,41 +176,52 @@ export default function SearchUserScreen({ navigation }) {
     flatListRef.current?.scrollToOffset({ animated: true, offset: 0 });
   };
 
+
   // Loading state
   if (state.loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#5D3FD3" />
+        <ActivityIndicator size="large" color="#E0E0E0" />
       </View>
     );
   }
 
+
   return (
-    <View style={styles.container}> 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search username..."
-          placeholderTextColor="#888"
-          value={state.searchQuery}
-          onChangeText={handleSearch}
-          returnKeyType="search"
-        />
-        <TouchableOpacity
-          onPress={handleBusinessToggle}
-          style={[
-            styles.businessFilterButton,
-            state.showBusinessOnly && styles.businessFilterButtonActive
-          ]}
-        >
-          <Ionicons
-            name={state.showBusinessOnly ? "business" : "business-outline"}
-            size={24}
-            color={state.showBusinessOnly ? "#5D3FD3" : "#888"}
+    <View style={styles.container}>
+      {/* Top Bar with Search and Actions */}
+      <SafeAreaView style={styles.container}>
+      <View style={styles.topBar}>
+        {/* Search Input */}
+        <View style={styles.searchInputContainer}>
+          <Ionicons name="search" size={20} color="#5D3FD3" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search username..."
+            placeholderTextColor="#888"
+            value={state.searchQuery}
+            onChangeText={handleSearch}
+            returnKeyType="search"
           />
-        </TouchableOpacity>
+        </View>
+ 
+        {/* Right Action Button */}
+        <View style={styles.actionsRight}>
+        <TouchableOpacity
+  onPress={handleBusinessToggle}
+  style={styles.businessFilterButton}
+>
+  <Ionicons
+    name={state.showBusinessOnly ? "business" : "business-outline"}
+    size={24}
+    color={state.showBusinessOnly ? Colors.purple : "#888"}
+  />
+</TouchableOpacity>
+        </View>
+     
+     
       </View>
+
 
       {/* Clear Filters Button */}
       {(state.searchQuery || state.showBusinessOnly) && (
@@ -202,6 +229,7 @@ export default function SearchUserScreen({ navigation }) {
           <Text style={styles.clearButtonText}>Clear Filters</Text>
         </TouchableOpacity>
       )}
+
 
       {/* User List */}
       <FlatList
@@ -228,7 +256,7 @@ export default function SearchUserScreen({ navigation }) {
               </View>
               {item.isBusiness && (
                 <View style={styles.businessIconContainer}>
-                  <Ionicons name="business" size={20} color="#5D3FD3" />
+                  <Ionicons name="business" size={20} color={Colors.purple} />
                 </View>
               )}
             </View>
@@ -237,23 +265,46 @@ export default function SearchUserScreen({ navigation }) {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>
-              {state.searchQuery 
-                ? "No users match your search" 
+              {state.searchQuery
+                ? "No users match your search"
                 : "No users found"}
             </Text>
           </View>
         }
       />
+      </SafeAreaView>
     </View>
   );
 }
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F8F8",
-    paddingTop: Platform.OS === "ios" ? 60 : 40, // Increased padding for iOS
-    paddingHorizontal: Platform.OS === "web" ? 20 : 10,
+    backgroundColor: '#f8f9fa',
+  },
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    backgroundColor: "#fff",
+  },
+  searchInputContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginRight: 12,
+  },
+  searchIcon: {
+    color: Colors.purple,
+    marginRight: 8,
   },
   loadingContainer: {
     flex: 1,
@@ -294,18 +345,25 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
+    height: 40,
     fontSize: 16,
     color: "#333",
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+  },
+  actionsRight: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   businessFilterButton: {
-    marginLeft: 10,
-    padding: 5,
-  },
-  businessFilterButtonActive: {
-    backgroundColor: "#F0E8FF",
-    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+    // Remove background and shadow properties
+    backgroundColor: 'transparent',
+    elevation: 0,
+    // Remove circular shape properties
+    width: 'auto',
+    height: 'auto',
+    borderRadius: 0,
   },
   clearButton: {
     alignSelf: "center",
@@ -313,7 +371,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
-    marginBottom: 10,
+    marginTop: 10,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 3,
@@ -325,6 +383,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   flatList: {
+    marginTop: 10,
     flex: 1,
   },
   listContent: {

@@ -91,7 +91,7 @@ export default function ClientAccount({ navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size="large" color="#E0E0E0" />
       </View>
     );
   }
