@@ -122,7 +122,7 @@ const CollectionModal = ({
   <Modal visible={visible} animationType="fade" transparent>
     <View style={styles.modalOverlay}>
       <View style={styles.modalContent}>
-        <Text style={styles.modalTitle}>Save to Collection</Text>
+        <Text style={styles.modalTitle}>Save Polish</Text>
 
         <TextInput
           style={styles.input}
@@ -366,10 +366,14 @@ export default function PolishScreen({ route }) {
             <Text style={styles.detailText}>{item.brand || "Unknown brand"}</Text>
           </View>
           
-          <View style={styles.detailRow}>
-            <Ionicons name="albums-outline" size={18} color={Colors.purple} />
-            <Text style={styles.detailText}>{item.collection || "Unknown collection"}</Text>
-          </View>
+          {item.collection ? (
+  <View style={styles.detailRow}>
+    <Ionicons name="albums-outline" size={18} color={Colors.purple} />
+    <Text style={styles.detailText}>{item.collection}</Text>
+  </View>
+) : (
+  <View style={styles.detailRow} />
+)}
           
           <View style={styles.detailRow}>
             <Ionicons name="sparkles-outline" size={18} color={Colors.purple} />
@@ -392,7 +396,7 @@ export default function PolishScreen({ route }) {
               style={[styles.button, styles.saveButton]}
               onPress={() => setModalVisible(true)}
             >
-              <Text style={styles.buttonText}>Save to Collection</Text>
+              <Text style={styles.buttonText}>Save Polish</Text>
               <MaterialIcons name="bookmark" size={15} color="#fff" />
             </TouchableOpacity>
           </View>
