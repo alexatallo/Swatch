@@ -22,6 +22,9 @@ const HomeScreen = ({ route }) => {
           else if (route.name === "Account") iconName = "person";
           return <Ionicons name={iconName} size={size} color={color} />;
         },
+        // Set active and inactive colors
+        tabBarActiveTintColor: '#6e3b6e',  // Set your desired active color
+        tabBarInactiveTintColor: '#E0E0E0',  // Set your desired inactive color
       })}
     >
       <Tab.Screen name="Explore" component={ExploreFeedScreen} />

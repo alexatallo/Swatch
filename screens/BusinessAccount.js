@@ -110,7 +110,7 @@ export default function BusinessAccount({ navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6e3b6e" />
+        <ActivityIndicator size="large" color="#E0E0E0" />
       </View>
     );
   }

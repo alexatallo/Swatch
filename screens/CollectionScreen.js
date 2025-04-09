@@ -84,7 +84,7 @@ const CollectionScreen = () => {
   return (
     <View style={styles.container}>
       {loading ? (
-        <ActivityIndicator size="large" color="#6e3b6e" style={{ marginTop: 20 }} />
+        <ActivityIndicator size="large" color="#E0E0E0" />
       ) : polishData.length === 0 ? (
         <Text style={styles.emptyText}>No polishes found in this collection.</Text>
       ) : (

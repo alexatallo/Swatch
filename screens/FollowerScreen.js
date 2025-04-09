@@ -69,7 +69,7 @@ const FollowerScreen = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#A020F0" />
+        <ActivityIndicator size="large" color="#E0E0E0" />
       </View>
     );
   }
@@ -106,7 +106,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F8F8F8",
-    paddingTop: Platform.OS === "web" ? 20 : 40,
   },
   loadingContainer: {
     flex: 1,
@@ -132,7 +131,7 @@ const styles = StyleSheet.create({
   itemContainer: {
     flexDirection: "column",
     alignItems: "flex-start",
-    padding: 15,
+    padding: 5,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },

@@ -18,8 +18,10 @@ import { useNavigation } from "@react-navigation/native";
 import { API_URL } from "@env";
 import axios from "axios";
 import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 const { width } = Dimensions.get("window");
+import { Colors } from './src/colors';
 
 // Helper functions
 const getToken = async () => await AsyncStorage.getItem("token");
@@ -79,11 +81,16 @@ const BusinessList = ({ businesses, loading, navigation }) => {
   return (
     <FlatList
       data={businesses}
-      renderItem={({ item }) => (  // Changed from item: business to just item
-        <TouchableOpacity 
-          style={styles.businessUserItem}
-          onPress={() => handleBusinessPress(item)}  // Now using the correct function
+      renderItem={({ item }) => (
+        <TouchableOpacity
+          style={styles.businessCard}
+          onPress={() => handleBusinessPress(item)}
         >
+          <View style={styles.businessAvatar}>
+            <Text style={styles.avatarText}>
+              {item.businessName ? item.businessName[0].toUpperCase() : 'N'}
+            </Text>
+          </View>
           <Text style={styles.businessName}>
             {item.businessName || item.username}
           </Text>
@@ -355,17 +362,17 @@ export default function PolishScreen({ route }) {
           <Text style={styles.title}>{item.name || "No name available"}</Text>
           
           <View style={styles.detailRow}>
-            <MaterialIcons name="branding-watermark" size={18} color="#6C63FF" />
+            <Ionicons name="pricetag-outline" size={18} color={Colors.purple} />
             <Text style={styles.detailText}>{item.brand || "Unknown brand"}</Text>
           </View>
           
           <View style={styles.detailRow}>
-            <MaterialIcons name="collections" size={18} color="#6C63FF" />
+            <Ionicons name="albums-outline" size={18} color={Colors.purple} />
             <Text style={styles.detailText}>{item.collection || "Unknown collection"}</Text>
           </View>
           
           <View style={styles.detailRow}>
-            <MaterialIcons name="category" size={18} color="#6C63FF" />
+            <Ionicons name="sparkles-outline" size={18} color={Colors.purple} />
             <Text style={styles.detailText}>{item.type || "Unknown type"}</Text>
           </View>
 
@@ -377,7 +384,7 @@ export default function PolishScreen({ route }) {
                 onPress={() => Linking.openURL(item.link)}
               >
                 <Text style={styles.buttonText}>Buy Now</Text>
-                <MaterialIcons name="shopping-cart" size={18} color="#fff" />
+                <MaterialIcons name="shopping-cart" size={15} color="#fff" />
               </TouchableOpacity>
             )}
 
@@ -386,7 +393,7 @@ export default function PolishScreen({ route }) {
               onPress={() => setModalVisible(true)}
             >
               <Text style={styles.buttonText}>Save to Collection</Text>
-              <MaterialIcons name="bookmark" size={18} color="#fff" />
+              <MaterialIcons name="bookmark" size={15} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
@@ -395,7 +402,7 @@ export default function PolishScreen({ route }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Available At</Text>
           {loadingBusinesses ? (
-            <ActivityIndicator size="large" color="#6C63FF" />
+            <ActivityIndicator size="large" color={Colors.purple} />
           ) : businessUsers.length > 0 ? (
             <BusinessList 
   businesses={businessUsers}
@@ -485,7 +492,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
     paddingTop: 50,
-    backgroundColor: "#6C63FF",
+    backgroundColor: Colors.purple,
   },
   backButton: {
     marginRight: 15,
@@ -557,10 +564,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   buyButton: {
-    backgroundColor: "#FF6584",
+    backgroundColor: Colors.purple,
   },
   saveButton: {
-    backgroundColor: "#6C63FF",
+    backgroundColor: Colors.purple,
   },
   buttonText: {
     color: "#fff",
@@ -583,7 +590,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 12,
     padding: 15,
-    marginRight: 10,
+    marginRight: 15,
     alignItems: "center",
     width: 120,
     shadowColor: "#000",
@@ -596,7 +603,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: "#6C63FF",
+    backgroundColor: Colors.purple,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 10,
@@ -609,6 +616,11 @@ const styles = StyleSheet.create({
   businessName: {
     fontSize: 14,
     fontWeight: "600",
+    textAlign: "center",
+  },
+  businessUsername: {
+    fontSize: 12,
+    color: "#888",
     textAlign: "center",
   },
   emptyText: {
@@ -644,7 +656,7 @@ const styles = StyleSheet.create({
   },
   collectionList: { width: "100%", maxHeight: 200 },
   collectionItem: { padding: 12, borderRadius: 8, marginBottom: 8, backgroundColor: "#f1f1f1" },
-  selectedCollection: { backgroundColor: "#A020F0" },
+  selectedCollection: { backgroundColor: Colors.purple },
   collectionName: {
     marginLeft: 10,
     fontSize: 16,
@@ -654,9 +666,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#f0f0f0",
   },
   confirmButton: {
-    backgroundColor: "#6C63FF",
+    backgroundColor: Colors.purple,
   },
-  modalButton: { backgroundColor: "#5D3FD3", padding: 12, borderRadius: 8, width: "100%", alignItems: "center" },
+  businessUsersList: {
+    flexDirection: "row",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  noBusinessesText: {
+    textAlign: "center",
+    fontStyle: "italic",
+    color: "#555",
+  },
+  modalButton: { backgroundColor: Colors.purple, padding: 12, borderRadius: 8, width: "100%", alignItems: "center" },
   modalButtonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
-  cancelText: { fontSize: 18, marginTop: 15, color: "#007BFF" },
+  cancelText: { fontSize: 18, marginTop: 15, color: Colors.purple},
 });

@@ -6,7 +6,7 @@ const cors = require("cors");
 const { MongoClient, ObjectId } = require("mongodb");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const mongoUri = process.env.MONGO_URI;
+const mongoUri =  process.env.MONGO_URI;
 const jwtSecret = process.env.JWT_SECRET;
 
 
@@ -1402,36 +1402,60 @@ app.get('/users/:userId', async (req, res) => {
   
   // LIKE POST ROUTE 
 
+ 
+
+
   app.post("/posts/:postId/like", async (req, res) => {
     try {
-      const token = req.headers.authorization?.split(" ")[1];
-      if (!token) return res.status(403).json({ error: "No token provided" });
-  
-      const decoded = jwt.verify(token, jwtSecret);
-      const userId = new ObjectId(decoded.userId);
-      const postId = new ObjectId(req.params.postId);
-  
-      const postsCollection = db.collection("posts");
-  
-      const post = await postsCollection.findOne({ _id: postId });
-      if (!post) return res.status(404).json({ error: "Post not found" });
-  
-      const alreadyLiked = (post.likes || []).some(id => id.toString() === userId.toString());
-  
-      let update;
-      if (alreadyLiked) {
-        update = { $pull: { likes: userId } };
-      } else {
-        update = { $addToSet: { likes: userId } };
-      }
-  
-      await postsCollection.updateOne({ _id: postId }, update);
-      res.json({ message: alreadyLiked ? "Unliked" : "Liked" });
+        const token = req.headers.authorization?.split(" ")[1];
+        if (!token) return res.status(403).json({ error: "No token provided" });
+ 
+ 
+        const decoded = jwt.verify(token, jwtSecret);
+        const userId = new ObjectId(decoded.userId);
+        const postId = new ObjectId(req.params.postId);
+ 
+ 
+        const postsCollection = db.collection("posts");
+ 
+ 
+        // Find the post first
+        const post = await postsCollection.findOne({ _id: postId });
+        if (!post) return res.status(404).json({ error: "Post not found" });
+ 
+ 
+        // Check if user already liked
+        const alreadyLiked = (post.likes || []).some(id => id.equals(userId));
+ 
+ 
+        // Update likes array
+        const updateOperation = alreadyLiked
+            ? { $pull: { likes: userId } }
+            : { $addToSet: { likes: userId } };
+ 
+ 
+        // Perform the update
+        await postsCollection.updateOne({ _id: postId }, updateOperation);
+ 
+ 
+        // Fetch the updated post
+        const updatedPost = await postsCollection.findOne({ _id: postId });
+ 
+ 
+        // Return the full updated post
+        res.json(updatedPost);
+ 
+ 
     } catch (error) {
-      console.error("Error toggling like:", error);
-      res.status(500).json({ error: "Server error" });
+        console.error("Error toggling like:", error);
+        res.status(500).json({ error: "Server error" });
     }
-  });
+ });
+ 
+ 
+ 
+ 
+ 
 
   // VIEW LIKES ON POST 
   app.get("/posts/:postId/likes", async (req, res) => {
@@ -1517,5 +1541,70 @@ app.put("/account/profile-picture", async (req, res) => {
         // await client.close();
     }
 });
+
+
+
+app.get("/collections/:userId", async (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(" ")[1];
+        if (!token) {
+            return res.status(403).json({ message: "No token provided" });
+        }
+ 
+ 
+        // Verify token (for authentication only)
+        try {
+            jwt.verify(token, process.env.JWT_SECRET);
+        } catch (err) {
+            return res.status(403).json({ message: "Invalid or expired token" });
+        }
+ 
+ 
+        const userId = req.params.userId; // Use the requested user's ID, not the token's
+ 
+ 
+        const collectionsCollection = db.collection("Collection");
+        const collections = await collectionsCollection.find({
+            userId: new ObjectId(userId)
+        }).toArray();
+ 
+ 
+        return res.json(collections);
+    } catch (error) {
+        console.error("Error fetching collections:", error);
+        return res.status(500).json({ message: "Internal server error", error: error.message });
+    }
+ });
+ 
+ app.get("/users/:userId/follow-counts", async (req, res) => {
+    try {
+      const { userId } = req.params;
+     
+      const usersCollection = db.collection("User");
+     
+      // Get followers count (users who have this userId in their following array)
+      const followersCount = await usersCollection.countDocuments({
+        following: new ObjectId(userId)
+      });
+     
+      // Get following count (length of the user's following array)
+      const user = await usersCollection.findOne(
+        { _id: new ObjectId(userId) },
+        { projection: { following: 1 } }
+      );
+     
+      const followingCount = user?.following?.length || 0;
+     
+      res.json({
+        followersCount,
+        followingCount
+      });
+     
+    } catch (error) {
+      console.error("Error fetching follow counts:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+ 
   
 app.listen(5000, () => console.log("🚀 Backend API running on port 5000"));

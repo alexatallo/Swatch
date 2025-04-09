@@ -21,12 +21,13 @@ import Slider from '@react-native-community/slider';
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import Ionicons from "react-native-vector-icons/Ionicons";
+import { Colors } from '../src/colors';
 // import ImageColors from 'react-native-image-colors';
 // Constants
 const { width, height } = Dimensions.get("window");
 const colorPickerSize = Math.min(width * 0.8, 350);
 const COLORS = {
-  primary: "#5D3FD3",
+  primary: "#6e3b6e",
   background: "#F8F8F8",
   card: "#FFFFFF",
   text: "#333333",
@@ -155,7 +156,7 @@ export default function SearchScreen({ navigation }) {
       setExtractionError(null);
       setPickedColor(null);
   
-      const response = await fetch('http://35.50.71.204:5001/extract-color', {
+      const response = await fetch(`${API_URL}/extract-color`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -320,7 +321,7 @@ export default function SearchScreen({ navigation }) {
 
   // Component rendering
   if (loading) {
-    return <ActivityIndicator size="large" color={COLORS.primary} style={styles.loader} />;
+    return <ActivityIndicator size="large" color="#E0E0E0" style={styles.loader} />;
   }
 
   return (
@@ -330,12 +331,12 @@ export default function SearchScreen({ navigation }) {
       <View style={styles.topBar}>
         {/* Search Input in place of tabs */}
         <View style={styles.searchInputContainer}>
-          <Ionicons name="search" size={20} color="#6A5ACD" style={styles.searchIcon} />
+          <Ionicons name="search" size={20} color={COLORS.primary} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search polish name..."
             placeholderTextColor="#888"
-            value={searchQuery}
+            value={searchQuery} 
             onChangeText={handleSearch}
           />
         </View>
@@ -346,19 +347,19 @@ export default function SearchScreen({ navigation }) {
             onPress={() => setShowColorPicker(true)} 
             style={styles.iconButton}
           >
-            <Ionicons name="color-palette-outline" size={24} color="#6A5ACD" />
+            <Ionicons name="color-palette-outline" size={24} color={COLORS.primary} />
           </TouchableOpacity>
           <TouchableOpacity 
             onPress={() => setShowColorExtractor(true)} 
             style={styles.iconButton}
           >
-            <Ionicons name="camera-outline" size={24} color="#6A5ACD" />
+            <Ionicons name="camera-outline" size={24} color={COLORS.primary}  />
           </TouchableOpacity>
           <TouchableOpacity 
             onPress={() => setShowFilterModal(true)} 
             style={styles.iconButton}
           >
-            <Ionicons name="filter-outline" size={24} color="#6A5ACD" />
+            <Ionicons name="filter-outline" size={24} color={COLORS.primary}  />
           </TouchableOpacity>
         </View>
       </View>
@@ -372,6 +373,7 @@ export default function SearchScreen({ navigation }) {
 
       {/* Polish List */}
       <FlatList
+      style={styles.flatList}
         ref={flatListRef}
         data={filteredData}
         keyExtractor={(item) => item._id?.toString() || Math.random().toString()}
@@ -534,7 +536,7 @@ export default function SearchScreen({ navigation }) {
             </View>
       </View>
       </View>
-      </Modal>
+    </Modal>
       </SafeAreaView>
     </View>
   );
@@ -635,7 +637,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
-    marginBottom: 10,
+    marginTop: 10,
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 3,
@@ -841,5 +843,76 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: 4,
+  },
+  flatList: {
+    marginTop: 10,
+    flex: 1,
+  },   
+  colorPreviewContainer: {
+    marginTop: 20,
+    width: '100%',
+    padding: 16,
+    backgroundColor: '#FFF9F9',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#FFE6E6',
+  },
+  colorPreviewLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FF85A2',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  colorDisplayBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    padding: 12,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FFE0E0',
+    elevation: 2,
+  },
+  colorCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 3,
+    borderColor: 'white',
+    elevation: 3,
+  },
+  colorInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  colorHex: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  colorSubtext: {
+    fontSize: 14,
+    color: '#FF85A2',
+    marginTop: 4,
+  },
+  checkmarkButton: {
+    alignItems: 'center',
+  },
+  checkmarkCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FF85A2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
+  },
+  checkmarkText: {
+    fontSize: 12,
+    color: '#FF85A2',
+    marginTop: 4,
+    fontWeight: '600',
   },
 });
