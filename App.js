@@ -4,8 +4,6 @@ import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from '@expo/vector-icons';
 import { Platform, TouchableOpacity } from 'react-native';
-import { LogBox } from 'react-native';
-LogBox.ignoreAllLogs();
 import SignUpScreen from "./auth/SignUpScreen";
 import LoginScreen from "./auth/LoginScreen";
 import DashboardScreen from "./auth/DashBoardScreen";
@@ -22,6 +20,11 @@ import FollowingScreen from "./screens/FollowingScreen";
 import AccountScreen from "./screens/AccountScreen";
 import ExploreFeedScreen from "./screens/ExploreFeedScreen";
 import SearchScreen from "./screens/SearchScreen";
+
+// Ignore all log notifications 
+//import { LogBox } from 'react-native';
+// LogBox.ignoreAllLogs();
+ 
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();

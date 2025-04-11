@@ -14,6 +14,9 @@ import axios from "axios";
 import { API_URL } from "@env";
 import { Colors } from '../src/colors';
 
+const windowWidth = Dimensions.get('window').width;
+const isiPad = windowWidth >= 768; 
+
 export default function ExploreFeedScreen({ navigation }) {
   const [visibleComments, setVisibleComments] = useState({});
   const [polishData, setPolishData] = useState([]);
@@ -33,6 +36,9 @@ export default function ExploreFeedScreen({ navigation }) {
   const [likesModalVisible, setLikesModalVisible] = useState(false);
   const [selectedLikes, setSelectedLikes] = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null); 
+
+
+
 
   // Change from polishId: null to:
 const [postData, setPostData] = useState({
@@ -601,6 +607,7 @@ const [postData, setPostData] = useState({
       console.error("Failed to load likes:", err.response?.data || err.message);
     }
   };
+  
 
   return (
     <SafeAreaView style={styles.container}>
@@ -647,6 +654,8 @@ const [postData, setPostData] = useState({
         <FlatList
           key={`list-${listKey}`}
           data={filterPosts()}
+          numColumns={isiPad ? 2 : 1} 
+  columnWrapperStyle={isiPad ? styles.columnWrapper : null}
           refreshing={loading}
           onRefresh={() => {
             setPosts([]);
@@ -1266,9 +1275,9 @@ const [postData, setPostData] = useState({
       color: Colors.purple,
       fontWeight: '600',
     },
-    // List Styles
     listContent: {
       paddingBottom: 80,
+      paddingHorizontal: isiPad ? 8 : 0, 
     },
     emptyState: {
       alignItems: 'center',
@@ -1282,21 +1291,26 @@ const [postData, setPostData] = useState({
       fontSize: 16,
     },
   
-    // Post Styles
     postContainer: {
       backgroundColor: 'white',
       borderRadius: 12,
-      marginHorizontal: 16,
+      marginHorizontal: isiPad ? 8 : 16,
       marginBottom: 16,
-      padding: 16,
+      padding: isiPad ? 16 : 16, // Reduced padding on iPad
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.05,
       shadowRadius: 3,
       elevation: 2,
+      width: isiPad ? '48%' : 'auto', // Changed from 95% to 48%
+      maxWidth: isiPad ? 400 : '100%',
     },
     postHeader: {
       marginBottom: 12,
+    },
+    columnWrapper: {
+      justifyContent: 'space-between',
+      paddingHorizontal: isiPad ? 12 : 0, 
     },
     username: {
       fontWeight: '600',

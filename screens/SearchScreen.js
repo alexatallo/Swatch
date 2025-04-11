@@ -25,6 +25,8 @@ import { Colors } from '../src/colors';
 // import ImageColors from 'react-native-image-colors';
 // Constants
 const { width, height } = Dimensions.get("window");
+const { width: windowWidth, height: windowHeight } = Dimensions.get("window");
+const isiPad = windowWidth >= 768; // iPad starts at 768px width
 const colorPickerSize = Math.min(width * 0.8, 350);
 const COLORS = {
   primary: "#6e3b6e",
@@ -156,7 +158,7 @@ export default function SearchScreen({ navigation }) {
       setExtractionError(null);
       setPickedColor(null);
 
-      const response = await fetch('http://IP-Address/extract-color', {
+      const response = await fetch('http://IP-Address:5001/extract-color', {
         method: 'POST',
         body: formData,
         headers: {
@@ -377,8 +379,8 @@ export default function SearchScreen({ navigation }) {
           ref={flatListRef}
           data={filteredData}
           keyExtractor={(item) => item._id?.toString() || Math.random().toString()}
-          numColumns={2}
-          columnWrapperStyle={styles.row}
+          numColumns={isiPad ? 4 : 2} // 4 columns for iPad, 2 for iPhone
+          columnWrapperStyle={!isiPad && styles.row} // Only apply row style for iPhone
           renderItem={({ item }) => (
             <PolishItem item={item} navigation={navigation} />
           )}
@@ -444,7 +446,9 @@ export default function SearchScreen({ navigation }) {
                   />
                 ))}
               </ScrollView>
+              <ScrollView style={[styles.filterOptions, { maxHeight: isiPad ? height * 0.5 : height * 0.4 }]}>
 
+              </ScrollView>
               <ScrollView style={styles.filterOptions}>
                 {selectedFilterType && filters[selectedFilterType].map((option) => (
                   <FilterOption
@@ -487,7 +491,11 @@ export default function SearchScreen({ navigation }) {
                   <TouchableOpacity onPress={handleImageTap} activeOpacity={1}>
                     <Image
                       source={{ uri: image }}
-                      style={{ width: displaySize.width, height: displaySize.height }}
+                      style={{
+                        width: isiPad ? 500 : 300,
+                        height: isiPad ? 500 : 300,
+                        resizeMode: 'contain'
+                      }}
                       onLayout={(event) => {
                         const { width, height } = event.nativeEvent.layout;
                         setDisplaySize({ width, height });
@@ -513,38 +521,38 @@ export default function SearchScreen({ navigation }) {
                 </View>
               )}
 
-{pickedColor && (
-        <View style={{ marginTop: 20, alignItems: "center" }}>
-          <Text style={{ marginBottom: 10, fontSize: 16, color: '#555' }}>Picked Color:</Text>
-          <View style={{
-            width: 100,
-            height: 100,
-            borderRadius: 50,
-            backgroundColor: pickedColor,
-            borderWidth: 3,
-            borderColor: '#eee',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.2,
-            shadowRadius: 4,
-            elevation: 5,
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}>
-            <Text style={{ 
-              backgroundColor: 'rgba(255,255,255,0.7)', 
-              paddingHorizontal: 10,
-              paddingVertical: 2,
-              borderRadius: 10,
-              overflow: 'hidden',
-              color: '#333',
-              fontWeight: 'bold'
-            }}>
-              {pickedColor}
-            </Text>
-          </View>
-        </View>
-      )}
+              {pickedColor && (
+                <View style={{ marginTop: 20, alignItems: "center" }}>
+                  <Text style={{ marginBottom: 10, fontSize: 16, color: '#555' }}>Picked Color:</Text>
+                  <View style={{
+                    width: 100,
+                    height: 100,
+                    borderRadius: 50,
+                    backgroundColor: pickedColor,
+                    borderWidth: 3,
+                    borderColor: '#eee',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                    elevation: 5,
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                  }}>
+                    <Text style={{
+                      backgroundColor: 'rgba(255,255,255,0.7)',
+                      paddingHorizontal: 10,
+                      paddingVertical: 2,
+                      borderRadius: 10,
+                      overflow: 'hidden',
+                      color: '#333',
+                      fontWeight: 'bold'
+                    }}>
+                      {pickedColor}
+                    </Text>
+                  </View>
+                </View>
+              )}
 
               <View style={styles.imageButtonContainer}>
                 <TouchableOpacity
@@ -680,14 +688,17 @@ const styles = StyleSheet.create({
   },
   row: {
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: isiPad ? 16 : 12,
   },
+
   itemContainer: {
-    width: '48%',
+    width: isiPad ? '23%' : '48%', 
     backgroundColor: COLORS.card,
     borderRadius: 12,
     padding: 12,
     elevation: 1,
+    marginHorizontal: isiPad ? '1%' : 0, 
+    marginBottom: 12,
   },
   itemImage: {
     width: '100%',
@@ -696,13 +707,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   itemName: {
-    fontSize: 14,
+    fontSize: isiPad ? 18 : 14,
     fontWeight: '600',
     color: COLORS.text,
     marginBottom: 4,
   },
   itemBrand: {
-    fontSize: 12,
+    fontSize: isiPad ? 16 : 12,
     color: COLORS.muted,
   },
   modalOverlay: {
@@ -712,7 +723,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContainer: {
-    width: '90%',
+    width: isiPad ? '60%' : '90%',
     maxHeight: '80%',
     backgroundColor: COLORS.card,
     borderRadius: 16,
@@ -731,9 +742,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 20,
     maxHeight: '80%',
+    maxHeight: isiPad ? '85%' : '80%',
   },
   filterModalContainer: {
-    width: '90%',
+    width: isiPad ? '60%' : '90%',
     maxHeight: '80%',
     backgroundColor: COLORS.card,
     borderRadius: 16,
@@ -749,6 +761,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   modalTitle: {
+    fontSize: isiPad ? 22 : 18,
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
@@ -843,11 +856,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   galleryButton: {
-    backgroundColor:  COLORS.primary,
+    backgroundColor: COLORS.primary,
     marginRight: 10,
   },
   cameraButton: {
-    backgroundColor:  COLORS.primary,
+    backgroundColor: COLORS.primary,
   },
   imageButtonText: {
     color: 'white',
@@ -858,7 +871,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: isiPad ? 24 : 16,
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
@@ -872,6 +885,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     marginRight: 12,
+    marginRight: isiPad ? 16 : 12,
   },
   searchIcon: {
     marginRight: 8,
