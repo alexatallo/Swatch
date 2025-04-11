@@ -8,11 +8,16 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { API_URL }  from '@env';
-import {GOOGLE_API}  from '@env'; 
+import {GOOGLE_API}  from '@env';
+
 
 const getToken = async () => {
 return await AsyncStorage.getItem("token");
 };
+
+
+
+
 
 
 
@@ -26,6 +31,10 @@ const dLng = (businessLng - userLng) * radian;
 
 
 
+
+
+
+
 const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
           Math.cos(userLat * radian) * Math.cos(businessLat * radian) *
           Math.sin(dLng / 2) * Math.sin(dLng / 2);
@@ -34,8 +43,16 @@ const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
 
 
 
+
+
+
+
 return R * c; // Distance in km
 };
+
+
+
+
 
 
 
@@ -59,6 +76,10 @@ try {
 
 
 
+
+
+
+
 const OtherAccountScreen = () => {
 const route = useRoute();
 const navigation = useNavigation();
@@ -71,7 +92,7 @@ const [visibleComments, setVisibleComments] = useState({});
 const { item: routeItem } = route.params || {};
 const [userLocation, setUserLocation] = useState(null);
 const [businessLocation, setBusinessLocation] = useState(null);
-const [distance, setDistance] = useState(null); 
+const [distance, setDistance] = useState(null);
   //inventory
   const [isInventoryModalVisible, setIsInventoryModalVisible] = useState(false);
   const [collections, setCollections] = useState([]);
@@ -81,6 +102,10 @@ const [distance, setDistance] = useState(null);
   const [polishData, setPolishData] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [businessId, setBusinessId] = useState(null);
+
+
+
+
 
 
 
@@ -108,6 +133,10 @@ const [state, setState] = useState({
 
 
 
+
+
+
+
 // Memoized values
 const polishLookup = useMemo(() => {
   const lookup = {};
@@ -116,6 +145,8 @@ const polishLookup = useMemo(() => {
   });
   return lookup;
 }, [state.polishData]);
+
+
 
 
 const businessLookup = useMemo(() => {
@@ -127,6 +158,8 @@ const businessLookup = useMemo(() => {
    return acc;
  }, {});
 }, [state.businessData]);
+
+
 
 
 // Add business fetching function
@@ -145,6 +178,10 @@ const fetchBusinesses = async () => {
 
 
 
+
+
+
+
 const updateState = (newState) => {
   if (isMounted.current) {
     setState(prev => ({
@@ -157,21 +194,25 @@ const updateState = (newState) => {
 
 
 
+
+
+
+
 // Helper functions
 const fetchAccountData = async () => {
   try {
     const token = await getToken();
     if (!token) return null;
-  
+ 
     const response = await axios.get(`${API_URL}/account`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-  
+ 
     updateState({
       accountData: response.data?.user,
       currentUserId: response.data?.user?._id
     });
-  
+ 
     return response.data?.user;
   } catch (error) {
     console.error('Account fetch error:', error);
@@ -185,12 +226,12 @@ const fetchAccountData = async () => {
       `${API_URL}/businesses/by-user/${userId}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
-  
+ 
     console.log('🏢 Business API response:', {
       status: response.status,
       hasLocation: !!response.data?.businessLocation
     });
-  
+ 
     return response.data;
   } catch (error) {
     console.error('Business fetch error:', error);
@@ -201,11 +242,15 @@ const fetchAccountData = async () => {
 
 
 
+
+
+
+
 const fetchPolishes = async () => {
   try {
     const token = await getToken();
     if (!token) return;
-  
+ 
     const response = await axios.get(`${API_URL}/polishes`, {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -218,11 +263,15 @@ const fetchPolishes = async () => {
 
 
 
+
+
+
+
 const fetchPosts = async () => {
   try {
     const token = await getToken();
     if (!token || !state.user?._id) return;
-  
+ 
     const response = await axios.get(`${API_URL}/posts/user/${state.user._id}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -237,15 +286,19 @@ const fetchPosts = async () => {
 
 
 
+
+
+
+
 const checkFollowingStatus = async () => {
   try {
     const token = await getToken();
     if (!token || !state.user?._id) return;
-  
+ 
     const response = await axios.get(`${API_URL}/users/is-following/${state.user._id}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-  
+ 
     if (response.data?.isFollowing !== undefined) {
       updateState({ isFollowing: response.data.isFollowing });
     }
@@ -253,6 +306,10 @@ const checkFollowingStatus = async () => {
     console.error("Follow status error:", error);
   }
 };
+
+
+
+
 
 
 
@@ -270,16 +327,19 @@ const calculateRealDistance = async (userLocation, businessLocation) => {
 };
 
 
+
+
 useEffect(() => {
   const loadAllData = async () => {
     try {
       const accountData = await fetchAccountData();
       const userAddress = accountData?.location;
-      
+     
       if (state.user?.isBusiness) {
         const business = await fetchBusinessData(state.user._id);
         const businessAddress = business?.businessLocation;
         fetchCollections(state.user._id);
+
 
         if (userAddress && businessAddress) {
           const userLoc = await geocodeAddress(userAddress);
@@ -289,8 +349,10 @@ useEffect(() => {
         }
       }
 
+
       // Add this line to fetch counts on initial load
-      await fetchUpdatedFollowCounts(); 
+      await fetchUpdatedFollowCounts();
+
 
       updateState({ accountData, loading: false });
       await Promise.all([fetchPolishes(), fetchPosts(), fetchBusinesses()]);
@@ -311,11 +373,21 @@ useEffect(() => {
 
 
 
+
+
+
+
+
+
 useEffect(() => {
   if (userLocation && businessLocation) {
     calculateRealDistance(userLocation, businessLocation);
   }
 }, [userLocation, businessLocation]);
+
+
+
+
 
 
 
@@ -333,11 +405,19 @@ useEffect(() => {
 
 
 
+
+
+
+
 // Handlers
 const handleRefresh = () => {
   updateState({ refreshing: true });
   fetchPosts();
 };
+
+
+
+
 
 
 
@@ -360,7 +440,7 @@ const toggleFollow = async () => {
      // Update both the follow status and counts
     updateState({ isFollowing: !state.isFollowing });
     await fetchUpdatedFollowCounts();
-  
+ 
   } catch (error) {
     console.error("Follow error:", error);
     Alert.alert("Error", "Something went wrong. Please try again.");
@@ -368,6 +448,8 @@ const toggleFollow = async () => {
     updateState({ followLoading: false });
   }
 };
+
+
 const fetchUpdatedFollowCounts = async () => {
   try {
     const token = await getToken();
@@ -375,7 +457,7 @@ const fetchUpdatedFollowCounts = async () => {
       `${API_URL}/users/${state.user._id}/follow-counts`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    
+   
     if (response.data) {
       updateState(prev => ({
         user: {
@@ -402,12 +484,20 @@ const fetchUpdatedFollowCounts = async () => {
 
 
 
+
+
+
+
 const handlePolishNamePress = (polishId) => {
   const item = polishLookup[polishId];
   if (item) {
     navigation.navigate("PolishScreen", { item });
   }
 };
+
+
+
+
 
 
 
@@ -419,17 +509,24 @@ const handleViewFollowers = () => {
 
 
 
+
+
+
+
 const handleViewFollowing = () => {
   navigation.navigate("Following", { userId: state.user._id });
 };
+
 
 const handleBusinessNamePress = async (businessId) => {
   try {
     const token = await AsyncStorage.getItem("token");
 
+
     const response = await axios.get(`${API_URL}/business-user/${businessId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+
 
     if (response.data) {
       const item = response.data;
@@ -441,6 +538,8 @@ const handleBusinessNamePress = async (businessId) => {
     console.error("❌ Error fetching user from business ID:", error);
   }
 };
+
+
 
 
 const toggleLike = async (postId) => {
@@ -466,6 +565,10 @@ const toggleLike = async (postId) => {
 
 
 
+
+
+
+
 const showLikesModal = async (postId) => {
   try {
     const token = await AsyncStorage.getItem("token");
@@ -482,6 +585,10 @@ const showLikesModal = async (postId) => {
 
 
 
+
+
+
+
 // Comment related functions
 const toggleComments = (postId) => {
   setVisibleComments(prev => ({
@@ -493,8 +600,16 @@ const toggleComments = (postId) => {
 
 
 
+
+
+
+
 const submitComment = async (postId, commentText) => {
   if (!commentText || commentText.trim() === "") return;
+
+
+
+
 
 
 
@@ -506,6 +621,10 @@ const submitComment = async (postId, commentText) => {
       { text: commentText },
       { headers: { Authorization: `Bearer ${token}` } }
     );
+
+
+
+
 
 
 
@@ -529,6 +648,8 @@ const submitComment = async (postId, commentText) => {
 };
 
 
+
+
 const updatePostCommentText = (postId, text) => {
   updateState(prev => ({
     databasePosts: prev.databasePosts.map(post =>
@@ -536,6 +657,10 @@ const updatePostCommentText = (postId, text) => {
     )
   }));
 };
+
+
+
+
 
 
 
@@ -554,6 +679,8 @@ const fetchCollections = async (userId) => {
 };
 
 
+
+
  // Add this function to fetch polishes for a collection
  const fetchPolishesForCollection = async (collectionId) => {
    try {
@@ -562,6 +689,8 @@ const fetchCollections = async (userId) => {
      `${API_URL}/collections/${collectionId}/polishes`,
        { headers: { Authorization: `Bearer ${token}` } }
      );
+
+
 
 
      if (response.data.status === "okay" && Array.isArray(response.data.data)) {
@@ -575,10 +704,16 @@ const fetchCollections = async (userId) => {
  };
 
 
+
+
 // Add this handler for search
 const handleSearch = (text) => {
   setSearchQuery(text);
 };
+
+
+
+
 
 
 
@@ -592,21 +727,13 @@ const filteredCollections = useMemo(() => {
 }, [collections, searchQuery]);
 
 
+
+
 // Add this handler for collection selection
 const handleCollectionPress = (collection) => {
  setSelectedCollection(collection);
  fetchPolishesForCollection(collection._id);
 };
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -633,6 +760,8 @@ const renderItem = ({ item }) => (
    )}
 
 
+
+
    {/* Like Button with Count */}
    <View style={styles.postActions}>
      <TouchableOpacity
@@ -652,6 +781,8 @@ const renderItem = ({ item }) => (
      </TouchableOpacity>
 
 
+
+
      {/* Comment Button with Count */}
      <TouchableOpacity
        onPress={() => toggleComments(item._id)}
@@ -669,11 +800,15 @@ const renderItem = ({ item }) => (
    </View>
 
 
+
+
    <Text style={styles.postCaption}>{item.caption}</Text>
 
 
+
+
    <View style={styles.detailsContainer}>
-   <ScrollView 
+   <ScrollView
        horizontal
        showsHorizontalScrollIndicator={false}
        contentContainerStyle={styles.polishScrollContainer}
@@ -689,8 +824,8 @@ const renderItem = ({ item }) => (
      >
        <View
          style={[
-          styles.colorCircle, 
-          { 
+          styles.colorCircle,
+          {
             backgroundColor: polish?.hex || "#ccc",
             borderColor: polish?.hex ? 'rgba(0,0,0,0.2)' : '#999'
           }
@@ -705,14 +840,16 @@ const renderItem = ({ item }) => (
  </ScrollView>
 
 
+
+
  {/* Business name shown under polish, not beside it */}
  {item.businessId && (
-  <TouchableOpacity 
+  <TouchableOpacity
         onPress={() => handleBusinessNamePress(item.businessId)}
         style={[styles.businessDetailItem, styles.businessDetail]}
       >
-        <Ionicons 
-          name="business-outline" 
+        <Ionicons
+          name="business-outline"
           size={16}  // Match color circle size
           color="#333"
           style={styles.iconStyle}
@@ -723,6 +860,7 @@ const renderItem = ({ item }) => (
       </TouchableOpacity>
     )}
   </View>
+
 
    {/* Comments Section */}
    {visibleComments[item._id] && (
@@ -738,6 +876,8 @@ const renderItem = ({ item }) => (
        ) : (
          <Text style={styles.noComments}>No comments yet</Text>
        )}
+
+
 
 
        {/* New Comment Input */}
@@ -765,6 +905,10 @@ const renderItem = ({ item }) => (
 
 
 
+
+
+
+
 if (state.loading) {
   return (
     <View style={styles.loadingContainer}>
@@ -772,6 +916,10 @@ if (state.loading) {
     </View>
   );
 }
+
+
+
+
 
 
 
@@ -787,11 +935,16 @@ if (!state.user) {
 
 
 
+
+
+
+
 return (
   <KeyboardAvoidingView
-    behavior={Platform.OS === "ios" ? "padding" : "height"}
-    style={{ flex: 1 }}
-  >
+  behavior={Platform.OS === "ios" ? "padding" : "height"}
+  style={{ flex: 1 }}
+  keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+>
     <View style={styles.container}>
       {/* New Header - matches AccountScreen style */}
       <View style={styles.header}>
@@ -800,11 +953,11 @@ return (
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-      
+     
           </TouchableOpacity>
            <View style={styles.headerSpacer} />
            <TouchableOpacity style={styles.headerButton}>
-        
+       
           </TouchableOpacity>
         </View>
       </View>
@@ -856,7 +1009,7 @@ return (
     <Text style={{ marginTop: 5, color: '#555' }}>
     <Ionicons name="location" size={16} color="#6e3b6e" style={{ marginRight: 5 }} />
     {(distance * 0.621371).toFixed(2)} miles away
-    </Text> 
+    </Text>
   </>
 )}
            <View
@@ -901,7 +1054,7 @@ return (
        {/* Posts Section */}
       <View style={styles.contentContainer}>
         <Text style={styles.sectionTitle}>
-          {state.user.isBusiness ? "Business Posts" : "Posts"}
+          {state.user.isBusiness ? "Posts" : "Posts"}
         </Text>
          {state.databasePosts.length === 0 ? (
           <View style={styles.emptyContainer}>
@@ -1258,12 +1411,7 @@ followingButtonText: {
 // Content Area
 contentContainer: {
   flex: 1,
-  position: 'absolute',
-  top: 265,
-  left: 20,
-  right: 20,
-  marginTop: 10, 
-  paddingTop: 30, 
+  marginTop: 150, // Keep your top spacing
   paddingHorizontal: 15,
 },
 sectionTitle: {
@@ -1380,6 +1528,7 @@ flatList: {
 },
 flatListContent: {
   paddingBottom: 20,
+  flexGrow: 1, // This ensures the content can scroll
 },
 modalOverlay: {
   flex: 1,
@@ -1718,17 +1867,10 @@ detailsContainer: {
 polishScrollContainer: {
   paddingVertical: 4,
   paddingRight: 16, // Extra padding on the right
-}, 
+},
+
 
 });
 
+
 export default OtherAccountScreen;
-
-
-
-
-
-
-
-
-

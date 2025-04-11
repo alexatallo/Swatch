@@ -82,10 +82,7 @@ app.post("/business/signup", async (req, res) => {
             return res.status(400).json({ error: "Invalid business address format." });
         }
 
-        const websiteRegex = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
-        if (!websiteRegex.test(website)) {
-            return res.status(400).json({ error: "Invalid website format. Must start with http:// or https://." });
-        }
+
 
         const usersCollection = db.collection("User");
         const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
