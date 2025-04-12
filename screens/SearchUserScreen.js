@@ -61,14 +61,14 @@ export default function SearchUserScreen({ navigation }) {
   const applyFilters = useCallback(() => {
     let filtered = [...state.userData];
    
-    // Apply search filter
+    // Applies search filter
     if (state.searchQuery) {
       filtered = filtered.filter((item) =>
         (item.username || "").toLowerCase().includes(state.searchQuery.toLowerCase())
       );
     }
    
-    // Apply business filter
+    // Applies business filter
     if (state.showBusinessOnly) {
       filtered = filtered.filter((item) => item.isBusiness === true);
     }
@@ -138,7 +138,6 @@ export default function SearchUserScreen({ navigation }) {
   };
 
 
-  // Focus effect for data refresh
   useFocusEffect(
     useCallback(() => {
       fetchData();
@@ -146,13 +145,11 @@ export default function SearchUserScreen({ navigation }) {
   );
 
 
-  // Apply filters when search criteria changes
   useEffect(() => {
     applyFilters();
   }, [state.searchQuery, state.showBusinessOnly, applyFilters]);
 
 
-  // Handlers
   const handleSearch = (text) => {
     setState(prev => ({ ...prev, searchQuery: text }));
   };
@@ -177,7 +174,6 @@ export default function SearchUserScreen({ navigation }) {
   };
 
 
-  // Loading state
   if (state.loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -189,10 +185,10 @@ export default function SearchUserScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Top Bar with Search and Actions */}
+   
       <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
-        {/* Search Input */}
+      
         <View style={styles.searchInputContainer}>
           <Ionicons name="search" size={20} color="#5D3FD3" style={styles.searchIcon} />
           <TextInput
@@ -205,7 +201,7 @@ export default function SearchUserScreen({ navigation }) {
           />
         </View>
  
-        {/* Right Action Button */}
+      
         <View style={styles.actionsRight}>
         <TouchableOpacity
   onPress={handleBusinessToggle}
@@ -223,7 +219,6 @@ export default function SearchUserScreen({ navigation }) {
       </View>
 
 
-      {/* Clear Filters Button */}
       {(state.searchQuery || state.showBusinessOnly) && (
         <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
           <Text style={styles.clearButtonText}>Clear Filters</Text>
@@ -231,7 +226,6 @@ export default function SearchUserScreen({ navigation }) {
       )}
 
 
-      {/* User List */}
       <FlatList
         ref={flatListRef}
         data={state.filteredData}
@@ -357,10 +351,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
-    // Remove background and shadow properties
+ 
     backgroundColor: 'transparent',
     elevation: 0,
-    // Remove circular shape properties
     width: 'auto',
     height: 'auto',
     borderRadius: 0,

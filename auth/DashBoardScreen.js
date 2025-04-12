@@ -21,7 +21,6 @@ export default function DashboardScreen({ route, navigation }) {
     };
     fetchUserData();
   }, []);
-  
   return (
     <View style={{ padding: 20 }}>
       <Text>Welcome, {user?.email || "Loading..."}</Text>

@@ -119,7 +119,7 @@ const [state, setState] = useState({
   accountData: null,
   user: {
     ...routeItem,
-    followersCount: routeItem.followersCount || 0,  // Initialize with route data
+    followersCount: routeItem.followersCount || 0,  
     followingCount: routeItem.followingCount || 0
   },
   distance: null,
@@ -137,7 +137,6 @@ const [state, setState] = useState({
 
 
 
-// Memoized values
 const polishLookup = useMemo(() => {
   const lookup = {};
   state.polishData.forEach(polish => {
@@ -350,7 +349,7 @@ useEffect(() => {
       }
 
 
-      // Add this line to fetch counts on initial load
+     
       await fetchUpdatedFollowCounts();
 
 
@@ -437,7 +436,7 @@ const toggleFollow = async () => {
       {},
       { headers: { Authorization: `Bearer ${token}` } }
     );
-     // Update both the follow status and counts
+     
     updateState({ isFollowing: !state.isFollowing });
     await fetchUpdatedFollowCounts();
  
@@ -461,7 +460,7 @@ const fetchUpdatedFollowCounts = async () => {
     if (response.data) {
       updateState(prev => ({
         user: {
-          ...prev.user,  // Keep existing user properties
+          ...prev.user,  
           followersCount: response.data.followersCount || 0,
           followingCount: response.data.followingCount || 0
         }
@@ -551,7 +550,7 @@ const toggleLike = async (postId) => {
       {},
       { headers: { Authorization: `Bearer ${token}` } }
     );
-     // Update state with the returned post data
+    
     updateState(prev => ({
       databasePosts: prev.databasePosts.map(post =>
         post._id === postId ? response.data : post
@@ -589,7 +588,7 @@ const showLikesModal = async (postId) => {
 
 
 
-// Comment related functions
+
 const toggleComments = (postId) => {
   setVisibleComments(prev => ({
     ...prev,
@@ -661,15 +660,11 @@ const updatePostCommentText = (postId, text) => {
 
 
 
-
-
-
-
 const fetchCollections = async (userId) => {
  try {
      const token = await getToken();
      const response = await axios.get(
-         `${API_URL}/collections/${userId}`, // Use the target user's ID
+         `${API_URL}/collections/${userId}`, 
          { headers: { Authorization: `Bearer ${token}` } }
      );
      setCollections(response.data || []);
@@ -681,7 +676,6 @@ const fetchCollections = async (userId) => {
 
 
 
- // Add this function to fetch polishes for a collection
  const fetchPolishesForCollection = async (collectionId) => {
    try {
      const token = await getToken();
@@ -706,7 +700,7 @@ const fetchCollections = async (userId) => {
 
 
 
-// Add this handler for search
+
 const handleSearch = (text) => {
   setSearchQuery(text);
 };
@@ -718,7 +712,7 @@ const handleSearch = (text) => {
 
 
 
-// Add this filtered collections calculation
+
 const filteredCollections = useMemo(() => {
  if (!searchQuery) return collections;
  return collections.filter(collection =>
@@ -729,7 +723,7 @@ const filteredCollections = useMemo(() => {
 
 
 
-// Add this handler for collection selection
+
 const handleCollectionPress = (collection) => {
  setSelectedCollection(collection);
  fetchPolishesForCollection(collection._id);
@@ -742,7 +736,7 @@ const handleCollectionPress = (collection) => {
 
 
 
-// Render functions
+
 const renderItem = ({ item }) => (
  <View style={styles.postCard}>
    {item.photoUri ? (
@@ -762,7 +756,6 @@ const renderItem = ({ item }) => (
 
 
 
-   {/* Like Button with Count */}
    <View style={styles.postActions}>
      <TouchableOpacity
        onPress={() => toggleLike(item._id)}
@@ -783,7 +776,7 @@ const renderItem = ({ item }) => (
 
 
 
-     {/* Comment Button with Count */}
+    
      <TouchableOpacity
        onPress={() => toggleComments(item._id)}
        style={styles.commentButton}
@@ -842,7 +835,7 @@ const renderItem = ({ item }) => (
 
 
 
- {/* Business name shown under polish, not beside it */}
+ 
  {item.businessId && (
   <TouchableOpacity
         onPress={() => handleBusinessNamePress(item.businessId)}
@@ -850,7 +843,7 @@ const renderItem = ({ item }) => (
       >
         <Ionicons
           name="business-outline"
-          size={16}  // Match color circle size
+          size={16}  
           color="#333"
           style={styles.iconStyle}
         />
@@ -862,10 +855,8 @@ const renderItem = ({ item }) => (
   </View>
 
 
-   {/* Comments Section */}
    {visibleComments[item._id] && (
      <View style={styles.commentsContainer}>
-       {/* Existing Comments */}
        {item.comments && item.comments.length > 0 ? (
          item.comments.map((comment, idx) => (
            <View key={idx} style={styles.comment}>
@@ -877,10 +868,6 @@ const renderItem = ({ item }) => (
          <Text style={styles.noComments}>No comments yet</Text>
        )}
 
-
-
-
-       {/* New Comment Input */}
        <View style={styles.commentInputContainer}>
          <TextInput
            style={styles.commentInput}
@@ -946,7 +933,6 @@ return (
   keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
 >
     <View style={styles.container}>
-      {/* New Header - matches AccountScreen style */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity
@@ -961,7 +947,7 @@ return (
           </TouchableOpacity>
         </View>
       </View>
-       {/* Profile Card - similar to AccountScreen */}
+
       <View style={styles.profileCard}>
         <View style={styles.profileHeader}>
           <View style={styles.profilePicContainer}>
@@ -1004,7 +990,7 @@ return (
          <View style={styles.profileInfo}>
           <Text style={styles.username}>@{state.user.username}</Text>
           {state.user.bio && <Text style={styles.bio}>{state.user.bio}</Text>}
-          {distance != null && state?.user?.isBusiness && (  // Checks for both null & undefined
+          {distance != null && state?.user?.isBusiness && ( 
   <>
     <Text style={{ marginTop: 5, color: '#555' }}>
     <Ionicons name="location" size={16} color="#6e3b6e" style={{ marginRight: 5 }} />
@@ -1024,7 +1010,7 @@ return (
           </View>
         </View>
       </View>
-       {/* Follow Button */}
+    
       <View style={styles.followButtonContainer}>
         <TouchableOpacity
           style={[
@@ -1051,7 +1037,6 @@ return (
           )}
         </TouchableOpacity>
       </View>
-       {/* Posts Section */}
       <View style={styles.contentContainer}>
         <Text style={styles.sectionTitle}>
           {state.user.isBusiness ? "Posts" : "Posts"}
@@ -1077,7 +1062,7 @@ return (
           />
         )}
       </View>
-       {/* Likes Modal */}
+     
       <Modal
         visible={likesModalVisible}
         transparent={true}
@@ -1108,7 +1093,6 @@ return (
           </View>
         </View>
       </Modal>
-       {/* Inventory Button */}
       {state.user?.isBusiness && (
         <TouchableOpacity
           style={styles.inventoryButton}
@@ -1117,7 +1101,7 @@ return (
           <Text style={styles.inventoryButtonText}>View Inventory</Text>
         </TouchableOpacity>
       )}
-       {/* Inventory Modal */}
+     
       <Modal
         visible={isInventoryModalVisible}
         transparent={true}
@@ -1198,8 +1182,8 @@ return (
                       style={styles.polishCard}
                       onPress={() => {
                         setIsInventoryModalVisible(false);
-                        setSelectedCollection(null);// 👈 close modal
-                        navigation.navigate("PolishScreen", { item }); // then navigate
+                        setSelectedCollection(null);
+                        navigation.navigate("PolishScreen", { item }); 
                       }}
                     >
                       <Image
@@ -1250,7 +1234,6 @@ container: {
   flex: 1,
   backgroundColor: "#f8f8f8",
 },
-// New Header Styles
 header: {
   backgroundColor: '#6e3b6e',
   paddingTop: 50,
@@ -1278,7 +1261,6 @@ headerButton: {
 backButton: {
   padding: 5,
 },
-// Profile Card Styles
 profileCard: {
   position: 'absolute',
   top: 70,
@@ -1408,10 +1390,9 @@ followButtonText: {
 followingButtonText: {
   color: '#555',
 },
-// Content Area
 contentContainer: {
   flex: 1,
-  marginTop: 150, // Keep your top spacing
+  marginTop: 150, 
   paddingHorizontal: 15,
 },
 sectionTitle: {
@@ -1528,7 +1509,7 @@ flatList: {
 },
 flatListContent: {
   paddingBottom: 20,
-  flexGrow: 1, // This ensures the content can scroll
+  flexGrow: 1, 
 },
 modalOverlay: {
   flex: 1,
@@ -1620,7 +1601,7 @@ emptyText: {
   fontSize: 16,
   color: '#888',
 },
-// Comment Styles
+
 postActions: {
   flexDirection: 'row',
   alignItems: 'center',
@@ -1765,7 +1746,7 @@ colorCircle: {
  width: 16,
  height: 16,
  borderRadius: 8,
- marginRight: 8,  // Match icon margin
+ marginRight: 8,
 },
 postDetails: {
  fontSize: 14,
@@ -1848,25 +1829,25 @@ businessDetailItem: {
   paddingHorizontal: 10,
   marginRight: 8,
   height: 32,
-  alignSelf: 'flex-start', // 🛠️ prevents full-width stretching
+  alignSelf: 'flex-start', 
 },
 businessDetail: {
- marginTop: 4,  // Add slight separation from polish items
+ marginTop: 4, 
 },
 detailText: {
   fontSize: 12,
   color: '#333',
-  maxWidth: 120, // Limit text width
+  maxWidth: 120,
 },
 iconStyle: {
- marginRight: 8, // Adds 8px space between icon and text
+ marginRight: 8,
 },
 detailsContainer: {
- marginTop: 12,  // Add some space from the caption
+ marginTop: 12,  
 },
 polishScrollContainer: {
   paddingVertical: 4,
-  paddingRight: 16, // Extra padding on the right
+  paddingRight: 16, 
 },
 
 

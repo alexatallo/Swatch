@@ -10,5 +10,4 @@ if (Platform.OS === "web") {
     removeItem: async (key) => localStorage.removeItem(key),
   };
 }
-
 registerRootComponent(App);

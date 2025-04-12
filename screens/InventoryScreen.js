@@ -70,7 +70,7 @@ const InventoryScreen = () => {
     const getUniqueCollections = () => {
         const collections = new Set();
         polishData.forEach((item) => {
-            collections.add(item.collection || "Uncategorized"); // Handle missing collection names
+            collections.add(item.collection || "Uncategorized"); 
         });
         return Array.from(collections);
     };
@@ -94,13 +94,13 @@ const InventoryScreen = () => {
                 return;
             }
 
-            // Assuming the collection name is "Inventory"
+           
             const collectionName = "Inventory";
 
-            // Post the polish ID directly to the inventory collection
+           
             await axios.post(
                 `${API_URL}/inventory`,
-                { polishId: item._id }, // Single polish ID
+                { polishId: item._id },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
@@ -122,7 +122,7 @@ const InventoryScreen = () => {
                 return;
             }
 
-            // Fetch polishes associated with the collection
+          
             const polishResponse = await axios.get(`${API_URL}/polishes?collection=${collectionName}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -139,10 +139,9 @@ const InventoryScreen = () => {
                 return;
             }
 
-            // Ensure correct field names when sending data
             const collectionData = {
-                collectionName: collectionName, // Match backend expected field
-                polishes: polishIds // Backend expects "polishes", not "polishIds"
+                collectionName: collectionName, 
+                polishes: polishIds 
             };
 
             const response = await axios.post(
@@ -165,7 +164,7 @@ const InventoryScreen = () => {
     
     const applyFilters = useCallback(
         (search = searchQuery) => {
-            // If no search, show full list
+            
             if (!search) {
                 setFilteredPolishes(polishData);
                 return;
@@ -185,7 +184,7 @@ const InventoryScreen = () => {
 
     const handleSearch = (text) => {
         setSearchQuery(text);
-        applyFilters(text); // Use the latest search input
+        applyFilters(text);
     };
 
     const clearFilters = () => {
@@ -208,9 +207,7 @@ const InventoryScreen = () => {
             </View>
           ) : (
             <>
-              {/* Header Section */}
-    
-              {/* Action Buttons */}
+             
               <View style={styles.actionRow}>
                 <TouchableOpacity
                   style={styles.collectionButton}

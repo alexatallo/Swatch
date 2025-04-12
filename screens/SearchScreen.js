@@ -22,7 +22,6 @@ import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { Colors } from '../src/colors';
-// import ImageColors from 'react-native-image-colors';
 // Constants
 const { width, height } = Dimensions.get("window");
 const { width: windowWidth, height: windowHeight } = Dimensions.get("window");
@@ -86,8 +85,8 @@ export default function SearchScreen({ navigation }) {
   const [extractionError, setExtractionError] = useState(null);
 
   //color extractor states
-  const [image, setImage] = useState(null); // Store selected image URI
-  const [imageSize, setImageSize] = useState(null); // Store original image size
+  const [image, setImage] = useState(null); // Stores selected image URI
+  const [imageSize, setImageSize] = useState(null); // Stores original image size
   const [displaySize, setDisplaySize] = useState({ width: 300, height: 300 }); // Displayed image size
   const [tapLocation, setTapLocation] = useState(null); // Store tap coordinates
   const [pickedColor, setPickedColor] = useState(null); // Store picked color
@@ -168,7 +167,7 @@ export default function SearchScreen({ navigation }) {
       });
 
       const responseText = await response.text();
-      const data = JSON.parse(responseText); // Handle potential malformed JSON
+      const data = JSON.parse(responseText); 
 
       if (!response.ok) {
         throw new Error(data.error || "Server error");
@@ -201,7 +200,7 @@ export default function SearchScreen({ navigation }) {
     Type: ['Infinite Shine', 'RapiDry', 'Gel Nail Polish', 'Nail Lacquer', 'Lacquer & Gel'],
   };
 
-  // Memoized values
+ 
   const hasActiveFilters = useMemo(() => (
     searchQuery ||
     selectedColor ||
@@ -277,7 +276,7 @@ export default function SearchScreen({ navigation }) {
     if (selectedColorFamily.length > 0) {
       results = results.filter(p =>
         selectedColorFamily.some(f =>
-          p["color family"]?.toLowerCase().includes(f.toLowerCase()) // Updated field name
+          p["color family"]?.toLowerCase().includes(f.toLowerCase()) 
         )
       );
     }
@@ -321,7 +320,7 @@ export default function SearchScreen({ navigation }) {
     }
   };
 
-  // Component rendering
+  
   if (loading) {
     return <ActivityIndicator size="large" color="#E0E0E0" style={styles.loader} />;
   }
@@ -331,7 +330,7 @@ export default function SearchScreen({ navigation }) {
       {/* Search Bar */}
       <SafeAreaView style={styles.container}>
         <View style={styles.topBar}>
-          {/* Search Input in place of tabs */}
+         
           <View style={styles.searchInputContainer}>
             <Ionicons name="search" size={20} color={COLORS.primary} style={styles.searchIcon} />
             <TextInput
@@ -343,7 +342,7 @@ export default function SearchScreen({ navigation }) {
             />
           </View>
 
-          {/* Right Action Buttons */}
+          
           <View style={styles.actionsRight}>
             <TouchableOpacity
               onPress={() => setShowColorPicker(true)}
@@ -366,21 +365,21 @@ export default function SearchScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Clear Filters Button */}
+        
         {hasActiveFilters && (
           <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
             <Text style={styles.clearButtonText}>Clear Filters</Text>
           </TouchableOpacity>
         )}
 
-        {/* Polish List */}
+       
         <FlatList
           style={styles.flatList}
           ref={flatListRef}
           data={filteredData}
           keyExtractor={(item) => item._id?.toString() || Math.random().toString()}
-          numColumns={isiPad ? 4 : 2} // 4 columns for iPad, 2 for iPhone
-          columnWrapperStyle={!isiPad && styles.row} // Only apply row style for iPhone
+          numColumns={isiPad ? 4 : 2} 
+          columnWrapperStyle={!isiPad && styles.row} 
           renderItem={({ item }) => (
             <PolishItem item={item} navigation={navigation} />
           )}
@@ -503,7 +502,7 @@ export default function SearchScreen({ navigation }) {
                     />
                   </TouchableOpacity>
 
-                  {/* Display tap location indicator */}
+                  
                   {tapLocation && (
                     <View
                       style={{
@@ -805,7 +804,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   filterTab: {
-    marginHorizontal: 12, // Space between tabs
+    marginHorizontal: 12, 
     paddingVertical: 8,
   },
   filterTabText: {

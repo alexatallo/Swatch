@@ -61,22 +61,22 @@ export default function ClientAccount({ navigation }) {
     }
   };
 
-  // Add these functions to your component
+
   const handleProfilePicUpload = async () => {
     try {
-      // Request permissions
+
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         alert('Permission to access camera roll is required!');
         return;
       }
 
-      // Launch image picker
+    
       let result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
-        aspect: [1, 1],  // Square aspect ratio
-        quality: 0.7,    // 70% quality to reduce file size
+        aspect: [1, 1], 
+        quality: 0.7,    
       });
 
       if (!result.canceled && result.assets[0].uri) {
@@ -102,7 +102,6 @@ export default function ClientAccount({ navigation }) {
       style={Platform.OS === "web" ? { height: "100vh" } : null}
     >
 
-      {/* Profile section */}
       <View style={styles.profileContainer}>
         <View style={styles.profileRow}>
           <TouchableOpacity onPress={handleProfilePicUpload}>
@@ -127,7 +126,7 @@ export default function ClientAccount({ navigation }) {
 
 
 
-      {/* User Info Section */}
+   
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Ionicons name="person-circle-outline" size={24} color="#6e3b6e" />

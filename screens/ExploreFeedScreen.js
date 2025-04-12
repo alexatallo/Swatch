@@ -39,8 +39,6 @@ export default function ExploreFeedScreen({ navigation }) {
 
 
 
-
-  // Change from polishId: null to:
 const [postData, setPostData] = useState({
   caption: "",
   nailColor: "",
@@ -64,12 +62,12 @@ const [postData, setPostData] = useState({
   const [isFollowing, setIsFollowing] = useState(false);
   useFocusEffect(
     useCallback(() => {
-      // Reset states when screen comes into focus
+    
       setPosts([]);
       setPage(1);
       setHasMorePosts(true);
 
-      // Fetch fresh data
+  
       fetchPosts(1);
       fetchPolishes(1);
       fetchBusinesses(1);
@@ -99,13 +97,13 @@ const [postData, setPostData] = useState({
   const filterPosts = useCallback(() => {
     if (showFollowingPosts) {
       if (followingIds.length === 0) {
-        return []; // Return empty array if not following anyone
+        return [];
       }
       return posts.filter(post =>
         followingIds.includes(post.userId.toString())
       );
     }
-    return posts; // Return all posts when not filtering
+    return posts;
   }, [showFollowingPosts, followingIds, posts]);
 
   const fetchPolishes = async (pageNum = 1, limit = 10) => {
@@ -134,7 +132,7 @@ const [postData, setPostData] = useState({
         setFilteredPolishData((prev) => [...prev, ...response.data.data]);
 
         if (response.data.data.length < limit) {
-          setHasMorePolishes(false); // No more pages to load
+          setHasMorePolishes(false);
         }
       } else {
         console.error("Unexpected response format:", response.data);
@@ -154,13 +152,13 @@ const [postData, setPostData] = useState({
 
   const handleSearch = (text) => {
     setSearchQuery(text);
-    setCurrentPage(1); // Reset pagination
-    applyFilters(text); // Filter the data
+    setCurrentPage(1); 
+    applyFilters(text); 
   };
 
   const handleAddPolishPress = () => {
-    setModalVisible(false); // Close the first modal
-    setPolishModalVisible(true); // Open the second modal
+    setModalVisible(false); 
+    setPolishModalVisible(true); 
   };
 
   const handleAddBusinessPress = () => {
@@ -182,7 +180,7 @@ const [postData, setPostData] = useState({
 
   const applyFilters = useCallback(
     (search = searchQuery) => {
-      // If no color and no search, show full list
+      
       if (!search) {
         setFilteredPolishData(polishData);
         return;
@@ -231,7 +229,7 @@ const [postData, setPostData] = useState({
       }
     } catch (error) {
       console.error("Error fetching businesses:", error);
-      // Optionally show error to user
+      
     } finally {
       setLoading(false);
     }
@@ -247,8 +245,8 @@ const [postData, setPostData] = useState({
 
   const handleBusinessSearch = (text) => {
     setBusinessSearchQuery(text);
-    setCurrentPage(1); // Reset pagination
-    applyBusinessFilters(text); // Filter the data
+    setCurrentPage(1); 
+    applyBusinessFilters(text); 
   };
 
   const applyBusinessFilters = useCallback(
@@ -259,11 +257,9 @@ const [postData, setPostData] = useState({
       }
 
       const filtered = businessData.filter((business) => {
-        // Search both businessName and name fields if they exist
+        
         const nameMatch = business.businessName?.toLowerCase().includes(search.toLowerCase()) ||
           business.name?.toLowerCase().includes(search.toLowerCase());
-
-        // Optionally search other fields like location if needed
         const locationMatch = business.businessLocation?.toLowerCase().includes(search.toLowerCase());
 
         return nameMatch || locationMatch;
@@ -277,7 +273,7 @@ const [postData, setPostData] = useState({
     [businessSearchQuery, businessData]
   );
 
-  // Replace handleBusinessNamePress with:
+  
   const handleBusinessNamePress = async (businessId) => {
     try {
       const token = await AsyncStorage.getItem("token");
@@ -290,10 +286,10 @@ const [postData, setPostData] = useState({
         const item = response.data;
         navigation.navigate("OtherAccount", { item });
       } else {
-        console.error("❌ Unexpected API response:", response.data);
+        console.error(" Unexpected API response:", response.data);
       }
     } catch (error) {
-      console.error("❌ Error fetching user from business ID:", error);
+      console.error(" Error fetching user from business ID:", error);
     }
   };
   
@@ -317,7 +313,6 @@ const [postData, setPostData] = useState({
       });
 
       if (response.data && response.data.data) {
-        // Always replace posts when pageNum is 1 (fresh load)
         if (pageNum === 1) {
           setPosts(response.data.data);
         } else {
@@ -330,10 +325,10 @@ const [postData, setPostData] = useState({
 
         setPage(pageNum + 1);
       } else {
-        console.error("❌ Unexpected API response:", response.data);
+        console.error("Unexpected API response:", response.data);
       }
     } catch (error) {
-      console.error("❌ Error fetching posts:", error.response ? error.response.data : error.message);
+      console.error("Error fetching posts:", error.response ? error.response.data : error.message);
     } finally {
       setLoading(false);
     }
@@ -449,7 +444,7 @@ const [postData, setPostData] = useState({
         `${API_URL}/posts`,
         {
           caption: postData.caption,
-          polishIds: postData.polishArray, // Changed field name
+          polishIds: postData.polishArray, 
           businessId: postData.businessId,
           photoUri: base64Image || postData.photoUri,
         },
@@ -486,7 +481,7 @@ const [postData, setPostData] = useState({
     setModalVisible(false);
     setPostData({ 
       caption: "", 
-      polishArray: [], // Reset to empty array
+      polishArray: [], 
       businessId: "", 
       photoUri: null 
     });
@@ -576,7 +571,7 @@ const [postData, setPostData] = useState({
         headers: { Authorization: `Bearer ${token}` },
       });
   
-      // Use functional update to minimize re-renders
+      
       setPosts(prevPosts => 
         prevPosts.map(post => 
           post._id === postId
@@ -585,7 +580,7 @@ const [postData, setPostData] = useState({
                 likes: post.likes?.includes(currentUserId)
                   ? post.likes.filter(id => id !== currentUserId)
                   : [...(post.likes || []), currentUserId],
-                _version: (post._version || 0) + 1 // Add version tracking
+                _version: (post._version || 0) + 1 
               }
             : post
         )
@@ -611,9 +606,9 @@ const [postData, setPostData] = useState({
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header with title and search button */}
+ 
       <View style={styles.topBar}>
-  {/* Left: Explore / Following toggle */}
+
   <View style={styles.tabToggle}>
     <TouchableOpacity onPress={() => {
       setShowFollowingPosts(false);
@@ -634,7 +629,7 @@ const [postData, setPostData] = useState({
     </TouchableOpacity>
   </View>
 
-  {/* Right: Add + Search */}
+
   <View style={styles.actionsRight}>
     <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.iconButton}>
       <Ionicons name="add-circle-outline" size={26} color={Colors.purple} />
@@ -646,7 +641,7 @@ const [postData, setPostData] = useState({
 </View>
 
   
-      {/* Posts List */}
+      
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
@@ -684,12 +679,12 @@ const [postData, setPostData] = useState({
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => (
             <View style={styles.postContainer}>
-              {/* Post Header */}
+           
               <View style={styles.postHeader}>
                 <Text style={styles.username}>@{item.username}</Text>
               </View>
   
-              {/* Post Image */}
+
               <TouchableWithoutFeedback onPress={() => handleImagePress(item)}>
                 {item.photoUri ? (
                   <Image 
@@ -703,9 +698,9 @@ const [postData, setPostData] = useState({
                 )}
               </TouchableWithoutFeedback>
   
-              {/* Post Actions */}
+             
 <View style={styles.postActions}>
-  {/* Like Button with Count */}
+
   <TouchableOpacity 
     onPress={() => toggleLike(item._id)} 
     style={styles.likeButton}
@@ -722,7 +717,7 @@ const [postData, setPostData] = useState({
     </Text>
     </TouchableOpacity>
 
-  {/* Comment Button with Count */}
+ 
   <TouchableOpacity 
     onPress={() => toggleComments(item._id)} 
     style={[styles.commentButton, styles.commentButton]}
@@ -739,13 +734,12 @@ const [postData, setPostData] = useState({
 </View>
               
   
-              {/* Caption */}
+            
               {item.caption && (
                 <Text style={styles.caption}>{item.caption}</Text>
               )}
-  
-{/* Polish & Business Details */}
-{/* Polish & Business Details */}
+
+
 <View style={styles.detailsContainer}> 
   <ScrollView 
     horizontal
@@ -777,7 +771,7 @@ const [postData, setPostData] = useState({
     })}
   </ScrollView>
 
-  {/* Business Name and Icon */}
+
   {item.businessId && (
     <TouchableOpacity 
       onPress={() => handleBusinessNamePress(item.businessId)}
@@ -785,7 +779,7 @@ const [postData, setPostData] = useState({
     >
       <Ionicons 
         name="business-outline" 
-        size={16}  // Match color circle size
+        size={16}  
         color="#333"
         style={styles.iconStyle}
       />
@@ -876,7 +870,6 @@ const [postData, setPostData] = useState({
         </View>
       </Modal>
   
-      {/* Create Post Modal */}
 <Modal visible={modalVisible} transparent animationType="fade">
   <TouchableWithoutFeedback
     onPress={() => {
@@ -895,7 +888,7 @@ const [postData, setPostData] = useState({
                 </TouchableOpacity>
         </View>
 
-        {/* Image Selection and Preview */}
+
         <View style={styles.mediaSection}>
           {postData.photoUri ? (
             <Image source={{ uri: postData.photoUri }} style={styles.imagePreview} />
@@ -918,7 +911,7 @@ const [postData, setPostData] = useState({
           </View>
         </View>
 
-        {/* Caption Input */}
+      
         <TextInput
           style={styles.input}
           placeholder="Add Caption"
@@ -929,7 +922,6 @@ const [postData, setPostData] = useState({
           onChangeText={(text) => setPostData((prev) => ({ ...prev, caption: text }))}
         />
 
-        {/* Business Selection */}
         <TouchableOpacity
           style={styles.tagButton}
           onPress={handleAddBusinessPress}
@@ -941,7 +933,6 @@ const [postData, setPostData] = useState({
           <Ionicons name="chevron-forward" size={16} color="#999" />
         </TouchableOpacity>
 
-        {/* Nail Polish Selection */}
 <TouchableOpacity
   style={styles.tagButton}
   onPress={handleAddPolishPress}
@@ -955,7 +946,6 @@ const [postData, setPostData] = useState({
   <Ionicons name="chevron-forward" size={16} color="#999" />
 </TouchableOpacity>
 
-        {/* Submit Button */}
         <TouchableOpacity 
           onPress={submitPost} 
           style={[
@@ -1019,7 +1009,7 @@ const [postData, setPostData] = useState({
   ListFooterComponent={
     <>
       {loading && <ActivityIndicator size="small" color="#E0E0E0"/>}
-      {/* Add spacing before Done button */}
+    
       <View style={{ height: 16 }} />
     </>
   }
@@ -1181,7 +1171,7 @@ const [postData, setPostData] = useState({
         </TouchableWithoutFeedback>
       </Modal>
   
-      {/* Image Zoom Modal */}
+  
       {selectedImage && selectedImage.photoUri && (
   <Modal
     visible={isSelectedImageVisible}
@@ -1226,7 +1216,7 @@ const [postData, setPostData] = useState({
   );
 };
   const styles = StyleSheet.create({
-    // Container Styles
+    
     container: {
       flex: 1,
       backgroundColor: '#f8f9fa',
@@ -1245,7 +1235,7 @@ const [postData, setPostData] = useState({
     },
    
   
-    // Filter Styles
+    
     filterContainer: {
       paddingHorizontal: 16,
       marginBottom: 8,
@@ -1296,13 +1286,13 @@ const [postData, setPostData] = useState({
       borderRadius: 12,
       marginHorizontal: isiPad ? 8 : 16,
       marginBottom: 16,
-      padding: isiPad ? 16 : 16, // Reduced padding on iPad
+      padding: isiPad ? 16 : 16, 
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.05,
       shadowRadius: 3,
       elevation: 2,
-      width: isiPad ? '48%' : 'auto', // Changed from 95% to 48%
+      width: isiPad ? '48%' : 'auto', 
       maxWidth: isiPad ? 400 : '100%',
     },
     postHeader: {
@@ -1354,19 +1344,18 @@ const [postData, setPostData] = useState({
       fontSize: 14,
       color: '#333',
       marginRight: 7,
-    },
+    }, 
     caption: {
       marginTop: 8,
       fontSize: 15,
       color: '#333',
     },
-    // Details Styles
     detailsContainer: {
-      marginTop: 12,  // Add some space from the caption
+      marginTop: 12, 
     },
     polishScrollContainer: {
       paddingVertical: 4,
-      paddingRight: 16, // Extra padding on the right
+      paddingRight: 16, 
     }, 
     detailItem: {
       flexDirection: 'row',
@@ -1375,8 +1364,8 @@ const [postData, setPostData] = useState({
       borderRadius: 16,
       paddingVertical: 6,
       paddingHorizontal: 10,
-      marginRight: 8, // Space between items
-      height: 32, // Fixed height for consistency
+      marginRight: 8, 
+      height: 32, 
     },
     businessDetailItem: {
       flexDirection: 'row',
@@ -1387,7 +1376,7 @@ const [postData, setPostData] = useState({
       paddingHorizontal: 10,
       marginRight: 8,
       height: 32,
-      alignSelf: 'flex-start', // 🛠️ prevents full-width stretching
+      alignSelf: 'flex-start',
     },
     
     colorCircle: {
@@ -1400,9 +1389,9 @@ const [postData, setPostData] = useState({
     detailText: {
       fontSize: 12,
       color: '#333',
-      maxWidth: 120, // Limit text width
+      maxWidth: 120, 
     },
-    // Comments Styles
+   
     commentsContainer: {
       marginTop: 12,
       borderTopWidth: 1,
@@ -1457,7 +1446,7 @@ const [postData, setPostData] = useState({
   
     
   
-    // Modal Styles
+   
     modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.5)',
@@ -1475,7 +1464,7 @@ const [postData, setPostData] = useState({
       borderRadius: 16,
       width: '90%',
       maxHeight: '80%',
-      justifyContent: 'space-between', // Add this
+      justifyContent: 'space-between', 
     },
     modalHeader: {
       flexDirection: 'row',
@@ -1509,7 +1498,7 @@ const [postData, setPostData] = useState({
       padding: 20,
     },
   
-    // Create Post Modal Styles
+  
     postModalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.5)',
@@ -1614,7 +1603,7 @@ const [postData, setPostData] = useState({
       fontSize: 16,
     },
   
-    // Picker Modal Styles
+    
     searchBar: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1696,7 +1685,6 @@ const [postData, setPostData] = useState({
       textAlign: 'center',
     },
   
-    // Image Viewer Styles
   imageModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.9)',
@@ -1781,8 +1769,8 @@ const [postData, setPostData] = useState({
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
     backgroundColor: "#fff",
-    width: '100%', // Add this
-    zIndex: 10, // Ensure it stays above other content
+    width: '100%', 
+    zIndex: 10, 
   },
   
   tabToggle: {
@@ -1812,19 +1800,19 @@ const [postData, setPostData] = useState({
     padding: 4,
   },
   businessDetail: {
-    marginTop: 4,  // Add slight separation from polish items
+    marginTop: 4,  
   },
   iconTextContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8, // This adds space between items (works in React Native 0.71+)
+    gap: 8,
   },
   iconTextContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   iconStyle: {
-    marginRight: 8, // Adds 8px space between icon and text
+    marginRight: 8, 
   },
   
   });

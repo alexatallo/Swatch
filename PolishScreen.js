@@ -47,7 +47,7 @@ export const fetchUserById = async (userId) => {
     throw error;
   }
 };
-// Sub-components
+
 const BusinessList = ({ businesses, loading, navigation }) => {
  
     const handleBusinessPress = async (business) => {
@@ -171,12 +171,11 @@ const CollectionModal = ({
   </Modal>
 );
 
-// Main component
 export default function PolishScreen({ route }) {
   const { item } = route.params;
   const navigation = useNavigation();
 
-  // State
+ 
   const [businessUsers, setBusinessUsers] = useState([]);
   const [loadingBusinesses, setLoadingBusinesses] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -199,7 +198,7 @@ export default function PolishScreen({ route }) {
     }
   };
 
-  // Data fetching
+ 
   const fetchBusinessUsersWithPolish = async () => {
     setLoadingBusinesses(true);
     try {
@@ -264,7 +263,7 @@ export default function PolishScreen({ route }) {
         return;
       }
   
-      // CASE 1: Adding to existing collection
+      
       if (selectedCollectionId) {
         const response = await axios.post(
           `${API_URL}/collections/${selectedCollectionId}/polishes`,
@@ -281,14 +280,14 @@ export default function PolishScreen({ route }) {
         return;
       }
   
-      // CASE 2: Creating new collection
+    
       if (collectionName.trim()) {
-        // Create collection and add polish in one step
+       
         const createResponse = await axios.post(
           `${API_URL}/collections`,
           { 
             name: collectionName.trim(),
-            polishes: [item._id] // Add the polish immediately
+            polishes: [item._id] 
           },
           { 
             headers: { 
@@ -301,7 +300,7 @@ export default function PolishScreen({ route }) {
         Alert.alert("Success", `Created "${collectionName}" and added polish!`);
         setModalVisible(false);
         setCollectionName("");
-        fetchCollections(); // Refresh the collections list
+        fetchCollections(); 
         return;
       }
   
@@ -326,7 +325,7 @@ export default function PolishScreen({ route }) {
       setLoading(false);
     }
   };
-  // Effects
+  
   useEffect(() => {
     fetchCollections();
     fetchBusinessUsersWithPolish();
@@ -346,9 +345,9 @@ export default function PolishScreen({ route }) {
   contentContainerStyle={{ flexGrow: 1 }}
 >  
 
-      {/* Main content */}
+      
       <View style={[styles.content, styles.contentContainer]}>
-        {/* Polish image with shadow */}
+        
         <View style={styles.imageContainer}>
           <Image 
             source={{ uri: item.picture }} 
@@ -357,7 +356,7 @@ export default function PolishScreen({ route }) {
           />
         </View>
 
-        {/* Polish details */}
+        
         <View style={styles.detailsCard}>
           <Text style={styles.title}>{item.name || "No name available"}</Text>
           
@@ -380,7 +379,7 @@ export default function PolishScreen({ route }) {
             <Text style={styles.detailText}>{item.type || "Unknown type"}</Text>
           </View>
 
-          {/* Action buttons */}
+          
           <View style={styles.buttonRow}>
             {item.link && (
               <TouchableOpacity 
@@ -402,7 +401,7 @@ export default function PolishScreen({ route }) {
           </View>
         </View>
 
-        {/* Available at businesses section */}
+        
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Available At</Text>
           {loadingBusinesses ? (
@@ -419,8 +418,7 @@ export default function PolishScreen({ route }) {
         </View>
       </View>
 
-      {/* Collection Modal */}
-      {/* Modal */}
+      
       <Modal visible={modalVisible} animationType="fade" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
