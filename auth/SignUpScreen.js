@@ -27,9 +27,6 @@ import { API_URL } from "@env";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import * as Animatable from "react-native-animatable";
-
-
-
 export default function SignUpScreen({ navigation }) {
 
  const [email, setEmail] = useState("");

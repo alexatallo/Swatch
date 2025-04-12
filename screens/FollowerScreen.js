@@ -59,7 +59,7 @@ const FollowerScreen = () => {
 
   const handleUserPress = (user) => {
     if (user._id === currentUserId) {
-      // Navigate to Main stack which contains our tabs, then to Account tab
+      
       navigation.navigate('Main', { screen: 'Account' });
     } else {
       navigation.navigate("OtherAccount", { item: user });

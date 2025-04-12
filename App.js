@@ -21,17 +21,14 @@ import AccountScreen from "./screens/AccountScreen";
 import ExploreFeedScreen from "./screens/ExploreFeedScreen";
 import SearchScreen from "./screens/SearchScreen";
 
-// Ignore all log notifications 
-//import { LogBox } from 'react-native';
-// LogBox.ignoreAllLogs();
- 
+
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const CustomBackButton = ({ onPress }) => (
   <TouchableOpacity onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', padding: 10 }}>
-    <Ionicons name="arrow-back" size={24} color="#000" /> {/* Custom back arrow icon */}
+    <Ionicons name="arrow-back" size={24} color="#000" /> 
   </TouchableOpacity>
 );
 

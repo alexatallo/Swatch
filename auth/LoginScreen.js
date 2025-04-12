@@ -257,9 +257,6 @@ export default function LoginScreen({ navigation }) {
  );
 
 }
-
-
-
 const inputTheme = {
 
  colors: {

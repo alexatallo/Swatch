@@ -80,7 +80,6 @@ export default function BusinessAccount({ navigation }) {
         }
       );
 
-      // Update business data locally
       setBusinessData({
         ...businessData,
         businessName: editableBusinessName,
@@ -121,7 +120,6 @@ export default function BusinessAccount({ navigation }) {
       style={Platform.OS === "web" ? { height: "100vh" } : null}
     >
 
-      {/* Inventory Button */}
       <TouchableOpacity
         onPress={() => navigation.navigate('InventoryScreen')}
         style={styles.inventoryButton}
@@ -130,7 +128,6 @@ export default function BusinessAccount({ navigation }) {
         <Feather name="box" size={20} color="#fff" style={styles.buttonIcon} />
       </TouchableOpacity>
 
-      {/* User Info Section */}
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Ionicons name="person-circle-outline" size={24} color="#6e3b6e" />
@@ -160,7 +157,7 @@ export default function BusinessAccount({ navigation }) {
         )}
       </View>
 
-      {/* Business Info Section */}
+ 
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Ionicons name="business-outline" size={24} color="#6e3b6e" />

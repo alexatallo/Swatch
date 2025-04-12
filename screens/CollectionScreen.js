@@ -143,7 +143,7 @@ const CollectionScreen = () => {
   );
 };
 
-// Styles
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   flatList: {
-    height: Platform.OS === 'web' ? '70vh' : undefined, // Fixed height for web
+    height: Platform.OS === 'web' ? '70vh' : undefined, 
   },
   listContainer: {
     paddingHorizontal: 20,
