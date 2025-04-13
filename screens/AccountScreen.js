@@ -277,6 +277,11 @@ const AccountScreen = () => {
    setPostToDelete(null);
  };
 
+ const handlePostModalClose = () => {
+  setIsPostModalVisible(false);
+  setSelectedImage(null);
+ }
+
 
  const handlePolishNamePress = (polishId) => {
    setIsPostModalVisible(false);
@@ -669,7 +674,7 @@ const AccountScreen = () => {
        visible={isPostModalVisible}
        transparent={true}
        animationType="fade"
-       onRequestClose={() => setSelectedImage(null)}
+       onRequestClose={handlePostModalClose}
      >
        {!selectedImage ? null : (
        <View style={styles.modalContainer}>
@@ -1314,6 +1319,8 @@ confirmationModal: {
   backgroundColor: 'white',
   borderRadius: 15,
   overflow: 'hidden',
+  alignItems: 'center',
+  justifyContent: 'center'
 },
  confirmationContent: {
    backgroundColor: 'white',
@@ -1321,6 +1328,7 @@ confirmationModal: {
    width: '80%',
    padding: 25,
    alignItems: 'center',
+  justifyContent: 'center'
  },
  warningIcon: {
    marginBottom: 15,
