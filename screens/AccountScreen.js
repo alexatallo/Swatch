@@ -61,7 +61,7 @@ const AccountScreen = () => {
      }
 
 
-     // Fetch user data, posts, and collections in parallel
+     // fetch user data, posts, and collections 
      const [userResponse, postsResponse, collectionsResponse] = await Promise.all([
        axios.get(`${API_URL}/account`, {
          headers: { Authorization: `Bearer ${token}` },
@@ -78,21 +78,21 @@ const AccountScreen = () => {
      if (!isMounted.current) return;
 
 
-     // Set user data
+     // set user data
      if (userResponse.data?.user) {
        const user = userResponse.data.user;
        setUser(user);
-       fetchFollowersCount(user._id); // Fetch followers count for the user
+       fetchFollowersCount(user._id);  
      }
 
 
-     // Set posts data
+     // set posts data
      const userPosts =
        postsResponse.data?.data?.filter((post) => post.userId === userResponse.data.user._id) || [];
      setDatabasePosts(userPosts);
 
 
-     // Set collections data
+     // set collections data
      if (Array.isArray(collectionsResponse.data)) {
        setCollectionData(collectionsResponse.data);
      } else {
@@ -148,16 +148,15 @@ const AccountScreen = () => {
 
 
    if (lastTap && now - lastTap < DOUBLE_PRESS_DELAY) {
-     // Double tap detected
+     // double tap detection
      if (post?.photoUri) {
      
-       setSelectedImage(post); // This will open our detailed modal view
+       setSelectedImage(post);  
        setIsPostModalVisible(true);
      } else {
        Alert.alert("Image not available");
      }
-   } else {
-     // Single tap - just update the last tap time
+   } else { 
      setLastTap(now);
    }
  };
@@ -166,13 +165,10 @@ const AccountScreen = () => {
  useEffect(() => {
    const loadInitialData = async () => {
      setLoading(true);
-     await fetchPolishes(); // Load polishes once
+     await fetchPolishes();  
      await fetchBusinesses();
    };
-  
    loadInitialData();
-
-
  }, [])
 
 
@@ -180,13 +176,9 @@ const AccountScreen = () => {
    try {
      const token = await getToken();
      if (!token) return;
-
-
      const response = await axios.get(`${API_URL}/polishes`, {
        headers: { Authorization: `Bearer ${token}` },
      });
-
-
      if (isMounted.current) {
        setPolishData(response.data?.data || []);
      }
@@ -238,13 +230,10 @@ const AccountScreen = () => {
    try {
      const token = await getToken();
      if (!token) {
-       alert("Please login again");
-       // Optionally navigate to login screen
+       alert("Please login again"); 
        navigation.navigate("Login");
        return;
      }
-
-
      setIsPostModalVisible(false);
      setSelectedImage(null);
      setPostToDelete(postId);
@@ -254,28 +243,6 @@ const AccountScreen = () => {
      alert("Error preparing to delete post");
    }
  };
-
-
- const handleDeleteConfirmationnn = async () => {
-   try {
-     const token = await getToken();
-     if (!token) {
-       alert("Authentication token missing.");
-       return;
-     }
-     await axios.delete(`${API_URL}/posts/${postToDelete}`, {
-       headers: { Authorization: `Bearer ${token}` },
-     });
-     setDatabasePosts(prev => prev.filter(post => post._id !== postToDelete));
-     alert("Post deleted successfully!");
-   } catch (err) {
-     alert("Error deleting post.");
-   } finally {
-     setIsDeleteModalVisible(false);
-     setPostToDelete(null);
-   }
- };
-
 
  const handleDeleteConfirmation = async () => {
    try {
@@ -340,21 +307,14 @@ const AccountScreen = () => {
    }
  };
 
-
- 
-
-
- // Fetch followers count
+ // get followers count
  const fetchFollowersCount = useCallback(async (userId) => {
    try {
      setIsLoadingFollowers(true);
      const token = await getToken();
      const response = await axios.get(`${API_URL}/users/${userId}/followers`, {
        headers: { Authorization: `Bearer ${token}` }
-     });
-
-
-     // Handle different response structures
+     }); 
      const count = response.data?.count ||
        response.data?.data?.length ||
        0;
@@ -366,9 +326,7 @@ const AccountScreen = () => {
      setIsLoadingFollowers(false);
    }
  }, []);
-
-
- // Update your businessLookup creation
+ 
  const businessLookup = useMemo(() => {
    return businessData.reduce((acc, business) => {
      acc[business._id] = {
@@ -379,24 +337,21 @@ const AccountScreen = () => {
    }, {});
  }, [businessData]);
 
-
- // Add these functions to your component
+ 
  const handleProfilePicUpload = async () => {
-   try {
-     // Request permissions
+   try { 
      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
      if (status !== 'granted') {
        alert('Permission to access camera roll is required!');
        return;
      }
 
-
-     // Launch image picker
+     // open cam roll
      let result = await ImagePicker.launchImageLibraryAsync({
        mediaTypes: ImagePicker.MediaTypeOptions.Images,
        allowsEditing: true,
-       aspect: [1, 1],  // Square aspect ratio
-       quality: 0.7,    // 70% quality to reduce file size
+       aspect: [1, 1],   
+       quality: 0.7,   
      });
 
 
@@ -413,23 +368,15 @@ const AccountScreen = () => {
  const uploadProfilePicture = async (imageUri) => {
    try {
      const token = await getToken();
-
-
-     // Convert image to base64
+     // convert image to base64
      const base64Image = await FileSystem.readAsStringAsync(imageUri, {
        encoding: FileSystem.EncodingType.Base64,
      });
-
-
-     // Upload to backend
      const response = await axios.put(
        `${API_URL}/account/profile-picture`,
        { image: `data:image/jpeg;base64,${base64Image}` },
        { headers: { Authorization: `Bearer ${token}` } }
      );
-
-
-     // Update local state by reloading user data
      await loadUserData();
      alert('Profile picture updated successfully!');
    } catch (error) {
@@ -501,16 +448,12 @@ const AccountScreen = () => {
        return;
      }
 
-
-     // Make the delete request to the correct endpoint
      const response = await axios.delete(`${API_URL}/collection/${collectionId}`, {
        headers: { Authorization: `Bearer ${token}` },
      });
 
-
-     // Check if the response status is successful
-     if (response.status === 200 || response.status === 204) {
-       // Update the state to remove the deleted collection
+ 
+     if (response.status === 200 || response.status === 204) { 
        setCollectionData((prev) => prev.filter((c) => c._id !== collectionId));
        Alert.alert("Success", "Collection deleted successfully");
      } else {
@@ -519,19 +462,14 @@ const AccountScreen = () => {
    } catch (error) {
      console.error("Error deleting collection:", error);
 
-
-     // Handle different error scenarios
+ 
      let errorMessage = "Failed to delete collection.";
-     if (error.response) {
-       // Server responded with an error status
+     if (error.response) { 
        errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
-     } else if (error.request) {
-       // Request was made but no response received
+     } else if (error.request) { 
        errorMessage = "No response from server. Please check your internet connection.";
      }
-
-
-     // Show an alert with the error message
+ 
      Alert.alert("Error", errorMessage);
    }
  };
@@ -560,7 +498,7 @@ const AccountScreen = () => {
 
  return (
    <View style={styles.container}>
-     {/* Header with gradient background */}
+     {/* Header */}
      <View style={styles.header}>
        <View style={styles.headerContent}>
          <TouchableOpacity
@@ -587,12 +525,11 @@ const AccountScreen = () => {
        </View>
      </View>
 
-
-     {/* Profile section with card layout */}
+ 
      <View style={styles.profileCard}>
  <View style={styles.profileHeader}>
    <TouchableOpacity onPress={handleProfilePicUpload}>
-     {/* Container for profile pic + camera button */}
+     {/* Profile pic and cam button */}
      <View style={styles.profilePicWrapper}>
        <View style={styles.profilePicContainer}>
          {user?.profilePic ? (
@@ -679,7 +616,7 @@ const AccountScreen = () => {
      </View>
 
 
-     {/* Posts grid with section header */}
+     {/* Posts */}
      <View style={styles.contentContainer}>
        <Text style={styles.sectionTitle}>Your Posts</Text>
 
@@ -727,7 +664,7 @@ const AccountScreen = () => {
 
 
 
-     {/* Selected Image Modal */}
+     {/* Selected post modal */}
      <Modal
        visible={isPostModalVisible}
        transparent={true}
@@ -844,7 +781,7 @@ const AccountScreen = () => {
  </ScrollView>
 
 
- {/* Business Name and Icon */}
+ {/* Business name and icon */}
  {selectedImage?.businessId && (
    <TouchableOpacity
      onPress={() => handleBusinessNamePress(selectedImage?.businessId)}
@@ -852,7 +789,7 @@ const AccountScreen = () => {
    >
      <Ionicons
        name="business-outline"
-       size={16}  // Match color circle size
+       size={16}   
        color="#333"
        style={styles.iconStyle}
      />
@@ -1060,18 +997,16 @@ const styles = StyleSheet.create({
    marginBottom: 15,
  },
  profilePicWrapper: {
-   position: 'relative',
-   // Add any additional size constraints if needed
+   position: 'relative', 
  },
  editProfilePicIcon: {
    position: 'absolute',
    paddingStart: 5,
-   bottom: -6,    // Move below the profile pic
+   bottom: -6,     
    backgroundColor: 'rgba(110, 59, 110, 0.8)',
    borderRadius: 12,
-   padding: 6,     // Slightly larger padding
-   zIndex: 1,      // Ensure it's above other elements
-   // Optional shadow
+   padding: 6,     
+   zIndex: 1,     
    shadowColor: '#000',
    shadowOffset: { width: 0, height: 2 },
    shadowOpacity: 0.2,
@@ -1106,27 +1041,27 @@ const styles = StyleSheet.create({
    flexDirection: 'row',
    flex: 1,
    justifyContent: 'space-between',
-   alignItems: 'center', // Add this for vertical alignment
+   alignItems: 'center',  
  },
  statItem: {
-   flex: 1, // Equal width distribution
+   flex: 1, 
    alignItems: 'center',
-   justifyContent: 'center', // Center vertically
-   paddingHorizontal: 5, // Add horizontal padding
+   justifyContent: 'center',  
+   paddingHorizontal: 5,  
  },
  statNumber: {
    fontWeight: 'bold',
    fontSize: 20,
    marginBottom: 4,
    color: '#333',
-   textAlign: 'center', // Add this
-   width: '100%', // Ensure full width
+   textAlign: 'center',  
+   width: '100%',  
  },
  statLabel: {
    fontSize: 14,
    color: '#666',
-   textAlign: 'center', // Add this
-   width: '100%', // Ensure full width
+   textAlign: 'center',  
+   width: '100%', 
  },
  clickableCount: {
    color: '#333',
