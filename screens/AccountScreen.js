@@ -61,7 +61,7 @@ const AccountScreen = () => {
      }
 
 
-    
+     // Fetch user data, posts, and collections in parallel
      const [userResponse, postsResponse, collectionsResponse] = await Promise.all([
        axios.get(`${API_URL}/account`, {
          headers: { Authorization: `Bearer ${token}` },
@@ -78,21 +78,21 @@ const AccountScreen = () => {
      if (!isMounted.current) return;
 
 
-  
+     // Set user data
      if (userResponse.data?.user) {
        const user = userResponse.data.user;
        setUser(user);
-       fetchFollowersCount(user._id); 
+       fetchFollowersCount(user._id); // Fetch followers count for the user
      }
 
 
-    
+     // Set posts data
      const userPosts =
        postsResponse.data?.data?.filter((post) => post.userId === userResponse.data.user._id) || [];
      setDatabasePosts(userPosts);
 
 
-  
+     // Set collections data
      if (Array.isArray(collectionsResponse.data)) {
        setCollectionData(collectionsResponse.data);
      } else {
@@ -148,16 +148,16 @@ const AccountScreen = () => {
 
 
    if (lastTap && now - lastTap < DOUBLE_PRESS_DELAY) {
- 
+     // Double tap detected
      if (post?.photoUri) {
      
-       setSelectedImage(post);
+       setSelectedImage(post); // This will open our detailed modal view
        setIsPostModalVisible(true);
      } else {
        Alert.alert("Image not available");
      }
    } else {
-    
+     // Single tap - just update the last tap time
      setLastTap(now);
    }
  };
@@ -165,8 +165,8 @@ const AccountScreen = () => {
 
  useEffect(() => {
    const loadInitialData = async () => {
-     setLoading(true);ce
-     await fetchPolishes(); 
+     setLoading(true);
+     await fetchPolishes(); // Load polishes once
      await fetchBusinesses();
    };
   
@@ -239,7 +239,7 @@ const AccountScreen = () => {
      const token = await getToken();
      if (!token) {
        alert("Please login again");
-      
+       // Optionally navigate to login screen
        navigation.navigate("Login");
        return;
      }
@@ -333,10 +333,10 @@ const AccountScreen = () => {
        const item = response.data;
        navigation.navigate("OtherAccount", { item });
      } else {
-       console.error(" Unexpected API response:", response.data);
+       console.error("❌ Unexpected API response:", response.data);
      }
    } catch (error) {
-     console.error("Error fetching user from business ID:", error);
+     console.error("❌ Error fetching user from business ID:", error);
    }
  };
 
@@ -344,6 +344,7 @@ const AccountScreen = () => {
  
 
 
+ // Fetch followers count
  const fetchFollowersCount = useCallback(async (userId) => {
    try {
      setIsLoadingFollowers(true);
@@ -353,7 +354,7 @@ const AccountScreen = () => {
      });
 
 
-
+     // Handle different response structures
      const count = response.data?.count ||
        response.data?.data?.length ||
        0;
@@ -367,6 +368,7 @@ const AccountScreen = () => {
  }, []);
 
 
+ // Update your businessLookup creation
  const businessLookup = useMemo(() => {
    return businessData.reduce((acc, business) => {
      acc[business._id] = {
@@ -378,10 +380,10 @@ const AccountScreen = () => {
  }, [businessData]);
 
 
-
+ // Add these functions to your component
  const handleProfilePicUpload = async () => {
    try {
-  
+     // Request permissions
      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
      if (status !== 'granted') {
        alert('Permission to access camera roll is required!');
@@ -389,12 +391,12 @@ const AccountScreen = () => {
      }
 
 
-  
+     // Launch image picker
      let result = await ImagePicker.launchImageLibraryAsync({
        mediaTypes: ImagePicker.MediaTypeOptions.Images,
        allowsEditing: true,
-       aspect: [1, 1], 
-       quality: 0.7,    
+       aspect: [1, 1],  // Square aspect ratio
+       quality: 0.7,    // 70% quality to reduce file size
      });
 
 
@@ -413,13 +415,13 @@ const AccountScreen = () => {
      const token = await getToken();
 
 
-   
+     // Convert image to base64
      const base64Image = await FileSystem.readAsStringAsync(imageUri, {
        encoding: FileSystem.EncodingType.Base64,
      });
 
 
-    
+     // Upload to backend
      const response = await axios.put(
        `${API_URL}/account/profile-picture`,
        { image: `data:image/jpeg;base64,${base64Image}` },
@@ -427,7 +429,7 @@ const AccountScreen = () => {
      );
 
 
-    
+     // Update local state by reloading user data
      await loadUserData();
      alert('Profile picture updated successfully!');
    } catch (error) {
@@ -500,15 +502,15 @@ const AccountScreen = () => {
      }
 
 
-     
+     // Make the delete request to the correct endpoint
      const response = await axios.delete(`${API_URL}/collection/${collectionId}`, {
        headers: { Authorization: `Bearer ${token}` },
      });
 
 
-     
+     // Check if the response status is successful
      if (response.status === 200 || response.status === 204) {
-      
+       // Update the state to remove the deleted collection
        setCollectionData((prev) => prev.filter((c) => c._id !== collectionId));
        Alert.alert("Success", "Collection deleted successfully");
      } else {
@@ -518,17 +520,18 @@ const AccountScreen = () => {
      console.error("Error deleting collection:", error);
 
 
+     // Handle different error scenarios
      let errorMessage = "Failed to delete collection.";
      if (error.response) {
-    
+       // Server responded with an error status
        errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
      } else if (error.request) {
-
+       // Request was made but no response received
        errorMessage = "No response from server. Please check your internet connection.";
      }
 
 
-   
+     // Show an alert with the error message
      Alert.alert("Error", errorMessage);
    }
  };
@@ -557,7 +560,7 @@ const AccountScreen = () => {
 
  return (
    <View style={styles.container}>
-  
+     {/* Header with gradient background */}
      <View style={styles.header}>
        <View style={styles.headerContent}>
          <TouchableOpacity
@@ -580,16 +583,16 @@ const AccountScreen = () => {
 
      <View style={styles.bodyWrapper}>
        <View style={styles.profileCard}>
-       
+         {/* Profile content */}
        </View>
      </View>
 
 
-   
+     {/* Profile section with card layout */}
      <View style={styles.profileCard}>
  <View style={styles.profileHeader}>
    <TouchableOpacity onPress={handleProfilePicUpload}>
-   
+     {/* Container for profile pic + camera button */}
      <View style={styles.profilePicWrapper}>
        <View style={styles.profilePicContainer}>
          {user?.profilePic ? (
@@ -603,7 +606,7 @@ const AccountScreen = () => {
            </View>
          )}
        </View>
-      
+       {/* Camera button positioned outside */}
        <View style={styles.editProfilePicIcon}>
          <Ionicons name="camera" size={16} color="white" />
        </View>
@@ -676,7 +679,7 @@ const AccountScreen = () => {
      </View>
 
 
-   
+     {/* Posts grid with section header */}
      <View style={styles.contentContainer}>
        <Text style={styles.sectionTitle}>Your Posts</Text>
 
@@ -724,7 +727,7 @@ const AccountScreen = () => {
 
 
 
-    
+     {/* Selected Image Modal */}
      <Modal
        visible={isPostModalVisible}
        transparent={true}
@@ -778,7 +781,7 @@ const AccountScreen = () => {
              
                <View style={styles.postActions}>
                 
-
+ {/* Like Button with Count */}
  <TouchableOpacity 
    style={styles.likeButton}
  >
@@ -793,9 +796,9 @@ const AccountScreen = () => {
    </Text>
 
 
-
+ {/* Comment Button with Count */}
  <TouchableOpacity
-
+  // onPress={() => toggleComments(item._id)}
    style={[styles.commentButton, styles.commentButton]}
  >
    <Ionicons
@@ -841,6 +844,7 @@ const AccountScreen = () => {
  </ScrollView>
 
 
+ {/* Business Name and Icon */}
  {selectedImage?.businessId && (
    <TouchableOpacity
      onPress={() => handleBusinessNamePress(selectedImage?.businessId)}
@@ -848,7 +852,7 @@ const AccountScreen = () => {
    >
      <Ionicons
        name="business-outline"
-       size={16}  
+       size={16}  // Match color circle size
        color="#333"
        style={styles.iconStyle}
      />
@@ -868,35 +872,53 @@ const AccountScreen = () => {
 
 
 
-  
-     <Modal transparent visible={isDeleteModalVisible} animationType="fade">
-       <View style={styles.confirmationModal}>
-         <View style={styles.confirmationContent}>
-           <Ionicons name="warning" size={40} color="#ff4444" style={styles.warningIcon} />
-           <Text style={styles.confirmationTitle}>Delete Post?</Text>
-           <Text style={styles.confirmationText}>This action cannot be undone</Text>
+     {/* Delete confirmation modal */} 
+<Modal
+  transparent
+  visible={isDeleteModalVisible}
+  animationType="fade"
+  onRequestClose={handleDeleteCancel}
+>
+  <TouchableWithoutFeedback onPress={handleDeleteCancel}>
+    <View style={styles.confirmationModalBackdrop}>
+      <TouchableWithoutFeedback>
+        <View style={styles.confirmationModal}>
+          <View style={styles.confirmationContent}>
+            <Ionicons 
+              name="warning" 
+              size={40} 
+              color="#ff4444" 
+              style={styles.warningIcon} 
+            />
+            <Text style={styles.confirmationTitle}>Delete Post?</Text>
+            <Text style={styles.confirmationText}>
+              This action cannot be undone
+            </Text>
+
+            <View style={styles.confirmationButtons}>
+              <TouchableOpacity
+                style={[styles.confirmationButton, styles.cancelButton]}
+                onPress={handleDeleteCancel}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.confirmationButton, styles.confirmButton]}
+                onPress={handleDeleteConfirmation}
+              >
+                <Text style={styles.confirmButtonText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </TouchableWithoutFeedback>
+    </View>
+  </TouchableWithoutFeedback>
+</Modal>
 
 
-           <View style={styles.confirmationButtons}>
-             <TouchableOpacity
-               style={[styles.confirmationButton, styles.cancelButton]}
-               onPress={handleDeleteCancel}
-             >
-               <Text style={styles.cancelButtonText}>Cancel</Text>
-             </TouchableOpacity>
-
-
-             <TouchableOpacity
-               style={[styles.confirmationButton, styles.confirmButton]}
-               onPress={handleDeleteConfirmation}
-             >
-               <Text style={styles.confirmButtonText}>Delete</Text>
-             </TouchableOpacity>
-           </View>
-         </View>
-       </View>
-     </Modal>
-
+     {/* Collections Modal */}
      <Modal
        visible={isCollectionModalVisible}
        animationType="slide"
@@ -987,7 +1009,7 @@ const styles = StyleSheet.create({
  },
 
 
-
+ // Header
  header: {
    backgroundColor: '#6e3b6e',
    paddingTop: 30,
@@ -1007,16 +1029,16 @@ const styles = StyleSheet.create({
    alignItems: 'center',
  },
  headerButton: {
-   marginLeft: 12, 
+   marginLeft: 12,  // Reduced from 20
      padding: 5,
    },
    albumHeaderButton: {
-   marginLeft: 12, 
+   marginLeft: 12,  // Match the other button's margin
    paddingVertical: 5,
    },
 
 
-
+ // Profile Card
  profileCard: {
    position: 'absolute',
    top: 70,
@@ -1039,17 +1061,17 @@ const styles = StyleSheet.create({
  },
  profilePicWrapper: {
    position: 'relative',
-  
+   // Add any additional size constraints if needed
  },
  editProfilePicIcon: {
    position: 'absolute',
    paddingStart: 5,
-   bottom: -6,    
+   bottom: -6,    // Move below the profile pic
    backgroundColor: 'rgba(110, 59, 110, 0.8)',
    borderRadius: 12,
-   padding: 6,    
-   zIndex: 1,      
-  
+   padding: 6,     // Slightly larger padding
+   zIndex: 1,      // Ensure it's above other elements
+   // Optional shadow
    shadowColor: '#000',
    shadowOffset: { width: 0, height: 2 },
    shadowOpacity: 0.2,
@@ -1084,27 +1106,27 @@ const styles = StyleSheet.create({
    flexDirection: 'row',
    flex: 1,
    justifyContent: 'space-between',
-   alignItems: 'center', 
+   alignItems: 'center', // Add this for vertical alignment
  },
  statItem: {
-   flex: 1,
+   flex: 1, // Equal width distribution
    alignItems: 'center',
-   justifyContent: 'center', 
-   paddingHorizontal: 5, 
+   justifyContent: 'center', // Center vertically
+   paddingHorizontal: 5, // Add horizontal padding
  },
  statNumber: {
    fontWeight: 'bold',
    fontSize: 20,
    marginBottom: 4,
    color: '#333',
-   textAlign: 'center',
-   width: '100%', 
+   textAlign: 'center', // Add this
+   width: '100%', // Ensure full width
  },
  statLabel: {
    fontSize: 14,
    color: '#666',
-   textAlign: 'center', 
-   width: '100%', 
+   textAlign: 'center', // Add this
+   width: '100%', // Ensure full width
  },
  clickableCount: {
    color: '#333',
@@ -1162,7 +1184,7 @@ const styles = StyleSheet.create({
  },
 
 
-
+ // Posts Grid
  emptyState: {
    flex: 1,
    justifyContent: 'center',
@@ -1215,7 +1237,7 @@ const styles = StyleSheet.create({
  },
 
 
-
+ // Modals
  modalContainer: {
    flex: 1,
    backgroundColor: 'rgba(0,0,0,0.8)',
@@ -1289,11 +1311,11 @@ const styles = StyleSheet.create({
    color: '#333',
  },
  detailsContainer: {
-   marginTop: 12, 
+   marginTop: 12,  
  },
  polishScrollContainer: {
    paddingVertical: 4,
-   paddingRight: 16, 
+   paddingRight: 16,  
  }, 
   detailItem: {
    flexDirection: 'row',
@@ -1302,14 +1324,14 @@ const styles = StyleSheet.create({
    borderRadius: 16,
    paddingVertical: 6,
    paddingHorizontal: 10,
-   marginRight: 8,
-   height: 32, 
+   marginRight: 8,  
+   height: 32,  
  },
  businessDetail: {
-   marginTop: 4, 
+   marginTop: 4,   
  },
  iconStyle: {
-   marginRight: 8, 
+   marginRight: 8,  
  },
  businessDetailItem: {
    flexDirection: 'row',
@@ -1320,7 +1342,7 @@ const styles = StyleSheet.create({
    paddingHorizontal: 10,
    marginRight: 8,
    height: 32,
-   alignSelf: 'flex-start',
+   alignSelf: 'flex-start', 
  },
  colorCircle: {
    width: 16,
@@ -1332,7 +1354,7 @@ const styles = StyleSheet.create({
  detailText: {
    fontSize: 12,
    color: '#333',
-   maxWidth: 120, 
+   maxWidth: 120,  
  },
  divider: {
    color: '#ccc',
@@ -1345,13 +1367,19 @@ const styles = StyleSheet.create({
  },
 
 
-
- confirmationModal: {
-   flex: 1,
-   justifyContent: 'center',
-   alignItems: 'center',
-   backgroundColor: 'rgba(0,0,0,0.5)',
- },
+ // Confirmation Modal
+ confirmationModalBackdrop: {
+  flex: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+  backgroundColor: 'rgba(0,0,0,0.5)',
+},
+confirmationModal: {
+  width: '80%',
+  backgroundColor: 'white',
+  borderRadius: 15,
+  overflow: 'hidden',
+},
  confirmationContent: {
    backgroundColor: 'white',
    borderRadius: 15,
@@ -1403,6 +1431,8 @@ const styles = StyleSheet.create({
    fontWeight: '600',
  },
 
+
+ // Collections Modal
  fullModalContainer: {
    flex: 1,
    backgroundColor: 'rgba(0,0,0,0.5)',
@@ -1412,7 +1442,7 @@ const styles = StyleSheet.create({
  collectionsModal: {
    backgroundColor: 'white',
    borderRadius: 15,
-   width: '90%', 
+   width: '90%',   
    maxHeight: '80%',
    padding: 20,
    shadowColor: '#000',
@@ -1496,7 +1526,7 @@ const styles = StyleSheet.create({
  },
  bodyWrapper: {
    flex: 1,
-   marginTop: -30,
+   marginTop: -30,  
    paddingHorizontal: 20,
    paddingBottom: 10,
  },
