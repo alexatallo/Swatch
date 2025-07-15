@@ -22,5 +22,5 @@ Swatch is a nail polish collection app designed to help users organize, view, an
 - **Environment Variables**: dotenv
 
 ## Demo
-- ** Check it out here: ** https://youtu.be/jfL8sOyNSMA?si=tAV_IE1qm_iD3chB
+- **Check it out here:** https://youtu.be/jfL8sOyNSMA?si=tAV_IE1qm_iD3chB
 
