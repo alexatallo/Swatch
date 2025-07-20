@@ -3,24 +3,25 @@
 
 # Swatch
 
-Swatch is a nail polish collection app designed to help users organize, view, and manage their personal nail polish collections. With Swatch, users can create custom collections, add individual nail polishes, and easily search and browse through their collection based on various attributes like color, brand, and hex code.
+Swatch is a mobile app for anyone who loves getting their nails done and discovering new polishes. Whether you're searching for the perfect shade, showcasing your latest look, or managing salon inventory, Swatch brings polish discovery and community together in one place.
 
-## Features
+## Key Features
 
-- **User Accounts**: Create and manage user profiles.
-- **Create Collections**: Organize nail polishes into user-created collections.
-- **Add Nail Polishes**: Store and view individual nail polishes with details like color, brand, and hex code.
-- **View Collections**: Browse through your collections and select individual items to view more details.
-- **Search & Filter**: Easily search through collections and filter polishes by various attributes.
+- Search polishes by color with a curated database of over 1,000+ shades from popular brands like OPI and DND
+- Discover matching polishes using color extraction from uploaded or live photos
+- Save and organize favorite shades into personalized collections
+- Share nail looks, tag polishes and salons, and get inspired by community posts
+- Explore salon inventories and check real-time availability
+- Business tools for salons and nail artists to showcase inventory and gain visibility through user-generated content
 
 ## Technologies Used
 
-- **Frontend**: React
-- **Backend**: Node.js
-- **Database**: MongoDB
-- **Authentication**: JWT
-- **Environment Variables**: dotenv
+- Frontend: React Native
+- Backend: Node.js
+- Database: MongoDB
+- Authentication: JWT
+- Environment Management: dotenv
 
 ## Demo
-- **Check it out here:** https://youtu.be/jfL8sOyNSMA?si=tAV_IE1qm_iD3chB
 
+Watch a demo of Swatch in action: [Swatch Demo](https://youtu.be/jfL8sOyNSMA?si=tAV_IE1qm_iD3chB)
