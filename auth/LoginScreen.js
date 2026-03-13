@@ -20,7 +20,7 @@ const Storage = Platform.OS === "web" ? localStorage : AsyncStorage;
 
 
 
-export default function LoginScreen({ navigation, onLogin }) {
+export default function LoginScreen({ navigation }) {
 
  const [emailOrUsername, setEmailOrUsername] = useState("");
 
@@ -66,7 +66,7 @@ export default function LoginScreen({ navigation, onLogin }) {
 
        Alert.alert("Yay!", "Logged in successfully!", [
 
-         { text: "OK", onPress: () => onLogin(response.data.token) },
+         { text: "OK", onPress: () => navigation.replace("Main") },
 
        ]);
 
