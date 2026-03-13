@@ -62,17 +62,17 @@ export default function LoginScreen({ navigation }) {
 
      if (response.data.token) {
 
-       await Storage.setItem("token", response.data.token);
+       await AsyncStorage.setItem("token", response.data.token);
 
        Alert.alert("Yay!", "Logged in successfully!", [
 
-         { text: "OK", onPress: () => navigation.replace("Home") },
+         { text: "OK", onPress: () => navigation.replace("Main") },
 
        ]);
 
      } else {
 
-       Alert.alert("No token received from server.");
+       Alert.alert("Error", "No token received from server");
 
      }
 

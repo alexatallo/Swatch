@@ -17,7 +17,8 @@ app.use(cors());
 
 
 // MongoDB Connection
-const client = new MongoClient(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true });
+//const client = new MongoClient(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true });
+const client = new MongoClient(process.env.MONGO_URI);
 let db;
 
 
@@ -1532,4 +1533,4 @@ app.get("/collections/:userId", async (req, res) => {
   });
  
   
-app.listen(5000, () => console.log("Backend API running on port 5000"));
+app.listen(5002, () => console.log("Backend API running on port 5002"));
