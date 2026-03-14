@@ -1534,3 +1534,9 @@ app.get("/collections/:userId", async (req, res) => {
  
   
 app.listen(5002, () => console.log("Backend API running on port 5002"));
+
+module.exports = app;
+
+if (process.env.NODE_ENV !== "test") {
+  app.listen(5002, () => console.log("Backend API running on port 5002"));
+}

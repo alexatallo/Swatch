@@ -66,7 +66,7 @@ export default function LoginScreen({ navigation }) {
 
        Alert.alert("Yay!", "Logged in successfully!", [
 
-         { text: "OK", onPress: () => navigation.replace("Main") },
+         { text: "OK", onPress: () => onLogin(response.data.token) },
 
        ]);
 
